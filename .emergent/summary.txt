@@ -1,0 +1,149 @@
+<analysis>**original_problem_statement:**
+The user's initial goal was to build a white-label franchise platform named Transmill. The project's focus has evolved significantly through several stages:
+1.  **Initial UI Redesign:** The user requested a complete overhaul of the end-user home screen, moving away from a simple dashboard to a super-app layout. This involved creating a new  with a bottom navigation bar (Mobility, Stores, Services, Finance) and a primary Mobility tab featuring a map. This task was completed.
+2.  **Feature Additions:** At the user's request, a rotating promotional banner was added to the Mobility tab, the Driver mode UI was redesigned for better usability, and an Events icon was removed.
+3.  **Bug Fixes & Refinements:** The agent fixed several issues, including ensuring the new layout appeared for franchise-specific users, and replacing a mock map with the application's actual Google Maps integration.
+4.  **Backend Refactoring:** The current and primary focus is a large-scale refactoring of the main  file. The user wants to decompose this monolith by moving endpoints into modular routers to improve maintainability and scalability. This is an ongoing, multi-step task that the user has repeatedly approved continuing.
+
+PRODUCT REQUIREMENTS:
+-   The application must feature a modern, multi-tab layout for end-users.
+-   The backend must be modular, with endpoints organized into logical router files instead of a single large .
+-   The application must support white-labeling for different franchises.
+
+**User's preferred language**: Portuguese (Português)
+
+**what currently exists?**
+The application is a full-stack platform using React, FastAPI, and MongoDB. The frontend features a new, multi-tab  that serves as the main user dashboard. This page includes a Mobility tab with a working Google Maps integration, a Passenger/Driver mode toggle, and a rotating promotional banner. The backend has undergone significant refactoring. A shared authentication utility () has been created, and numerous modules (, , , , , , , , ) have had their endpoints migrated from  to dedicated router files in . The  file, while much smaller, still contains a large number of endpoints.
+
+**Last working item**:
+-   **Last item agent was working:** Continuing the major refactoring of . The agent had just finished migrating endpoints for the , , and  modules into their respective router files. This involved identifying duplicated routes, removing them from , and fixing a subsequent bug in the  endpoint that arose due to the migration.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** Y
+-   **Which testing method agent to use?** backend testing agent
+-   **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+-   Issue 1: (P0) Complete  Refactoring & Cleanup
+-   Issue 2: (P1) FIPE API does not return data for all vehicle models
+-   Issue 3: (P2) XGate USDT Rate Endpoint Returns 403 Forbidden
+
+**Issues Detail:**
+-   **Issue 1: (P0) Complete  Refactoring & Cleanup**
+    -   **Attempted fixes:** This is a large, ongoing effort. The agent has successfully migrated endpoints for numerous modules (, , , , , , , ). A critical  utility was created to standardize authentication across all new routers, fixing multiple JWT-related bugs. The last action was fixing a bug in  that appeared after its endpoints became active.
+    -   **Next debug checklist:**
+        1.  Based on the user's last instruction, identify the next modules for migration (e.g., , ).
+        2.  Systematically map all endpoints for the chosen module that still exist in .
+        3.  Port the endpoint logic to the corresponding router file (e.g., ), ensuring to use the shared  for authentication.
+        4.  Verify that the new router is correctly registered in .
+        5.  Carefully remove the now-redundant endpoints from .
+        6.  Restart the backend and test all migrated endpoints via  to confirm functionality and prevent regressions.
+    -   **Why fix this issue and what will be achieved with the fix?** This is the user's highest priority. It reduces technical debt, makes the backend code cleaner and more maintainable, and prevents routing conflicts.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** None
+
+-   **Issue 2: FIPE API does not return data for all vehicle models**
+    -   **Status:** BLOCKED (External API limitation).
+
+-   **Issue 3: XGate USDT Rate Endpoint Returns 403 Forbidden**
+    -   **Status:** BLOCKED (Requires user to contact XGate support). A fallback mechanism is in place.
+
+**In progress Task List**:
+-   **Task 1: (P0) Continue  Refactoring**
+    -   **Where to resume:** The user has approved continuing the cleanup. The next step is to select the next set of modules (,  were suggested by the user), map their endpoints from , and begin the migration process to their dedicated router files.
+    -   **What will be achieved with this?** Further decomposition of the  monolith, improving backend architecture and maintainability.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on something:** None
+
+**Upcoming and Future Tasks**
+-   **Upcoming Tasks:**
+    -   (P0) **Continue  Cleanup:** This is the immediate next action. The remaining modules include large ones like  (~24 endpoints) and  (~50 endpoints).
+-   **Future Tasks:**
+    -   (P1) **Asaas Integration:** Integrate the Asaas payment gateway.
+
+**Completed work in this session**
+-   **Full UI/UX Redesign:** Successfully implemented the new  for the main application, including the bottom navigation bar, a real Google Map, and a Passenger/Driver mode toggle.
+-   **UI Feature Enhancements:** Added a rotating promotional banner, redesigned the Driver mode UI for better usability, and removed a requested Eventos icon.
+-   **Franchise & Auth Flow Fixes:** Ensured the new UI works for franchise-specific routes and replaced a mock map with the real, API-connected Google Maps component.
+-   **Massive Backend Refactoring:**
+    -   Migrated dozens of endpoints from  into modular routers for , , , , , , , and .
+    -   Created a critical shared authentication utility () to resolve JWT inconsistencies across all new routers.
+    -   Removed over 3,500 lines of code from .
+-   **Bug Fixes:** Resolved multiple backend bugs related to authentication, incorrect API parsing, and missing dependencies that surfaced during the refactoring process.
+-   **Backlog Grooming:** Removed the Social Network feature from the product backlog () per the user's request.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Monolith Decomposition:** The core activity of this session. The process involves systematically moving endpoints from a single large file () into feature-specific router files. This required identifying feature gaps (like missing geolocation logic) and architectural inconsistencies (like different authentication methods) between the old and new code.
+-   **Centralized Authentication:** A key decision was to create . This utility centralizes JWT decoding and user retrieval, fixing recurring bugs where different routers used incorrect secret keys or token parsing logic. It's now the standard for all new/migrated authenticated endpoints.
+-   **Conditional Rendering (React):** The  component makes heavy use of state to render entirely different layouts for Passenger and Driver modes, providing a tailored user experience.
+
+**All files of reference**
+-   **/app/backend/server.py** (Heavily refactored, thousands of lines removed)
+-   **/app/backend/utils/auth_utils.py** (New, critical for authentication)
+-   **/app/backend/routes/** (Multiple files created/updated: , , , , , , , , )
+-   **/app/frontend/src/pages/HomePage.js** (New, main user interface)
+-   **/app/frontend/src/pages/FranquiaMinimalistHome.js** (Modified to use the new )
+-   **/app/frontend/src/components/PromoBanner.js** (New)
+-   **/app/frontend/src/App.js** (Modified to route to )
+-   **/app/memory/PRD.md** (Updated to reflect completed work and removed features)
+
+**Areas that need refactoring**:
+-   **:** This file remains the primary source of technical debt, although it has been significantly reduced. The user has explicitly requested to continue migrating the ~200 remaining endpoints (e.g., ,  modules) to their respective routers.
+
+**key api endpoints**
+-   Endpoints for , , , , , , , and  have been migrated from  to their own prefixed routers (e.g., , ).
+
+**Critical Info for New Agent**
+-   **Top Priority is  Cleanup:** The user's main goal is to continue the backend refactoring. Your immediate task is to pick the next module ( or  were suggested), map its endpoints in , migrate them to a dedicated router, and remove the old code.
+-   **Use  for Authentication:** When migrating any endpoint that requires user authentication, you MUST use the  class from . This is the new standard and ensures consistent, correct token handling. Do not implement new authentication logic.
+-   **Frontend is Stable:** The major UI redesign is complete and has been verified by the user. Do not make further frontend changes unless explicitly requested. The focus is now on the backend architecture.
+-   **Follow the Migration Pattern:** Use the established process for refactoring: 1) Map endpoints in . 2) Port logic to the new router, ensuring feature parity and correct auth. 3) Register the router. 4) Remove old code from . 5) Test all migrated endpoints via .
+
+**documents and test reports created in this job**
+-    (Testing report for the new  UI)
+-    (Updated)
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **LATEST:**  - User specifies the next modules to refactor from . (IN PROGRESS)
+2.   - User asked to continue after a test failed. (COMPLETED)
+3.   - User confirmed to proceed with  refactoring after checking the driver registration flow. (IN PROGRESS)
+4.   - User asked about the driver registration flow and approved continuing the  cleanup. (IN PROGRESS)
+5.   - User requested UI changes: remove Events icon and redesign the driver mode layout. (COMPLETED)
+6.   - User asked to remove the social network feature from the backlog and questioned why the map was not the real Google Maps. (COMPLETED)
+7.   - User reported the new layout wasn't showing for franchise users and requested a new promotional banner feature. (COMPLETED)
+8.   - User set continuing the  cleanup as the next priority. (ACTIONED)
+9.   - A repeat of the user confirming to continue refactoring. (ACTIONED)
+10.  - User gives the initial go-ahead to start the UI redesign. (COMPLETED)
+
+**Project Health Check:**
+-   **Broken:** The  endpoint from XGate still returns a  error.
+-   **Mocked:** The system has a working fallback using public APIs (CoinGecko, Binance) for the broken XGate USDT rate. The FIPE vehicle data API has known data gaps for some models.
+-   **Technical Debt:**  is the primary source of technical debt. However, its size has been massively reduced from ~285 endpoints / ~16,800 lines to ~200 endpoints / ~11,000 lines. The ongoing refactoring is actively addressing this debt.
+
+**3rd Party Integrations**
+-   **Cloudinary:** Image storage.
+-   **XGate:** PIX and Crypto (USDT) processing. (Partially broken)
+-   **Parallelum API / Brasil API:** FIPE vehicle data lookups.
+-   **Google Maps API:** Geolocation and maps.
+-   **pywebpush:** Push notifications.
+-   **ViaCEP:** Brazilian postal code lookup.
+-   **pandas, openpyxl, reportlab:** For generating Excel and PDF reports.
+-   **Asaas:** (Requested for future integration)
+
+**Testing status**
+-   **Testing agent used after significant changes:** YES (Used to test the new HomePage UI).
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None.
+-   **Known regressions:** None. A regression with the  endpoint was introduced and fixed during the refactoring.
+
+**Credentials to test flow:**
+-   **Master Admin:**  / 
+-   **Franchise User (Transmill):**  / 
+
+**What agent forgot to execute**
+-   The  refactoring is a large, ongoing task being done intentionally in phases. It is not forgotten but is the main piece of unfinished work to be continued.</analysis>

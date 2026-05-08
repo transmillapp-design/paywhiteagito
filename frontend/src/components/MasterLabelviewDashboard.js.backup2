@@ -1,0 +1,2260 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { toast } from 'sonner';
+import {
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  Briefcase,
+  DollarSign,
+  UserCircle,
+  AlertCircle,
+  Truck,
+  FileText,
+  Building,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Search,
+  List,
+  ArrowLeft,
+  UserPlus,
+  HandshakeIcon,
+  ChevronDown,
+  Warehouse,
+  Store,
+  User,
+  Package,
+  Handshake,
+  Wrench,
+  Users2,
+  LogOut,
+  ChevronRight,
+  RefreshCw
+} from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../App';
+import { useNavigate } from 'react-router-dom';
+
+const MasterLabelviewDashboard = () => {
+  const { API, logout } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showPlanosDropdown, setShowPlanosDropdown] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserDropdown]);
+  
+  // States
+  const [stats, setStats] = useState({});
+  const [employees, setEmployees] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [consultants, setConsultants] = useState([]);
+  const [commissionRules, setCommissionRules] = useState({});
+  const [clients, setClients] = useState([]);
+  const [serviceRequests, setServiceRequests] = useState([]);
+  const [trackers, setTrackers] = useState([]);
+  const [contractTemplates, setContractTemplates] = useState([]);
+  const [providers, setProviders] = useState([]);
+  const [unidades, setUnidades] = useState([]);
+  const [regionais, setRegionais] = useState([]);
+  const [licenciados, setLicenciados] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
+  const [parceiros, setParceiros] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
+  const [terceiros, setTerceiros] = useState([]);
+  const [planos, setPlanos] = useState([]);
+  
+  // CRM States
+  const [crmView, setCrmView] = useState('protecao'); // 'leads' ou 'protecao'
+  const [crmLeads, setCrmLeads] = useState([]);
+  const [activeLeadStatus, setActiveLeadStatus] = useState('ativos'); // 'ativos', 'inativos', 'ambos'
+  const [crmProtecoes, setCrmProtecoes] = useState({
+    interesse: [],
+    negociacao: [],
+    aguardando_aprovacao: []
+  });
+  
+  // Modals
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showManagerModal, setShowManagerModal] = useState(false);
+  const [showConsultantModal, setShowConsultantModal] = useState(false);
+  const [showProviderModal, setShowProviderModal] = useState(false);
+  const [showTrackerModal, setShowTrackerModal] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [showServiceRequestModal, setShowServiceRequestModal] = useState(false);
+  const [showPlanoModal, setShowPlanoModal] = useState(false);
+  const [showPlanosListModal, setShowPlanosListModal] = useState(false);
+  const [showFornecedorModal, setShowFornecedorModal] = useState(false);
+  const [showFornecedoresListModal, setShowFornecedoresListModal] = useState(false);
+  const [showFornecedoresDropdown, setShowFornecedoresDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [planoForm, setPlanoForm] = useState({ nome: '' });
+  const [editingPlano, setEditingPlano] = useState(null);
+  const [fornecedorForm, setFornecedorForm] = useState({
+    nome_razao_social: '',
+    endereco_completo: '',
+    cnpj_cpf: '',
+    whatsapp: '',
+    email: '',
+    nome_representante: '',
+    servico_oferecido: 'contabilidade'
+  });
+  const [editingFornecedor, setEditingFornecedor] = useState(null);
+  
+  const token = localStorage.getItem('token');
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    loadData();
+  }, [activeTab]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      switch (activeTab) {
+        case 'dashboard':
+          await fetchStats();
+          break;
+        case 'employees':
+          await fetchEmployees();
+          break;
+        case 'managers':
+          await fetchManagers();
+          break;
+        case 'consultants':
+          await fetchConsultants();
+          break;
+        case 'commission':
+          await fetchCommissionRules();
+          break;
+        case 'clients':
+          await fetchClients();
+          break;
+        case 'service-requests':
+          await fetchServiceRequests();
+          break;
+        case 'trackers':
+          await fetchTrackers();
+          break;
+        case 'contracts':
+          await fetchContractTemplates();
+          break;
+        case 'providers':
+          await fetchProviders();
+          break;
+        case 'unidades':
+          await fetchUnidades();
+          break;
+        case 'crm':
+          await fetchCRMData();
+          break;
+        case 'planos':
+          await fetchPlanos();
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    const response = await axios.get(`${API}/labelview/dashboard/stats`, { headers });
+    if (response.data.success) {
+      setStats(response.data.stats);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    const response = await axios.get(`${API}/labelview/employees`, { headers });
+    if (response.data.success) {
+      setEmployees(response.data.employees);
+    }
+  };
+
+  const fetchManagers = async () => {
+    const response = await axios.get(`${API}/labelview/regional-managers`, { headers });
+    if (response.data.success) {
+      setManagers(response.data.managers);
+    }
+  };
+
+  const fetchConsultants = async () => {
+    const response = await axios.get(`${API}/labelview/consultants`, { headers });
+    if (response.data.success) {
+      setConsultants(response.data.consultants);
+    }
+  };
+
+  const fetchCommissionRules = async () => {
+    const response = await axios.get(`${API}/labelview/commission-rules`, { headers });
+    if (response.data.success) {
+      setCommissionRules(response.data.rules);
+    }
+  };
+
+  const fetchClients = async () => {
+    const response = await axios.get(`${API}/labelview/clients`, { headers });
+    if (response.data.success) {
+      setClients(response.data.clients);
+    }
+  };
+
+  const fetchServiceRequests = async () => {
+    const response = await axios.get(`${API}/labelview/service-requests`, { headers });
+    if (response.data.success) {
+      setServiceRequests(response.data.requests);
+    }
+  };
+
+  const fetchTrackers = async () => {
+    const response = await axios.get(`${API}/labelview/trackers`, { headers });
+    if (response.data.success) {
+      setTrackers(response.data.trackers);
+    }
+  };
+
+  const fetchContractTemplates = async () => {
+    const response = await axios.get(`${API}/labelview/contract-templates`, { headers });
+    if (response.data.success) {
+      setContractTemplates(response.data.templates);
+    }
+  };
+
+  const fetchProviders = async () => {
+    const response = await axios.get(`${API}/labelview/providers`, { headers });
+    if (response.data.success) {
+      setProviders(response.data.providers);
+    }
+  };
+
+  const fetchUnidades = async () => {
+    try {
+      const response = await axios.get(`${API}/labelview/unidades`, { headers });
+      if (response.data.success) {
+        setUnidades(response.data.unidades);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar unidades:', error);
+    }
+  };
+
+  const fetchCRMData = async () => {
+    try {
+      // Buscar leads
+      const leadsResponse = await axios.get(`${API}/labelview/crm/leads`, { headers });
+      if (leadsResponse.data.success) {
+        setCrmLeads(leadsResponse.data.leads);
+      }
+      
+      // Buscar proteções por status
+      const protecoesResponse = await axios.get(`${API}/labelview/crm/protecoes`, { headers });
+      if (protecoesResponse.data.success) {
+        setCrmProtecoes({
+          interesse: protecoesResponse.data.interesse || [],
+          negociacao: protecoesResponse.data.negociacao || [],
+          aguardando_aprovacao: protecoesResponse.data.aguardando_aprovacao || []
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados CRM:', error);
+    }
+  };
+
+  const fetchPlanos = async () => {
+    try {
+      const response = await axios.get(`${API}/labelview/planos`, { headers });
+      if (response.data.success) {
+        setPlanos(response.data.planos);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar planos:', error);
+      toast.error('Erro ao carregar planos');
+    }
+  };
+
+  const handleSavePlano = async () => {
+    try {
+      if (!planoForm.nome.trim()) {
+        toast.error('Digite o nome do plano');
+        return;
+      }
+
+      if (editingPlano) {
+        // Editar
+        await axios.put(
+          `${API}/labelview/planos/${editingPlano.id}?nome=${encodeURIComponent(planoForm.nome)}`,
+          {},
+          { headers }
+        );
+        toast.success('Plano atualizado com sucesso');
+      } else {
+        // Criar
+        await axios.post(
+          `${API}/labelview/planos?nome=${encodeURIComponent(planoForm.nome)}`,
+          {},
+          { headers }
+        );
+        toast.success('Plano criado com sucesso');
+      }
+
+      setShowPlanoModal(false);
+      setPlanoForm({ nome: '' });
+      setEditingPlano(null);
+      fetchPlanos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao salvar plano');
+    }
+  };
+
+  const handleEditPlano = (plano) => {
+    setEditingPlano(plano);
+    setPlanoForm({ nome: plano.nome });
+    setShowPlanoModal(true);
+  };
+
+  const handleToggleBlockPlano = async (planoId) => {
+    try {
+      await axios.patch(`${API}/labelview/planos/${planoId}/block`, {}, { headers });
+      toast.success('Status do plano atualizado');
+      fetchPlanos();
+    } catch (error) {
+      toast.error('Erro ao alterar status do plano');
+    }
+  };
+
+  const handleDeletePlano = async (planoId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este plano?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/labelview/planos/${planoId}`, { headers });
+      toast.success('Plano excluído com sucesso');
+      fetchPlanos();
+    } catch (error) {
+      toast.error('Erro ao excluir plano');
+    }
+  };
+
+  // ============================================
+  // FUNÇÕES DE FORNECEDORES
+  // ============================================
+
+  const fetchFornecedores = async () => {
+    try {
+      const response = await axios.get(`${API}/labelview/fornecedores`, { headers });
+      if (response.data.success) {
+        setFornecedores(response.data.fornecedores);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar fornecedores:', error);
+      toast.error('Erro ao carregar fornecedores');
+    }
+  };
+
+  const handleSaveFornecedor = async () => {
+    try {
+      // Validações
+      if (!fornecedorForm.nome_razao_social.trim()) {
+        toast.error('Digite o nome/razão social');
+        return;
+      }
+      if (!fornecedorForm.cnpj_cpf.trim()) {
+        toast.error('Digite o CNPJ/CPF');
+        return;
+      }
+      if (!fornecedorForm.email.trim()) {
+        toast.error('Digite o e-mail');
+        return;
+      }
+
+      if (editingFornecedor) {
+        // Editar
+        await axios.put(
+          `${API}/labelview/fornecedores/${editingFornecedor.id}`,
+          fornecedorForm,
+          { headers }
+        );
+        toast.success('Fornecedor atualizado com sucesso');
+      } else {
+        // Criar
+        await axios.post(
+          `${API}/labelview/fornecedores`,
+          fornecedorForm,
+          { headers }
+        );
+        toast.success('Fornecedor criado com sucesso');
+      }
+
+      setShowFornecedorModal(false);
+      setFornecedorForm({
+        nome_razao_social: '',
+        endereco_completo: '',
+        cnpj_cpf: '',
+        whatsapp: '',
+        email: '',
+        nome_representante: '',
+        servico_oferecido: 'contabilidade'
+      });
+      setEditingFornecedor(null);
+      fetchFornecedores();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao salvar fornecedor');
+    }
+  };
+
+  const handleEditFornecedor = (fornecedor) => {
+    setEditingFornecedor(fornecedor);
+    setFornecedorForm({
+      nome_razao_social: fornecedor.nome_razao_social,
+      endereco_completo: fornecedor.endereco_completo,
+      cnpj_cpf: fornecedor.cnpj_cpf,
+      whatsapp: fornecedor.whatsapp,
+      email: fornecedor.email,
+      nome_representante: fornecedor.nome_representante,
+      servico_oferecido: fornecedor.servico_oferecido
+    });
+    setShowFornecedorModal(true);
+  };
+
+  const handleToggleBlockFornecedor = async (fornecedorId) => {
+    try {
+      await axios.patch(`${API}/labelview/fornecedores/${fornecedorId}/block`, {}, { headers });
+      toast.success('Status do fornecedor atualizado');
+      fetchFornecedores();
+    } catch (error) {
+      toast.error('Erro ao alterar status do fornecedor');
+    }
+  };
+
+  const handleDeleteFornecedor = async (fornecedorId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este fornecedor?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/labelview/fornecedores/${fornecedorId}`, { headers });
+      toast.success('Fornecedor excluído com sucesso');
+      fetchFornecedores();
+    } catch (error) {
+      toast.error('Erro ao excluir fornecedor');
+    }
+  };
+
+
+  const handleSaveCommissionRules = async () => {
+    try {
+      const response = await axios.post(
+        `${API}/labelview/commission-rules`,
+        commissionRules,
+        { headers }
+      );
+      
+      if (response.data.success) {
+        toast.success('Regras de comissão atualizadas!');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erro ao salvar');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex flex-col">
+      {/* Header com gradiente */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-800 z-50 shadow-lg">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  logout();
+                  navigate('/labelview/login');
+                }}
+                className="text-white hover:bg-white/20"
+                title="Sair do sistema"
+              >
+                <LogOut size={20} />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Truck size={24} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">Master Labelview</h1>
+                  <p className="text-xs text-white/80">Sistema de Proteção Veicular</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/20"
+                onClick={() => loadData()}
+              >
+                <RefreshCw size={16} className="mr-2" />
+                Atualizar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Container principal com sidebar + conteúdo */}
+      <div className="flex flex-1 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1">
+          {/* SIDEBAR VERTICAL - Desktop */}
+          <div className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 shadow-lg overflow-y-auto">
+            <div className="p-4 space-y-2">
+              {/* Dashboard */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'dashboard' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <LayoutDashboard size={20} />
+                <span>Dashboard</span>
+              </button>
+
+              {/* Dropdown Pessoas */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                    ['employees', 'unidades', 'regionais', 'licenciados', 'fornecedores', 'parceiros', 'tecnicos', 'terceiros'].includes(activeTab) 
+                      ? 'bg-purple-600 text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users size={20} />
+                    <span>Pessoas</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showUserDropdown && (
+                  <div className="ml-4 space-y-1 py-2">
+                    <button
+                      onClick={() => { setActiveTab('employees'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'employees' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Users size={18} />
+                      <span>Colaboradores</span>
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('unidades'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'unidades' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Building size={18} />
+                      <span>Unidade</span>
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('regionais'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'regionais' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Store size={18} />
+                      <span>Regional</span>
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('licenciados'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'licenciados' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <User size={18} />
+                      <span>Consultor</span>
+                    </button>
+                    
+                    {/* Sub-menu Fornecedor */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowFornecedoresDropdown(!showFornecedoresDropdown);
+                        }}
+                        className={`w-full flex items-center justify-between gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'fornecedores' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Warehouse size={18} />
+                          <span>Fornecedor</span>
+                        </div>
+                        <ChevronRight size={14} className={`transition-transform ${showFornecedoresDropdown ? 'rotate-90' : ''}`} />
+                      </button>
+                      
+                      {showFornecedoresDropdown && (
+                        <div className="ml-6 mt-1 space-y-1">
+                          <button
+                            onClick={() => {
+                              setShowFornecedorModal(true);
+                              setEditingFornecedor(null);
+                              setFornecedorForm({
+                                nome_razao_social: '',
+                                endereco_completo: '',
+                                cnpj_cpf: '',
+                                whatsapp: '',
+                                email: '',
+                                nome_representante: '',
+                                servico_oferecido: 'contabilidade'
+                              });
+                              setShowFornecedoresDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-600 hover:bg-gray-100"
+                          >
+                            <Plus size={14} />
+                            <span>Cadastrar</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              fetchFornecedores();
+                              setShowFornecedoresListModal(true);
+                              setShowFornecedoresDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-600 hover:bg-gray-100"
+                          >
+                            <List size={14} />
+                            <span>Listar</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => { setActiveTab('parceiros'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'parceiros' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Handshake size={18} />
+                      <span>Parceiro</span>
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('tecnicos'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'tecnicos' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Wrench size={18} />
+                      <span>Técnico</span>
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('terceiros'); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                        activeTab === 'terceiros' ? 'bg-purple-100 text-purple-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Users2 size={18} />
+                      <span>Terceiro</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Dropdown Tipo de Planos */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => setShowPlanosDropdown(!showPlanosDropdown)}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                    activeTab === 'planos'
+                      ? 'bg-orange-600 text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText size={20} />
+                    <span>Tipo de Planos</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform ${showPlanosDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showPlanosDropdown && (
+                  <div className="ml-4 space-y-1 py-2">
+                    <button
+                      onClick={() => { 
+                        setShowPlanoModal(true);
+                        setEditingPlano(null);
+                        setPlanoForm({ nome: '' });
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
+                    >
+                      <Plus size={18} />
+                      <span>Cadastrar Plano</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('planos');
+                        fetchPlanos();
+                        setShowPlanosListModal(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
+                    >
+                      <FileText size={18} />
+                      <span>Listar Planos</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Comissões */}
+              <button
+                onClick={() => setActiveTab('commission')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'commission' 
+                    ? 'bg-green-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <DollarSign size={20} />
+                <span>Comissões</span>
+              </button>
+
+              {/* CRM */}
+              <button
+                onClick={() => setActiveTab('crm')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'crm' 
+                    ? 'bg-teal-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Briefcase size={20} />
+                <span>CRM</span>
+              </button>
+
+              {/* Clientes */}
+              <button
+                onClick={() => setActiveTab('clients')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'clients' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <UserCircle size={20} />
+                <span>Clientes</span>
+              </button>
+
+              {/* Solicitações */}
+              <button
+                onClick={() => setActiveTab('service-requests')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'service-requests' 
+                    ? 'bg-orange-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <AlertCircle size={20} />
+                <span>Solicitações</span>
+              </button>
+
+              {/* Rastreadores */}
+              <button
+                onClick={() => setActiveTab('trackers')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'trackers' 
+                    ? 'bg-green-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Truck size={20} />
+                <span>Rastreadores</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile: Layout horizontal no topo */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 overflow-x-auto">
+            <div className="flex gap-2 p-2">
+          {/* Mobile: Layout horizontal no topo */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 overflow-x-auto">
+            <div className="flex gap-2 p-2">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg min-w-[80px] ${
+                  activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-gray-700'
+                }`}
+              >
+                <LayoutDashboard size={20} />
+                <span className="text-xs">Dashboard</span>
+              </button>
+              <button
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg min-w-[80px] ${
+                  ['employees', 'unidades', 'regionais', 'licenciados'].includes(activeTab) ? 'bg-purple-600 text-white' : 'text-gray-700'
+                }`}
+              >
+                <Users size={20} />
+                <span className="text-xs">Pessoas</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('commission')}
+                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg min-w-[80px] ${
+                  activeTab === 'commission' ? 'bg-green-600 text-white' : 'text-gray-700'
+                }`}
+              >
+                <DollarSign size={20} />
+                <span className="text-xs">Comissões</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('crm')}
+                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg min-w-[80px] ${
+                  activeTab === 'crm' ? 'bg-teal-600 text-white' : 'text-gray-700'
+                }`}
+              >
+                <Briefcase size={20} />
+                <span className="text-xs">CRM</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('clients')}
+                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg min-w-[80px] ${
+                  activeTab === 'clients' ? 'bg-blue-600 text-white' : 'text-gray-700'
+                }`}
+              >
+                <UserCircle size={20} />
+                <span className="text-xs">Clientes</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ÁREA DE CONTEÚDO PRINCIPAL */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 sm:p-6 lg:p-8 mb-20 md:mb-0">
+              {/* DASHBOARD */}
+              <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Card 1: Clientes Ativos */}
+              <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <UserCircle size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Clientes Ativos
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    {stats.total_clients || 0}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 2: Solicitações Pendentes */}
+              <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <AlertCircle size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Solicitações Pendentes
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    {stats.pending_requests || 0}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 3: Rastreadores Disponíveis */}
+              <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Truck size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Rastreadores Disponíveis
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    {stats.available_trackers || 0}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 4: Fornecedores Ativos */}
+              <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Building size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Fornecedores Ativos
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    {stats.active_providers || 0}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 5: Consultores Ativos */}
+              <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Briefcase size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Consultores Ativos
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    {stats.active_consultants || 0}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 6: Receita do Mês */}
+              <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <DollarSign size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    Receita do Mês
+                  </h3>
+                  <div className="text-4xl font-bold">
+                    R$ {(stats.month_revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-sm mt-2 opacity-80">{stats.total_payments || 0} pagamentos</p>
+                </CardContent>
+              </Card>
+
+              {/* Card 7: CRM - Link para seção CRM */}
+              <Card 
+                className="bg-gradient-to-br from-teal-500 to-teal-600 text-white hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
+                onClick={() => setActiveTab('crm')}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Briefcase size={32} />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 opacity-90">
+                    CRM
+                  </h3>
+                  <div className="text-2xl font-bold mb-2">
+                    Gestão de Relacionamento
+                  </div>
+                  <p className="text-sm opacity-80">Leads e Proteções</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* COLABORADORES */}
+          <TabsContent value="employees" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Colaboradores ({employees.length})</CardTitle>
+                  <Button onClick={() => setShowEmployeeModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Colaborador
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nome</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">CPF</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Cargo</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Regional</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Comissão</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {employees.map(emp => (
+                        <tr key={emp.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{emp.full_name}</td>
+                          <td className="px-4 py-3 text-sm">{emp.cpf}</td>
+                          <td className="px-4 py-3 text-sm">{emp.role}</td>
+                          <td className="px-4 py-3 text-sm">{emp.regional || '-'}</td>
+                          <td className="px-4 py-3 text-sm">{emp.commission_percentage}%</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${emp.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {emp.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {employees.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum colaborador cadastrado
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* GERENTES */}
+          <TabsContent value="managers" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Gerentes Regionais ({managers.length})</CardTitle>
+                  <Button onClick={() => setShowManagerModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Gerente
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nome</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Email</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Regional</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Cidades</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Comissão</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {managers.map(mgr => (
+                        <tr key={mgr.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{mgr.full_name}</td>
+                          <td className="px-4 py-3 text-sm">{mgr.email}</td>
+                          <td className="px-4 py-3 text-sm">{mgr.regional}</td>
+                          <td className="px-4 py-3 text-sm">{mgr.cities?.length || 0} cidade(s)</td>
+                          <td className="px-4 py-3 text-sm">{mgr.commission_percentage}%</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${mgr.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {mgr.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {managers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum gerente cadastrado
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* CONSULTORES */}
+          <TabsContent value="consultants" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Consultores ({consultants.length})</CardTitle>
+                  <Button onClick={() => setShowConsultantModal(true)}>
+                    <Plus size={16} className="mr-2" />
+                    Novo Consultor
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nome</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">CPF</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Email</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Regional</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Vendas</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Comissão</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {consultants.map(cons => (
+                        <tr key={cons.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{cons.full_name}</td>
+                          <td className="px-4 py-3 text-sm">{cons.cpf}</td>
+                          <td className="px-4 py-3 text-sm">{cons.email}</td>
+                          <td className="px-4 py-3 text-sm">{cons.regional || '-'}</td>
+                          <td className="px-4 py-3 text-sm">{cons.total_sales}</td>
+                          <td className="px-4 py-3 text-sm">{cons.commission_percentage}%</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${cons.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {cons.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {consultants.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum consultor cadastrado
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* COMISSÕES - continuação no próximo arquivo */}
+          <TabsContent value="commission" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Regras de Comissão e Distribuição</CardTitle>
+                <p className="text-sm text-gray-500 mt-2">
+                  Configure os percentuais de distribuição. A soma deve ser 100%.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      LabelView (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionRules.labelview_percentage || 0}
+                      onChange={(e) => setCommissionRules({...commissionRules, labelview_percentage: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      AgitoAuto (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionRules.agitoauto_percentage || 0}
+                      onChange={(e) => setCommissionRules({...commissionRules, agitoauto_percentage: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mini Agência (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionRules.mini_agency_percentage || 0}
+                      onChange={(e) => setCommissionRules({...commissionRules, mini_agency_percentage: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Consultor (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionRules.consultant_percentage || 0}
+                      onChange={(e) => setCommissionRules({...commissionRules, consultant_percentage: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cashback (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionRules.cashback_percentage || 0}
+                      onChange={(e) => setCommissionRules({...commissionRules, cashback_percentage: parseFloat(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800">
+                    Total: {(
+                      (commissionRules.labelview_percentage || 0) +
+                      (commissionRules.agitoauto_percentage || 0) +
+                      (commissionRules.mini_agency_percentage || 0) +
+                      (commissionRules.consultant_percentage || 0) +
+                      (commissionRules.cashback_percentage || 0)
+                    ).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {Math.abs((
+                      (commissionRules.labelview_percentage || 0) +
+                      (commissionRules.agitoauto_percentage || 0) +
+                      (commissionRules.mini_agency_percentage || 0) +
+                      (commissionRules.consultant_percentage || 0) +
+                      (commissionRules.cashback_percentage || 0)
+                    ) - 100) < 0.01 ? '✓ Soma correta!' : '⚠ A soma deve ser 100%'}
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveCommissionRules} className="w-full">
+                  Salvar Regras de Comissão
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Outras abas serão renderizadas similarmente... */}
+          {/* Por questão de espaço, vou adicionar placeholders para as outras */}
+          
+          <TabsContent value="clients">
+            <Card>
+              <CardHeader>
+                <CardTitle>Clientes ({clients.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  {clients.length} clientes cadastrados
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="service-requests">
+            <Card>
+              <CardHeader>
+                <CardTitle>Solicitações de Serviço ({serviceRequests.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  {serviceRequests.length} solicitações
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="trackers">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Rastreadores ({trackers.length})</CardTitle>
+                  <Button onClick={() => setShowTrackerModal(true)}>
+                    <Plus size={16} className="mr-2" />
+                    Novo Rastreador
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Número</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Empresa</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Modelo</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {trackers.map(tracker => (
+                        <tr key={tracker.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{tracker.number}</td>
+                          <td className="px-4 py-3 text-sm">{tracker.company}</td>
+                          <td className="px-4 py-3 text-sm">{tracker.model || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              tracker.status === 'available' ? 'bg-green-100 text-green-800' :
+                              tracker.status === 'installed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {tracker.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {trackers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum rastreador cadastrado
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contracts">
+            <Card>
+              <CardHeader>
+                <CardTitle>Modelos de Contrato ({contractTemplates.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  {contractTemplates.length} modelos cadastrados
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="providers">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Fornecedores ({providers.length})</CardTitle>
+                  <Button onClick={() => setShowProviderModal(true)}>
+                    <Plus size={16} className="mr-2" />
+                    Novo Fornecedor
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Nome</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Tipo</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Telefone</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Cidade</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {providers.map(prov => (
+                        <tr key={prov.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{prov.name}</td>
+                          <td className="px-4 py-3 text-sm">{prov.type}</td>
+                          <td className="px-4 py-3 text-sm">{prov.phone}</td>
+                          <td className="px-4 py-3 text-sm">{prov.city || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full ${prov.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {prov.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {providers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum fornecedor cadastrado
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* CRM */}
+          <TabsContent value="crm" className="space-y-6">
+            {/* Toggle entre Lead e Proteção */}
+            <div className="flex gap-3 mb-6">
+              <Button
+                onClick={() => setCrmView('leads')}
+                className={`flex items-center gap-2 ${
+                  crmView === 'leads'
+                    ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
+                    : 'bg-white text-gray-700 border-2 border-gray-300'
+                }`}
+              >
+                <UserPlus size={20} />
+                Lead
+              </Button>
+              <Button
+                onClick={() => setCrmView('protecao')}
+                className={`flex items-center gap-2 ${
+                  crmView === 'protecao'
+                    ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white'
+                    : 'bg-white text-gray-700 border-2 border-gray-300'
+                }`}
+              >
+                <HandshakeIcon size={20} />
+                Proteção
+              </Button>
+            </div>
+
+            {/* Área de Leads */}
+            {crmView === 'leads' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl">Lista de Lead</CardTitle>
+                    <div className="flex gap-2">
+                      <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Search size={16} className="mr-2" />
+                        Pesquisar
+                      </Button>
+                      <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                        Exportar
+                      </Button>
+                      <Button className="bg-green-600 hover:bg-green-700">
+                        <Plus size={16} className="mr-2" />
+                        Novo
+                      </Button>
+                      <Button variant="outline" className="border-gray-600 text-gray-600 hover:bg-gray-50">
+                        Encaminhar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Tabs de Status */}
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      variant={activeLeadStatus === 'ativos' ? 'default' : 'outline'}
+                      onClick={() => setActiveLeadStatus('ativos')}
+                      className={activeLeadStatus === 'ativos' ? 'bg-gray-700' : ''}
+                    >
+                      Ativos
+                    </Button>
+                    <Button
+                      variant={activeLeadStatus === 'inativos' ? 'default' : 'outline'}
+                      onClick={() => setActiveLeadStatus('inativos')}
+                    >
+                      Inativos
+                    </Button>
+                    <Button
+                      variant={activeLeadStatus === 'ambos' ? 'default' : 'outline'}
+                      onClick={() => setActiveLeadStatus('ambos')}
+                    >
+                      Ambos
+                    </Button>
+                  </div>
+
+                  {/* Filtros e Busca */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <select className="border rounded-lg px-3 py-2 bg-white">
+                      <option>Todos responsáveis</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Período (de - até)"
+                      className="border rounded-lg px-3 py-2"
+                    />
+                    <input
+                      type="text"
+                      placeholder="nome, cpf, cnpj, telefone, email..."
+                      className="border rounded-lg px-3 py-2 md:col-span-2"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Tabela de Leads */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="p-3 text-left">
+                            <input type="checkbox" />
+                          </th>
+                          <th className="p-3 text-left cursor-pointer hover:bg-gray-100">
+                            Sequencial <span className="text-xs">↑</span>
+                          </th>
+                          <th className="p-3 text-left cursor-pointer hover:bg-gray-100">
+                            Nome <span className="text-xs">↑</span>
+                          </th>
+                          <th className="p-3 text-left cursor-pointer hover:bg-gray-100">
+                            Unidade <span className="text-xs">↑</span>
+                          </th>
+                          <th className="p-3 text-left cursor-pointer hover:bg-gray-100">
+                            Data do Cadastro <span className="text-xs">↑</span>
+                          </th>
+                          <th className="p-3 text-left cursor-pointer hover:bg-gray-100">
+                            Responsável <span className="text-xs">↑</span>
+                          </th>
+                          <th className="p-3 text-left">Situação</th>
+                          <th className="p-3 text-left">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {crmLeads.length === 0 ? (
+                          <tr>
+                            <td colSpan="8" className="text-center py-8 text-gray-500">
+                              Nenhum lead cadastrado
+                            </td>
+                          </tr>
+                        ) : (
+                          crmLeads.map((lead, index) => (
+                            <tr key={lead.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3">
+                                <input type="checkbox" />
+                              </td>
+                              <td className="p-3">{index + 1}</td>
+                              <td className="p-3 font-medium">{lead.name}</td>
+                              <td className="p-3">{lead.unit || 'AgitoAuto'}</td>
+                              <td className="p-3">
+                                {new Date(lead.created_at).toLocaleString('pt-BR')}
+                              </td>
+                              <td className="p-3">{lead.responsible || 'Rafael Carlos Silva Bersch'}</td>
+                              <td className="p-3">
+                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
+                                  Ativo
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className="text-blue-600 hover:bg-blue-50">
+                                    Editar
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-orange-600 hover:bg-orange-50">
+                                    Inativar
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50">
+                                    Excluir
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Área de Proteção - Funil Kanban */}
+            {crmView === 'protecao' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">Proteções</h2>
+                  <Button className="bg-teal-600 hover:bg-teal-700">
+                    <Plus size={16} className="mr-2" />
+                    Nova Proteção
+                  </Button>
+                </div>
+
+                {/* Funil com 3 colunas */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Coluna 1: Interesse */}
+                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-700 flex items-center gap-2">
+                          Interesse
+                          <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                            {crmProtecoes.interesse.length}
+                          </span>
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {crmProtecoes.interesse.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Nenhum cadastro</p>
+                      ) : (
+                        crmProtecoes.interesse.map((item) => (
+                          <Card key={item.id} className="bg-white hover:shadow-md transition-all cursor-pointer">
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold text-sm mb-2">{item.title}</h4>
+                              <div className="space-y-1 text-xs text-gray-600">
+                                <p className="flex items-center gap-1">
+                                  <UserCircle size={14} />
+                                  {item.client_name}
+                                </p>
+                                <p># {item.id.substring(0, 8)}</p>
+                                {item.vehicle && (
+                                  <p className="flex items-center gap-1">
+                                    <Truck size={14} />
+                                    {item.vehicle}
+                                  </p>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Coluna 2: Negociação */}
+                  <Card className="bg-gradient-to-br from-orange-50 to-orange-100">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-orange-700 flex items-center gap-2">
+                          Negociação
+                          <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                            {crmProtecoes.negociacao.length}
+                          </span>
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {crmProtecoes.negociacao.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Nenhum cadastro</p>
+                      ) : (
+                        crmProtecoes.negociacao.map((item) => (
+                          <Card key={item.id} className="bg-white hover:shadow-md transition-all cursor-pointer">
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold text-sm mb-2">{item.title}</h4>
+                              <div className="space-y-1 text-xs text-gray-600">
+                                <p className="flex items-center gap-1">
+                                  <UserCircle size={14} />
+                                  {item.client_name}
+                                </p>
+                                <p># {item.id.substring(0, 8)}</p>
+                                {item.vehicle && (
+                                  <p className="flex items-center gap-1">
+                                    <Truck size={14} />
+                                    {item.vehicle}
+                                  </p>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Coluna 3: Aguardando Aprovação */}
+                  <Card className="bg-gradient-to-br from-green-50 to-green-100">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-green-700 flex items-center gap-2">
+                          Aguardando Aprovação
+                          <span className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                            {crmProtecoes.aguardando_aprovacao.length}
+                          </span>
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {crmProtecoes.aguardando_aprovacao.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Nenhum cadastro</p>
+                      ) : (
+                        crmProtecoes.aguardando_aprovacao.map((item) => (
+                          <Card key={item.id} className="bg-white hover:shadow-md transition-all cursor-pointer">
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold text-sm mb-2">{item.title}</h4>
+                              <div className="space-y-1 text-xs text-gray-600">
+                                <p className="flex items-center gap-1">
+                                  <UserCircle size={14} />
+                                  {item.client_name}
+                                </p>
+                                <p># {item.id.substring(0, 8)}</p>
+                                {item.vehicle && (
+                                  <p className="flex items-center gap-1">
+                                    <Truck size={14} />
+                                    {item.vehicle}
+                                  </p>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* UNIDADES */}
+          <TabsContent value="unidades" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Gerenciar Unidades</CardTitle>
+                  <Button className="bg-cyan-600 hover:bg-cyan-700">
+                    <Plus size={16} className="mr-2" />
+                    Nova Unidade
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {unidades.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building size={48} className="mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium">Nenhuma unidade cadastrada</p>
+                    <p className="text-sm">Clique em "Nova Unidade" para começar</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="p-3 text-left">ID</th>
+                          <th className="p-3 text-left">Nome da Unidade</th>
+                          <th className="p-3 text-left">CNPJ</th>
+                          <th className="p-3 text-left">Cidade</th>
+                          <th className="p-3 text-left">Estado</th>
+                          <th className="p-3 text-left">Status</th>
+                          <th className="p-3 text-left">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unidades.map((unidade) => (
+                          <tr key={unidade.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3 font-mono text-sm">
+                              {unidade.id.substring(0, 8)}
+                            </td>
+                            <td className="p-3 font-medium">{unidade.name}</td>
+                            <td className="p-3">{unidade.cnpj || '-'}</td>
+                            <td className="p-3">{unidade.city || '-'}</td>
+                            <td className="p-3">{unidade.state || '-'}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded text-sm ${
+                                unidade.is_active
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {unidade.is_active ? 'Ativa' : 'Inativa'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="ghost" className="text-blue-600 hover:bg-blue-50">
+                                  <Edit size={16} />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">
+                                  <Trash2 size={16} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* REGIONAIS */}
+          <TabsContent value="regionais" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Regional (Mini Agência)</CardTitle>
+                  <Button className="bg-indigo-600 hover:bg-indigo-700">
+                    <Plus size={16} className="mr-2" />
+                    Nova Regional
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Store size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhuma regional cadastrada</p>
+                  <p className="text-sm">Gerencie as mini agências do sistema</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* LICENCIADOS / CONSULTORES */}
+          <TabsContent value="licenciados" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Consultores</CardTitle>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Consultor
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <User size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum consultor cadastrado</p>
+                  <p className="text-sm">Gerencie os consultores licenciados</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* FORNECEDORES */}
+          <TabsContent value="fornecedores" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Fornecedores</CardTitle>
+                  <Button className="bg-amber-600 hover:bg-amber-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Fornecedor
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Warehouse size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum fornecedor cadastrado</p>
+                  <p className="text-sm">Gerencie os fornecedores de serviços e produtos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PARCEIROS */}
+          <TabsContent value="parceiros" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Parceiros</CardTitle>
+                  <Button className="bg-teal-600 hover:bg-teal-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Parceiro
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Handshake size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum parceiro cadastrado</p>
+                  <p className="text-sm">Gerencie os parceiros de negócio</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TÉCNICOS */}
+          <TabsContent value="tecnicos" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Técnicos</CardTitle>
+                  <Button className="bg-slate-600 hover:bg-slate-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Técnico
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Wrench size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum técnico cadastrado</p>
+                  <p className="text-sm">Gerencie os técnicos especializados</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TERCEIROS */}
+          <TabsContent value="terceiros" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Terceiros</CardTitle>
+                  <Button className="bg-gray-600 hover:bg-gray-700">
+                    <Plus size={16} className="mr-2" />
+                    Novo Terceiro
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  <Users2 size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum terceiro cadastrado</p>
+                  <p className="text-sm">Gerencie usuários terceiros do sistema</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Modal Cadastrar/Editar Plano */}
+      {showPlanoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingPlano ? 'Editar Plano' : 'Cadastrar Plano'}
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome do Plano *
+                  </label>
+                  <input
+                    type="text"
+                    value={planoForm.nome}
+                    onChange={(e) => setPlanoForm({ nome: e.target.value })}
+                    placeholder="Ex: Plano Básico"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPlanoModal(false);
+                  setPlanoForm({ nome: '' });
+                  setEditingPlano(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSavePlano}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Listar Planos */}
+      {showPlanosListModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">Tipos de Planos</h2>
+              <button
+                onClick={() => setShowPlanosListModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {planos.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum plano cadastrado</p>
+                  <p className="text-sm">Clique em "Cadastrar Plano" para adicionar</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {planos.map((plano) => (
+                    <div
+                      key={plano.id}
+                      className={`p-4 rounded-lg border-2 ${
+                        plano.is_blocked
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{plano.nome}</h3>
+                          <p className="text-sm text-gray-500">
+                            Status: {plano.is_blocked ? '🔴 Bloqueado' : '🟢 Ativo'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditPlano(plano)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Editar"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleBlockPlano(plano.id)}
+                            className={`p-2 rounded-lg ${
+                              plano.is_blocked
+                                ? 'text-green-600 hover:bg-green-50'
+                                : 'text-yellow-600 hover:bg-yellow-50'
+                            }`}
+                            title={plano.is_blocked ? 'Desbloquear' : 'Bloquear'}
+                          >
+                            <AlertCircle size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePlano(plano.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Excluir"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cadastrar/Editar Fornecedor */}
+      {showFornecedorModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingFornecedor ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}
+              </h2>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome / Razão Social *
+                  </label>
+                  <input
+                    type="text"
+                    value={fornecedorForm.nome_razao_social}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, nome_razao_social: e.target.value})}
+                    placeholder="Ex: Empresa XYZ Ltda"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Endereço Completo *
+                  </label>
+                  <input
+                    type="text"
+                    value={fornecedorForm.endereco_completo}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, endereco_completo: e.target.value})}
+                    placeholder="Rua, número, bairro, cidade, estado, CEP"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CNPJ / CPF *
+                  </label>
+                  <input
+                    type="text"
+                    value={fornecedorForm.cnpj_cpf}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, cnpj_cpf: e.target.value})}
+                    placeholder="00.000.000/0000-00"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    WhatsApp *
+                  </label>
+                  <input
+                    type="text"
+                    value={fornecedorForm.whatsapp}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, whatsapp: e.target.value})}
+                    placeholder="(00) 00000-0000"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    E-mail *
+                  </label>
+                  <input
+                    type="email"
+                    value={fornecedorForm.email}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, email: e.target.value})}
+                    placeholder="contato@empresa.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome do Representante *
+                  </label>
+                  <input
+                    type="text"
+                    value={fornecedorForm.nome_representante}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, nome_representante: e.target.value})}
+                    placeholder="João Silva"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Serviço Oferecido *
+                  </label>
+                  <select
+                    value={fornecedorForm.servico_oferecido}
+                    onChange={(e) => setFornecedorForm({...fornecedorForm, servico_oferecido: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="contabilidade">Contabilidade</option>
+                    <option value="grafica">Gráfica</option>
+                    <option value="oficina">Oficina</option>
+                    <option value="eletricista">Eletricista</option>
+                    <option value="outros">Outros</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowFornecedorModal(false);
+                  setFornecedorForm({
+                    nome_razao_social: '',
+                    endereco_completo: '',
+                    cnpj_cpf: '',
+                    whatsapp: '',
+                    email: '',
+                    nome_representante: '',
+                    servico_oferecido: 'contabilidade'
+                  });
+                  setEditingFornecedor(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveFornecedor}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Listar Fornecedores */}
+      {showFornecedoresListModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">Fornecedores</h2>
+              <button
+                onClick={() => setShowFornecedoresListModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {fornecedores.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Warehouse size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Nenhum fornecedor cadastrado</p>
+                  <p className="text-sm">Clique em "Cadastrar" para adicionar</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {fornecedores.map((fornecedor) => (
+                    <div
+                      key={fornecedor.id}
+                      className={`p-4 rounded-lg border-2 ${
+                        fornecedor.is_blocked
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg">
+                            {fornecedor.nome_razao_social}
+                          </h3>
+                          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                            <p>
+                              <strong>Serviço:</strong> {
+                                fornecedor.servico_oferecido === 'contabilidade' ? 'Contabilidade' :
+                                fornecedor.servico_oferecido === 'grafica' ? 'Gráfica' :
+                                fornecedor.servico_oferecido === 'oficina' ? 'Oficina' :
+                                fornecedor.servico_oferecido === 'eletricista' ? 'Eletricista' :
+                                'Outros'
+                              }
+                            </p>
+                            <p><strong>CNPJ/CPF:</strong> {fornecedor.cnpj_cpf}</p>
+                            <p><strong>Email:</strong> {fornecedor.email}</p>
+                            <p><strong>WhatsApp:</strong> {fornecedor.whatsapp}</p>
+                            <p><strong>Representante:</strong> {fornecedor.nome_representante}</p>
+                            <p className="md:col-span-2"><strong>Endereço:</strong> {fornecedor.endereco_completo}</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-2">
+                            Status: {fornecedor.is_blocked ? '🔴 Bloqueado' : '🟢 Ativo'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditFornecedor(fornecedor)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Editar"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleBlockFornecedor(fornecedor.id)}
+                            className={`p-2 rounded-lg ${
+                              fornecedor.is_blocked
+                                ? 'text-green-600 hover:bg-green-50'
+                                : 'text-yellow-600 hover:bg-yellow-50'
+                            }`}
+                            title={fornecedor.is_blocked ? 'Desbloquear' : 'Bloquear'}
+                          >
+                            <AlertCircle size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFornecedor(fornecedor.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Excluir"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+            </div>
+          </div>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default MasterLabelviewDashboard;

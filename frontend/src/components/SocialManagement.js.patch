@@ -1,0 +1,60 @@
+// CORREÇÃO PARA ERRO 502 NO UPLOAD DE VÍDEO
+// Adicionar validação de tamanho do vídeo ANTES de enviar
+
+// Na função handleVideoUpload, adicionar:
+
+const handleVideoUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // NOVO: Validação de tamanho (MAX 50MB)
+  const maxSize = 50 * 1024 * 1024; // 50MB
+  if (file.size > maxSize) {
+    toast.error('Vídeo muito grande! Máximo: 50MB');
+    return;
+  }
+
+  // NOVO: Validação de duração
+  const video = document.createElement('video');
+  video.preload = 'metadata';
+  
+  video.onloadedmetadata = async () => {
+    window.URL.revokeObjectURL(video.src);
+    
+    const duration = Math.floor(video.duration);
+    
+    // Validar duração máxima (60s)
+    if (duration > 60) {
+      toast.error('Vídeo muito longo! Máximo: 60 segundos');
+      return;
+    }
+    
+    // Converter para base64 com compressão
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const videoData = event.target.result;
+      
+      // Verificar tamanho do base64
+      if (videoData.length > 10 * 1024 * 1024) {
+        toast.error('Vídeo ainda muito grande após conversão. Tente reduzir a qualidade.');
+        return;
+      }
+      
+      setVideoData(videoData);
+      setVideoDuration(duration);
+      toast.success(`Vídeo carregado: ${duration}s`);
+    };
+    
+    reader.onerror = () => {
+      toast.error('Erro ao ler o arquivo de vídeo');
+    };
+    
+    reader.readAsDataURL(file);
+  };
+  
+  video.onerror = () => {
+    toast.error('Erro ao carregar o vídeo. Formato inválido.');
+  };
+  
+  video.src = URL.createObjectURL(file);
+};

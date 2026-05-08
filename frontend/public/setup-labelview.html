@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Usuário Master Labelview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .info-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #0369a1;
+        }
+        .credentials {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .credentials strong {
+            color: #92400e;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+        }
+        .result h3 {
+            margin-top: 0;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .steps {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .steps h4 {
+            margin-top: 0;
+            color: #374151;
+        }
+        .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 8px 0;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Criar Usuário Master Labelview</h1>
+        <p class="subtitle">Sistema AgitoMil - Configuração de Produção</p>
+
+        <div class="info-box">
+            <h3>ℹ️ O que este botão faz?</h3>
+            <p>Cria ou atualiza o usuário <strong>Master do Labelview</strong> no banco de dados de produção.</p>
+            <p>Depois de clicar, você poderá fazer login normalmente com as credenciais abaixo.</p>
+        </div>
+
+        <div class="credentials">
+            <strong>📧 Email:</strong> protecao@agitomil.com<br>
+            <strong>🔑 Senha:</strong> demo123
+        </div>
+
+        <button id="createBtn" onclick="createUser()">
+            Criar/Atualizar Usuário Master Labelview
+        </button>
+
+        <div id="result" class="result"></div>
+
+        <div class="steps">
+            <h4>📝 Após criar o usuário:</h4>
+            <ol>
+                <li>Aguarde a mensagem de sucesso aparecer</li>
+                <li>Acesse: <a href="/labelview/login" target="_blank">agitomil.com.br/labelview/login</a></li>
+                <li>Use: <strong>protecao@agitomil.com</strong> / <strong>demo123</strong></li>
+                <li>Clique em "Entrar"</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function createUser() {
+            const btn = document.getElementById('createBtn');
+            const result = document.getElementById('result');
+            
+            // Desabilitar botão e mostrar loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Criando usuário...';
+            
+            result.style.display = 'none';
+            
+            try {
+                const apiUrl = window.location.origin + '/api/setup/create-labelview-master';
+                
+                console.log('Chamando API:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                console.log('Response:', data);
+                
+                if (response.ok && data.success) {
+                    result.className = 'result success';
+                    result.style.display = 'block';
+                    result.innerHTML = `
+                        <h3>✅ Sucesso!</h3>
+                        <p><strong>Ação:</strong> ${data.action === 'created' ? 'Usuário criado' : 'Usuário atualizado'}</p>
+                        <p><strong>Email:</strong> ${data.email}</p>
+                        <p><strong>Senha:</strong> ${data.password}</p>
+                        ${data.user_id ? `<p><strong>ID:</strong> ${data.user_id}</p>` : ''}
+                        <hr style="margin: 15px 0; border: 1px solid #10b981;">
+                        <p style="margin-bottom: 10px;"><strong>✨ Agora você pode fazer login!</strong></p>
+                        <a href="/labelview/login" style="display: inline-block; padding: 10px 20px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+                            🚀 Ir para Login Labelview
+                        </a>
+                    `;
+                    
+                    // Reabilitar botão após sucesso
+                    btn.disabled = false;
+                    btn.innerHTML = 'Criar/Atualizar Usuário Master Labelview';
+                } else {
+                    throw new Error(data.detail || 'Erro ao criar usuário');
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <h3>❌ Erro!</h3>
+                    <p>${error.message}</p>
+                    <p style="margin-top: 15px; font-size: 14px;">
+                        <strong>Possíveis causas:</strong><br>
+                        • Backend não está respondendo<br>
+                        • Problema de conexão com banco de dados<br>
+                        • Erro de CORS ou permissões
+                    </p>
+                `;
+                
+                btn.disabled = false;
+                btn.innerHTML = 'Tentar Novamente';
+            }
+        }
+    </script>
+</body>
+</html>

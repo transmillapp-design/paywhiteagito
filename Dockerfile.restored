@@ -1,0 +1,64 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including Python and pip
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    python3-dev \
+    make \
+    g++ \
+    curl \
+    bash
+
+# Copy package files
+COPY frontend/package*.json frontend/yarn.lock* ./frontend/
+COPY backend/requirements.txt ./backend/
+
+# Configure npm for better reliability
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set timeout 300000 && \
+    npm config set maxsockets 1
+
+# Install frontend dependencies
+WORKDIR /app/frontend
+RUN yarn install --network-timeout 300000 || npm install --production=false --no-audit --no-fund
+
+# Install serve globally for production frontend serving
+RUN npm install -g serve
+
+# Copy frontend source
+COPY frontend/ .
+
+# Set build environment variables
+ARG BACKEND_URL=https://api-decompose-1.preview.emergentagent.com
+ENV REACT_APP_BACKEND_URL=${BACKEND_URL}/api
+ENV GENERATE_SOURCEMAP=false
+ENV NODE_ENV=production
+
+# Build frontend
+RUN yarn build || npm run build
+
+# Install Python dependencies
+WORKDIR /app
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir -r backend/requirements.txt
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Set runtime environment
+ENV PYTHONUNBUFFERED=1
+EXPOSE 3000 8001
+
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Health check - Otimizado para startup rápido
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=10 \
+  CMD curl -f http://localhost:8001/healthz || exit 1
+
+CMD ["/app/start.sh"]

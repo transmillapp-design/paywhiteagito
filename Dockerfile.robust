@@ -1,0 +1,62 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including pip
+RUN apk add --no-cache python3 py3-pip python3-dev make g++ curl bash
+
+# Copy package files with retry logic
+COPY frontend/package*.json frontend/yarn.lock* ./frontend/
+COPY backend/requirements.txt ./backend/
+
+# Configure npm for better reliability
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set timeout 300000 && \
+    npm config set maxsockets 1
+
+# Install frontend dependencies with fallback
+WORKDIR /app/frontend
+RUN npm install --production=false --no-audit --no-fund || \
+    (echo "npm failed, trying yarn..." && \
+     yarn config set registry https://registry.npmjs.org/ && \
+     yarn config set network-timeout 300000 && \
+     yarn install)
+
+# Copy frontend source
+COPY frontend/ .
+
+# Set build environment
+ARG BACKEND_URL=https://test-auth-fix-1.emergent.host
+ENV REACT_APP_BACKEND_URL=${BACKEND_URL}/api
+ENV GENERATE_SOURCEMAP=false
+ENV NODE_ENV=production
+
+# Install serve globally for production
+RUN npm install -g serve
+
+# Build frontend
+RUN npm run build || yarn build
+
+# Install Python dependencies
+WORKDIR /app
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir -r backend/requirements.txt
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Set runtime environment
+ENV PYTHONUNBUFFERED=1
+EXPOSE 3000 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8001/api/health || exit 1
+
+# Start services using proper script
+CMD ["/app/start.sh"]

@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+.github
+
+# Node (instalados no build)
+**/node_modules
+**/.npm
+**/.cache
+**/package-lock.json
+
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+**/.venv
+**/venv
+**/.pytest_cache
+
+# Build outputs (criados durante build)
+**/build
+**/dist
+**/.next
+
+# Logs
+**/*.log
+**/logs
+**/.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*.sublime-*
+
+# Env files
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.test
+
+# Tests
+**/*.test.js
+**/*.spec.js
+**/*.test.py
+**/*.spec.py
+**/tests
+**/__tests__
+**/coverage
+
+# Docs
+*.md
+!README.md
+docs/
+
+# Backups
+*.backup
+*.old
+*.bak
+Dockerfile.backup
+Dockerfile.old
+Dockerfile.robust
+Dockerfile.production

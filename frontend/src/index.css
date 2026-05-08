@@ -1,0 +1,368 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Safe Area para dispositivos com notch/barra de navegação */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Dynamic viewport height para mobile */
+@supports (height: 100dvh) {
+  .h-dvh {
+    height: 100dvh;
+  }
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+}
+
+/* Aplicar tema CLARO por padrão - Nova paleta Transmill */
+:root {
+  background-color: #005B9C;  /* Azul primário */
+  color: #333333;
+}
+
+html:not(.dark) {
+  background-color: #005B9C;  /* Azul primário - modo claro */
+}
+
+html.dark {
+  background-color: #293618;  /* Verde escuro - modo escuro */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s ease;
+}
+
+/* Animações para AgitoMil Social FAB */
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Força texto escuro em inputs de login no modo claro */
+html:not(.dark) input[data-testid="login-email-input"],
+html:not(.dark) input[data-testid="login-password-input"] {
+  color: #333333 !important;
+  -webkit-text-fill-color: #333333 !important;
+}
+
+/* Força texto branco em inputs de login no modo escuro */
+html.dark input[data-testid="login-email-input"],
+html.dark input[data-testid="login-password-input"] {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html:not(.dark) input[data-testid="login-email-input"]::placeholder,
+html:not(.dark) input[data-testid="login-password-input"]::placeholder {
+  color: #666666 !important;
+  -webkit-text-fill-color: #666666 !important;
+}
+
+html.dark input[data-testid="login-email-input"]::placeholder,
+html.dark input[data-testid="login-password-input"]::placeholder {
+  color: #9CA38F !important;
+  -webkit-text-fill-color: #9CA38F !important;
+}
+
+/* Esconder scrollbar mantendo funcionalidade */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Scrollbar customizado AGITOMIL */
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #2A3618;
+    border-radius: 10px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #D4AF37, #556B2F);
+    border-radius: 10px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #E5C34A, #6B8239);
+  }
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+}
+
+
+
+@layer base {
+  :root {
+        /* Cores AGITOMIL - Militar/Tático */
+        --agito-olive: #556B2F;
+        --agito-gray: #4B4B4B;
+        --agito-gold: #D4AF37;
+        --agito-silver: #C0C0C0;
+        
+        /* Legacy - Mantém compatibilidade */
+        --agito-primary-light: #556B2F;
+        --agito-primary-dark: #C0C0C0;
+        --agito-card-light: #556B2F;
+        --agito-card-dark: #D4AF37;
+        --agito-bg-dark: #2A3618;
+        
+        --background: 0 0% 100%;
+        --foreground: 82 38% 30%;  /* Verde-oliva escuro para texto */
+        --card: 0 0% 100%;
+        --card-foreground: 82 38% 30%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 82 38% 30%;
+        --primary: 82 38% 30%;  /* Verde-oliva */
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 29%;  /* Cinza escuro */
+        --secondary-foreground: 0 0% 98%;
+        --muted: 82 15% 85%;
+        --muted-foreground: 82 38% 30%;
+        --accent: 45 72% 51%;  /* Dourado */
+        --accent-foreground: 82 38% 15%;
+        --destructive: 0 84.2% 30%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 82 15% 85%;
+        --input: 82 15% 85%;
+        --ring: 82 38% 30%;
+        --chart-1: 82 38% 30%;   /* Verde-oliva */
+        --chart-2: 45 72% 51%;   /* Dourado */
+        --chart-3: 0 0% 29%;     /* Cinza */
+        --chart-4: 82 50% 45%;   /* Verde-oliva claro */
+        --chart-5: 45 80% 60%;   /* Dourado claro */
+        --radius: 0.5rem;
+    }
+  .dark {
+        --background: 183 100% 10.2%; /* #00343d */
+        --foreground: 27 19% 89%; /* #e3dcda */
+        --card: 183 100% 12%; /* Um pouco mais claro que o fundo */
+        --card-foreground: 27 19% 89%; /* #e3dcda */
+        --popover: 183 100% 10.2%; /* #00343d */
+        --popover-foreground: 27 19% 89%; /* #e3dcda */
+        --primary: 27 19% 89%; /* #e3dcda */
+        --primary-foreground: 183 100% 10.2%; /* #00343d */
+        --secondary: 183 100% 15%;
+        --secondary-foreground: 27 19% 89%; /* #e3dcda */
+        --muted: 183 100% 15%;
+        --muted-foreground: 27 19% 70%;
+        --accent: 183 100% 15%;
+        --accent-foreground: 27 19% 89%; /* #e3dcda */
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 27 19% 89%; /* #e3dcda */
+        --border: 183 100% 20%;
+        --input: 183 100% 15%;
+        --ring: 27 19% 89%;
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
+
+/* Classes customizadas AgitoCoin */
+@layer utilities {
+  .agito-text-light {
+    color: #00343d !important;
+  }
+  
+  .agito-text-dark {
+    color: #e3dcda !important;
+  }
+  
+  .agito-card-light {
+    background-color: #259c66 !important;
+    color: #ffffff !important;
+  }
+  
+  .agito-card-dark {
+    background-color: #30ffff !important;
+    color: #00343d !important;
+  }
+  
+  /* Sobrescrever cores de cards existentes */
+  .bg-agito-card-light {
+    background-color: #259c66 !important;
+    color: #ffffff !important;
+  }
+  
+  .bg-agito-card-dark {
+    background-color: #30ffff !important;
+    color: #00343d !important;
+  }
+  
+  /* Cards de estatísticas customizados */
+  .agito-stats-card {
+    background-color: #259c66 !important;
+    color: #ffffff !important;
+  }
+  
+  .dark .agito-stats-card {
+    background-color: #30ffff !important;
+    color: #00343d !important;
+  }
+  
+  .dark .agito-card-light {
+    background-color: #30ffff !important;
+    color: #00343d !important;
+  }
+  
+  /* Textos nos cards tema escuro - forçar cor do fundo escuro */
+  .dark .agito-card-light *:not(svg),
+  .dark .agito-card-dark *:not(svg),
+  .dark .bg-agito-card-light *:not(svg),
+  .dark .bg-agito-card-dark *:not(svg) {
+    color: #00343d !important;
+  }
+  
+  /* Ícones com opacidade mantendo legibilidade */
+  .dark .agito-card-light .opacity-60,
+  .dark .agito-card-dark .opacity-60,
+  .dark .bg-agito-card-light .opacity-60,
+  .dark .bg-agito-card-dark .opacity-60 {
+    color: rgba(0, 52, 61, 0.8) !important;
+  }
+  
+  /* CORREÇÃO CRÍTICA: Textos em campos com fundo branco devem ser escuros */
+  /* Inputs, selects e campos de formulário */
+  input, 
+  select, 
+  textarea,
+  .input-field,
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="number"] {
+    color: #00343d !important; /* Texto escuro em campos com fundo claro */
+  }
+  
+  /* Placeholders devem ser legíveis */
+  input::placeholder,
+  textarea::placeholder {
+    color: #666666 !important; /* Placeholder mais escuro */
+  }
+  
+  /* Tema escuro - inputs com fundo escuro devem ter texto claro */
+  .dark input, 
+  .dark select, 
+  .dark textarea,
+  .dark .input-field,
+  .dark input[type="text"],
+  .dark input[type="email"], 
+  .dark input[type="password"],
+  .dark input[type="number"] {
+    color: #ffffff !important; /* Texto BRANCO para máximo contraste */
+    background-color: rgba(0, 52, 61, 0.8) !important;
+  }
+  
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #cccccc !important; /* Placeholder claro e legível */
+  }
+  
+  /* Melhorar contraste geral */
+  .dark {
+    color: #e3dcda;
+  }
+  
+  /* Labels e textos descritivos */
+  .dark .text-gray-600 {
+    color: #b8aca5 !important;
+  }
+  
+  .dark .text-gray-700 {
+    color: #a39489 !important;
+  }
+  
+  .dark .text-gray-800 {
+    color: #8e7d6f !important;
+  }
+  
+  .dark .text-gray-900 {
+    color: #e3dcda !important;
+  }
+  
+  /* Botões e elementos interativos com melhor contraste */
+  .dark button {
+    color: #e3dcda;
+  }
+  
+  /* Select options com cores corretas */
+  option {
+    color: #00343d !important;
+    background-color: #ffffff !important;
+  }
+  
+  .dark option {
+    color: #e3dcda !important;
+    background-color: #00343d !important;
+  }
+  
+  /* Garantir que checkboxes sejam sempre interativos */
+  input[type="checkbox"] {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    -webkit-appearance: checkbox !important;
+    appearance: checkbox !important;
+  }
+  
+  input[type="checkbox"]:not(:disabled) {
+    opacity: 1 !important;
+  }
+}

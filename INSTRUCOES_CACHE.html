@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instruções - Limpar Cache Transmill</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a59ad;
+            border-bottom: 3px solid #2fa31c;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2fa31c;
+            margin-top: 30px;
+        }
+        .step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #1a59ad;
+            border-radius: 5px;
+        }
+        .important {
+            background: #fff3cd;
+            border-left-color: #ff9800;
+            font-weight: bold;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        button {
+            background: #1a59ad;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2fa31c;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Como Limpar o Cache do Navegador - Transmill</h1>
+        
+        <div class="step important">
+            ⚠️ <strong>IMPORTANTE:</strong> O navegador está usando código JavaScript antigo (em cache).
+            Você PRECISA limpar o cache para ver as correções!
+        </div>
+
+        <h2>📱 Método 1: Hard Reload (MAIS RÁPIDO)</h2>
+        
+        <div class="step">
+            <strong>Windows / Linux:</strong><br>
+            Pressione <code>Ctrl + Shift + R</code> ou <code>Ctrl + F5</code>
+        </div>
+
+        <div class="step">
+            <strong>Mac:</strong><br>
+            Pressione <code>Cmd + Shift + R</code>
+        </div>
+
+        <h2>🗑️ Método 2: Limpar Cache Manualmente</h2>
+
+        <div class="step">
+            <strong>Chrome / Edge / Brave:</strong>
+            <ol>
+                <li>Pressione <code>Ctrl + Shift + Delete</code></li>
+                <li>Selecione <strong>"Todo o período"</strong></li>
+                <li>Marque APENAS: <strong>"Imagens e arquivos em cache"</strong></li>
+                <li>Clique em <strong>"Limpar dados"</strong></li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <strong>Firefox:</strong>
+            <ol>
+                <li>Pressione <code>Ctrl + Shift + Delete</code></li>
+                <li>Selecione <strong>"Tudo"</strong></li>
+                <li>Marque APENAS: <strong>"Cache"</strong></li>
+                <li>Clique em <strong>"Limpar Agora"</strong></li>
+            </ol>
+        </div>
+
+        <h2>🔄 Método 3: DevTools (Para Desenvolvedores)</h2>
+
+        <div class="step">
+            <ol>
+                <li>Pressione <code>F12</code> para abrir DevTools</li>
+                <li>Clique com botão direito no ícone de <strong>Recarregar</strong></li>
+                <li>Selecione <strong>"Esvaziar cache e atualizar de forma forçada"</strong></li>
+            </ol>
+        </div>
+
+        <h2>🧹 Método 4: Service Worker (Automático via JavaScript)</h2>
+
+        <div class="step">
+            <button onclick="clearCacheAndReload()">🗑️ Limpar Cache e Recarregar</button>
+            <button onclick="unregisterServiceWorker()">❌ Desregistrar Service Worker</button>
+        </div>
+
+        <div id="result"></div>
+
+        <h2>✅ Como Confirmar que Funcionou?</h2>
+
+        <div class="step success">
+            <strong>1. Após limpar o cache, faça login novamente</strong><br>
+            <strong>2. Abra o Console (F12)</strong><br>
+            <strong>3. Vá em: Pessoas → Tipo de Veículo → Tabela FIPE</strong><br>
+            <strong>4. Clique em "Importar da FIPE"</strong><br>
+            <strong>5. Verifique no Console a URL deve ser:</strong>
+        </div>
+
+        <div class="step success">
+            ✅ <code>POST /api/labelview/fipe/importar-completo</code><br>
+            ❌ NÃO deve ser: <code>/api/api/labelview/...</code>
+        </div>
+
+        <h2>🚨 Se AINDA aparecer /api/api/...</h2>
+
+        <div class="step error">
+            <strong>Faça TODOS estes passos:</strong>
+            <ol>
+                <li>Feche TODAS as abas do Transmill</li>
+                <li>Pressione <code>Ctrl + Shift + Delete</code></li>
+                <li>Limpe: <strong>Cache + Cookies + Dados de sites</strong></li>
+                <li>Feche o navegador COMPLETAMENTE</li>
+                <li>Abra novamente e faça login</li>
+            </ol>
+        </div>
+
+        <h2>📞 Suporte</h2>
+        <div class="step">
+            Se após seguir TODOS os passos ainda aparecer erro <code>/api/api/</code>,
+            tire um print do console (F12) e envie para análise.
+        </div>
+    </div>
+
+    <script>
+        function clearCacheAndReload() {
+            const resultDiv = document.getElementById('result');
+            
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+                resultDiv.innerHTML = '<div class="step success">✅ Cache limpo! Recarregando em 2 segundos...</div>';
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 2000);
+            } else {
+                resultDiv.innerHTML = '<div class="step error">❌ Seu navegador não suporta Cache API. Use Ctrl+Shift+R</div>';
+            }
+        }
+
+        function unregisterServiceWorker() {
+            const resultDiv = document.getElementById('result');
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                    resultDiv.innerHTML = '<div class="step success">✅ Service Workers desregistrados! Recarregando...</div>';
+                    setTimeout(() => {
+                        window.location.reload(true);
+                    }, 2000);
+                });
+            } else {
+                resultDiv.innerHTML = '<div class="step error">❌ Seu navegador não suporta Service Workers</div>';
+            }
+        }
+    </script>
+</body>
+</html>

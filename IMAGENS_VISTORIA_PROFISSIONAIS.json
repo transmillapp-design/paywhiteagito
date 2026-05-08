@@ -1,0 +1,156 @@
+{
+  "carros": {
+    "tipo": "Carros Leves, Aplicativos, SUVs",
+    "descricao": "Imagens profissionais para vistoria de veículos nacionais",
+    "imagens": [
+      {
+        "nome": "Bancos dianteiros",
+        "url": "https://images.unsplash.com/photo-1549064233-945d7063292f?q=80&w=1200"
+      },
+      {
+        "nome": "Bancos traseiros",
+        "url": "https://images.unsplash.com/photo-1547731269-e4073e054f12?q=80&w=1200"
+      },
+      {
+        "nome": "Frente do veiculo",
+        "url": "https://images.unsplash.com/photo-1683778782578-6dbe29091ebc?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1620116563098-b89de37a3c0d?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.unsplash.com/photo-1683778782676-2506103ba90e?q=80&w=1200"
+      },
+      {
+        "nome": "Motor do veiculo",
+        "url": "https://images.unsplash.com/photo-1552300878-295b1871e1b4?q=80&w=1200"
+      },
+      {
+        "nome": "Painel do veiculo",
+        "url": "https://images.unsplash.com/photo-1636763086471-9f29bc34ab9e?q=80&w=1200"
+      },
+      {
+        "nome": "Porta malas do veiculo",
+        "url": "https://images.unsplash.com/photo-1743354055016-55241cebb7c6?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.unsplash.com/photo-1676532804031-4b25bc768f8e?q=80&w=1200"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1623564493084-50c8274cf115?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.unsplash.com/photo-1623564493214-6137dff043ad?q=80&w=1200"
+      },
+      {
+        "nome": "Quina esquerda traseira",
+        "url": "https://images.unsplash.com/photo-1694889650292-6acd166ab519?q=80&w=1200"
+      },
+      {
+        "nome": "Traseira do veiculo",
+        "url": "https://images.unsplash.com/photo-1623564493136-711e0bf8df59?q=80&w=1200"
+      },
+      {
+        "nome": "Volante e velocimetro",
+        "url": "https://images.unsplash.com/photo-1533630217389-3a5e4dff5683?q=80&w=1200"
+      }
+    ]
+  },
+  "moto": {
+    "tipo": "Motocicletas",
+    "descricao": "Imagens profissionais para vistoria de motos",
+    "imagens": [
+      {
+        "nome": "Frente da moto",
+        "url": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=1200"
+      },
+      {
+        "nome": "Guidao da moto",
+        "url": "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.unsplash.com/photo-1609630875171-b1321377ee65?q=80&w=1200"
+      },
+      {
+        "nome": "Motor e suspensao",
+        "url": "https://images.unsplash.com/photo-1558980394-4c7c9bc80857?q=80&w=1200"
+      },
+      {
+        "nome": "Pneu traseiro",
+        "url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.unsplash.com/photo-1609630875171-b1321377ee65?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=1200"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=1200"
+      }
+    ]
+  },
+  "caminhao": {
+    "tipo": "Caminhões (KIA Bongo, EFFA)",
+    "descricao": "Imagens profissionais para vistoria de caminhões leves",
+    "imagens": [
+      {
+        "nome": "Volante e velocimetro",
+        "url": "https://images.unsplash.com/photo-1533630217389-3a5e4dff5683?q=80&w=1200"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1623564493084-50c8274cf115?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.unsplash.com/photo-1676532804031-4b25bc768f8e?q=80&w=1200"
+      },
+      {
+        "nome": "Traseira",
+        "url": "https://images.unsplash.com/photo-1623564493136-711e0bf8df59?q=80&w=1200"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.unsplash.com/photo-1623564493214-6137dff043ad?q=80&w=1200"
+      },
+      {
+        "nome": "Quina esquerda traseira",
+        "url": "https://images.unsplash.com/photo-1694889650292-6acd166ab519?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.unsplash.com/photo-1683778782676-2506103ba90e?q=80&w=1200"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1620116563098-b89de37a3c0d?q=80&w=1200"
+      },
+      {
+        "nome": "Frente Caminhao",
+        "url": "https://images.unsplash.com/photo-1683778782578-6dbe29091ebc?q=80&w=1200"
+      },
+      {
+        "nome": "Interior caminhao",
+        "url": "https://images.unsplash.com/photo-1549064233-945d7063292f?q=80&w=1200"
+      },
+      {
+        "nome": "Painel Caminhao",
+        "url": "https://images.unsplash.com/photo-1636763086471-9f29bc34ab9e?q=80&w=1200"
+      }
+    ]
+  }
+}

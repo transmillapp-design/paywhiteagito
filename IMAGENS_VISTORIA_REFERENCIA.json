@@ -1,0 +1,153 @@
+{
+  "carros_suv": {
+    "tipo": "Carro Leve / Aplicativo / SUV / Pickup / Van",
+    "imagens": [
+      {
+        "nome": "Bancos dianteiros",
+        "url": "https://images.unsplash.com/photo-1682858110563-3f609263d418?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHxjYXIlMjBpbnRlcmlvciUyMHNlYXRzfGVufDB8fHx8MTc2NDc3MDU4MHww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Bancos traseiros",
+        "url": "https://images.unsplash.com/photo-1697055407542-e134e54cccf8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHxjYXIlMjBpbnRlcmlvciUyMHNlYXRzfGVufDB8fHx8MTc2NDc3MDU4MHww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Frente do veiculo",
+        "url": "https://images.unsplash.com/photo-1649932759854-68a5c10c4220?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxjYXIlMjBleHRlcmlvciUyMGFuZ2xlc3xlbnwwfHx8fDE3NjQ3NzA1ODZ8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1670241398875-d3f5978ce2fd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwzfHxjYXIlMjBleHRlcmlvciUyMGFuZ2xlc3xlbnwwfHx8fDE3NjQ3NzA1ODZ8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.pexels.com/photos/4678919/pexels-photo-4678919.jpeg"
+      },
+      {
+        "nome": "Motor do veiculo",
+        "url": "https://images.unsplash.com/photo-1759189206823-70ae395571bb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHxjYXIlMjB0cnVuayUyMGVuZ2luZSUyMGJheXxlbnwwfHx8fDE3NjQ3NzA1OTl8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Painel do veiculo",
+        "url": "https://images.unsplash.com/photo-1624818213542-f337c851c6fe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxjYXIlMjBlbmdpbmUlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY0NzcwNTkyfDA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Porta malas do veiculo",
+        "url": "https://images.unsplash.com/photo-1486698334944-b30c1eadb679?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxjYXIlMjB0cnVuayUyMGVuZ2luZSUyMGJheXxlbnwwfHx8fDE3NjQ3NzA1OTl8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.pexels.com/photos/6060938/pexels-photo-6060938.jpeg"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1619300027229-337a3361a225?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxjYXIlMjBleHRlcmlvciUyMGFuZ2xlc3xlbnwwfHx8fDE3NjQ3NzA1ODZ8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.pexels.com/photos/326259/pexels-photo-326259.jpeg"
+      },
+      {
+        "nome": "Quina esquerda traseira",
+        "url": "https://images.pexels.com/photos/533562/pexels-photo-533562.jpeg"
+      },
+      {
+        "nome": "Traseira do veiculo",
+        "url": "https://images.pexels.com/photos/887843/pexels-photo-887843.jpeg"
+      },
+      {
+        "nome": "Volante e velocimetro",
+        "url": "https://images.pexels.com/photos/5024803/pexels-photo-5024803.jpeg"
+      }
+    ]
+  },
+  "moto": {
+    "tipo": "Moto",
+    "imagens": [
+      {
+        "nome": "Frente da moto",
+        "url": "https://images.unsplash.com/photo-1588627541420-fce3f661b779?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHw0fHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Guidao da moto",
+        "url": "https://images.pexels.com/photos/1416169/pexels-photo-1416169.jpeg"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.pexels.com/photos/2116475/pexels-photo-2116475.jpeg"
+      },
+      {
+        "nome": "Motor e suspensao",
+        "url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Pneu traseiro",
+        "url": "https://images.unsplash.com/photo-1591637333184-19aa84b3e01f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.unsplash.com/photo-1588627541420-fce3f661b779?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHw0fHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.pexels.com/photos/2116475/pexels-photo-2116475.jpeg"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxtb3RvcmN5Y2xlfGVufDB8fHx8MTc2NDc3MDY0Nnww&ixlib=rb-4.1.0&q=85"
+      }
+    ]
+  },
+  "caminhao": {
+    "tipo": "Caminhão (KIA Bongo / EFFA)",
+    "imagens": [
+      {
+        "nome": "Volante e velocimetro",
+        "url": "https://images.pexels.com/photos/5024803/pexels-photo-5024803.jpeg"
+      },
+      {
+        "nome": "Quina esquerda frontal",
+        "url": "https://images.unsplash.com/photo-1616432043562-3671ea2e5242?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwyfHx0cnVja3xlbnwwfHx8fDE3NjQ3NzA2NTF8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina direita frontal",
+        "url": "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHx0cnVja3xlbnwwfHx8fDE3NjQ3NzA2NTF8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Traseira",
+        "url": "https://images.pexels.com/photos/2449454/pexels-photo-2449454.jpeg"
+      },
+      {
+        "nome": "Quina direita traseira",
+        "url": "https://images.unsplash.com/photo-1574757974346-45bae947d89a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxjb21tZXJjaWFsJTIwdHJ1Y2t8ZW58MHx8fHwxNzY0NzcwNjU2fDA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Quina esquerda traseira",
+        "url": "https://images.pexels.com/photos/7541348/pexels-photo-7541348.jpeg"
+      },
+      {
+        "nome": "Lateral esquerda",
+        "url": "https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwzfHx0cnVja3xlbnwwfHx8fDE3NjQ3NzA2NTF8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Lateral direita",
+        "url": "https://images.unsplash.com/photo-1574757974346-45bae947d89a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxjb21tZXJjaWFsJTIwdHJ1Y2t8ZW58MHx8fHwxNzY0NzcwNjU2fDA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Frente Caminhao",
+        "url": "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHx0cnVja3xlbnwwfHx8fDE3NjQ3NzA2NTF8MA&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Interior caminhao",
+        "url": "https://images.unsplash.com/photo-1682858110563-3f609263d418?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHxjYXIlMjBpbnRlcmlvciUyMHNlYXRzfGVufDB8fHx8MTc2NDc3MDU4MHww&ixlib=rb-4.1.0&q=85"
+      },
+      {
+        "nome": "Painel Caminhao",
+        "url": "https://images.unsplash.com/photo-1624818213542-f337c851c6fe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxjYXIlMjBlbmdpbmUlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY0NzcwNTkyfDA&ixlib=rb-4.1.0&q=85"
+      }
+    ]
+  }
+}

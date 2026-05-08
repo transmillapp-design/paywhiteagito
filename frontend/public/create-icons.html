@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate AgitoCoin Icons</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512" style="border: 1px solid #ccc;"></canvas>
+    <br><br>
+    <button onclick="generateIcons()">Generate All Icons</button>
+    <div id="downloads"></div>
+
+    <script>
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#10B981'); // Green
+            gradient.addColorStop(1, '#059669'); // Darker green
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add border radius effect
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.15);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Add "AC" text (AgitoCoin)
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.25}px Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('AC', size/2, size/2);
+            
+            // Add dollar sign
+            ctx.font = `${size * 0.15}px Arial, sans-serif`;
+            ctx.fillText('$', size/2, size * 0.75);
+            
+            return canvas;
+        }
+        
+        function generateIcons() {
+            const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+            const downloads = document.getElementById('downloads');
+            downloads.innerHTML = '';
+            
+            sizes.forEach(size => {
+                const canvas = createIcon(size);
+                
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `icon-${size}x${size}.png`;
+                    a.textContent = `Download ${size}x${size}`;
+                    a.style.display = 'block';
+                    a.style.marginBottom = '10px';
+                    downloads.appendChild(a);
+                });
+            });
+        }
+        
+        // Show preview
+        const previewCanvas = document.getElementById('canvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const preview = createIcon(512);
+        previewCtx.drawImage(preview, 0, 0);
+    </script>
+</body>
+</html>

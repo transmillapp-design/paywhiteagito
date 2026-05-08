@@ -1,0 +1,6 @@
+2.34.10
+Build timestamp: 2025-12-11T16:45:00Z
+Changes:
+- Fix CRM endpoint (/crm/leads)
+- Fix planos auto-load após FIPE
+- Entry point for python3 execution

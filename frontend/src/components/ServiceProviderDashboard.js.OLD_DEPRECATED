@@ -1,0 +1,1742 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../App';
+import { useSearchParams } from 'react-router-dom';
+import { 
+  Briefcase, 
+  Calendar, 
+  DollarSign, 
+  Clock,
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Eye,
+  QrCode,
+  User,
+  Phone,
+  MapPin,
+  Star,
+  TrendingUp,
+  Settings,
+  LogOut,
+  ExternalLink,
+  History,
+  Users,
+  Copy,
+  Share2,
+  ArrowUpRight,
+  ArrowDownLeft,
+  FileImage,
+  Coins
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { QRCodeCanvas } from 'qrcode.react';
+import ReferralSystem from './ReferralSystem';
+import CompleteUserProfile from './CompleteUserProfile';
+import USDTCalculator from './USDTCalculator';
+import USDTTransfer from './USDTTransfer';
+import SubUsersManager from './SubUsersManager';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import ServiceProviderProfileModal from './ServiceProviderProfileModal';
+
+const ServiceProviderDashboard = ({ user, onLogout }) => {
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('services');
+  const [services, setServices] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [editingService, setEditingService] = useState(null);
+  const [qrCodeData, setQrCodeData] = useState(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // POS states
+  const [posAmount, setPosAmount] = useState('');
+  const [posDescription, setPosDescription] = useState('');
+  const [generatedQRCode, setGeneratedQRCode] = useState(null);
+  const [digitalCodeGenerated, setDigitalCodeGenerated] = useState('');
+  
+  // Transactions states
+  const [transactions, setTransactions] = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  
+  // Deposit states
+  const [depositData, setDepositData] = useState({ 
+    amount: '', 
+    method: 'pix', 
+    currency: 'BRL' 
+  });
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [pixDetails, setPixDetails] = useState(null);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    estimated_duration: '60',
+    category: 'geral'
+  });
+
+  const [profileEditForm, setProfileEditForm] = useState({
+    fantasy_name: '',
+    profile_description: '',
+    working_hours: '',
+    accepts_emergency: false,
+    cashback_rate: '0.05',
+    google_maps_url: '',
+    address: {
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipcode: ''
+    }
+  });
+
+  // Buscar perfil do prestador
+  useEffect(() => {
+    fetchProfile();
+    fetchServices();
+    fetchAppointments();
+    fetchExchangeRate(); // Load exchange rate
+  }, []);
+
+  // Ler parâmetro tab da URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      console.log('Setting service provider tab from URL:', tabParam);
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProfile(data.data);
+        // Preencher formulário de edição
+        setProfileEditForm({
+          fantasy_name: data.data.fantasy_name || '',
+          profile_description: data.data.profile_description || '',
+          working_hours: data.data.working_hours || '',
+          accepts_emergency: data.data.accepts_emergency || false,
+          cashback_rate: data.data.cashback_rate?.toString() || '0.05',
+          google_maps_url: data.data.google_maps_url || '',
+          address: data.data.address || {
+            street: '',
+            number: '',
+            complement: '',
+            neighborhood: '',
+            city: '',
+            state: '',
+            zipcode: ''
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar perfil:', error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/servicos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setServices(data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar serviços:', error);
+    }
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/agendamentos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAppointments(data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+    }
+  };
+
+  const handleCreateService = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/servicos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(serviceForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Serviço criado com sucesso!');
+        fetchServices();
+        setShowServiceForm(false);
+        setServiceForm({ name: '', description: '', price: '', estimated_duration: '60', category: 'geral' });
+      } else {
+        alert(data.message || 'Erro ao criar serviço');
+      }
+    } catch (error) {
+      alert('Erro ao criar serviço');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateService = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/servicos/${editingService.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(serviceForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Serviço atualizado com sucesso!');
+        fetchServices();
+        setEditingService(null);
+        setServiceForm({ name: '', description: '', price: '', estimated_duration: '60', category: 'geral' });
+      } else {
+        alert(data.message || 'Erro ao atualizar serviço');
+      }
+    } catch (error) {
+      alert('Erro ao atualizar serviço');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteService = async (serviceId) => {
+    if (!window.confirm('Deseja realmente desativar este serviço?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/servicos/${serviceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Serviço desativado com sucesso!');
+        fetchServices();
+      }
+    } catch (error) {
+      alert('Erro ao desativar serviço');
+    }
+  };
+
+  const handleUpdateAppointmentStatus = async (appointmentId, status) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/agendamentos/${appointmentId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert(`Status atualizado: ${status}`);
+        fetchAppointments();
+      }
+    } catch (error) {
+      alert('Erro ao atualizar status');
+    }
+  };
+
+  const handleCompleteAppointment = async (appointmentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/agendamentos/${appointmentId}/concluir`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setQrCodeData(data.data);
+        fetchAppointments();
+      }
+    } catch (error) {
+      alert('Erro ao concluir agendamento');
+    }
+  };
+
+  const editService = (service) => {
+    setEditingService(service);
+    setServiceForm({
+      name: service.name,
+      description: service.description,
+      price: service.price,
+      estimated_duration: service.estimated_duration,
+      category: service.category
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingService(null);
+    setServiceForm({ name: '', description: '', price: '', estimated_duration: '60', category: 'geral' });
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(profileEditForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Perfil atualizado com sucesso!');
+        fetchProfile();
+        setEditingProfile(false);
+      } else {
+        alert(data.message || 'Erro ao atualizar perfil');
+      }
+    } catch (error) {
+      alert('Erro ao atualizar perfil');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // POS Functions
+  const generatePOSQRCode = async () => {
+    if (!posAmount || parseFloat(posAmount) <= 0) {
+      alert('Por favor, insira um valor válido');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Gerar QR Code via backend
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/prestador/pos/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: parseFloat(posAmount),
+          description: posDescription || 'Pagamento de serviço'
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setGeneratedQRCode(data.data.qr_code);
+        setDigitalCodeGenerated(data.data.digital_code);
+        alert('QR Code gerado com sucesso!');
+      } else {
+        alert(data.message || 'Erro ao gerar QR Code');
+      }
+    } catch (error) {
+      alert('Erro ao gerar QR Code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearPOSForm = () => {
+    setPosAmount('');
+    setPosDescription('');
+    setGeneratedQRCode(null);
+    setDigitalCodeGenerated('');
+  };
+
+  const copyDigitalCode = () => {
+    if (digitalCodeGenerated) {
+      navigator.clipboard.writeText(digitalCodeGenerated);
+      alert('Código copiado!');
+    }
+  };
+
+  // Transactions Functions
+  const fetchTransactions = async () => {
+    try {
+      setTransactionsLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/user/transactions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.transactions) {
+        setTransactions(data.transactions);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar transações:', error);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleString('pt-BR');
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pendente' },
+      confirmed: { color: 'bg-blue-100 text-blue-800', text: 'Confirmado' },
+      in_progress: { color: 'bg-purple-100 text-purple-800', text: 'Em Andamento' },
+      completed: { color: 'bg-green-100 text-green-800', text: 'Concluído' },
+      cancelled: { color: 'bg-red-100 text-red-800', text: 'Cancelado' }
+    };
+    const badge = badges[status] || badges.pending;
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color}`}>{badge.text}</span>;
+  };
+
+  // Deposit Functions
+  const handleDeposit = async (e) => {
+    e.preventDefault();
+    setDepositLoading(true);
+
+    try {
+      let response;
+      const amount = parseFloat(depositData.amount);
+      const token = localStorage.getItem('token');
+      
+      if (depositData.method === 'pix') {
+        // Depósito direto em BRL via XGate PIX
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/xgate/pix-deposit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            amount: amount,
+            description: `Depósito Prestador AgitoCoin via PIX - R$ ${amount.toFixed(2)}`
+          })
+        });
+      } else if (depositData.method === 'pix-usdt') {
+        // Depósito convertido para USDT via XGate
+        response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/xgate/convert-brl-usdt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            brl_amount: amount
+          })
+        });
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const pixData = data.data;
+        
+        // Store PIX details and show modal
+        setPixDetails({
+          ...pixData,
+          currency: depositData.method === 'pix-usdt' ? 'USDT' : 'BRL',
+          original_amount: amount
+        });
+        setShowPixModal(true);
+        
+        const currency = depositData.method === 'pix-usdt' ? 'USDT' : 'BRL';
+        // Toast seria ideal, mas vamos usar alert simples por agora
+        alert(`PIX gerado com sucesso para depósito em ${currency}! Use o QR Code para pagar.`);
+      } else {
+        throw new Error(data.error || 'Erro ao gerar PIX');
+      }
+      
+      setDepositData({ amount: '', method: 'pix', currency: 'BRL' });
+      fetchProfile(); // Refresh data
+    } catch (error) {
+      console.error('Deposit error:', error);
+      alert(`Erro ao realizar depósito: ${error.message}`);
+    } finally {
+      setDepositLoading(false);
+    }
+  };
+
+  // Função para buscar taxa de câmbio
+  const fetchExchangeRate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/xgate/exchange-rate`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setExchangeRate(data.data.rate);
+      }
+    } catch (error) {
+      console.error('Error fetching exchange rate:', error);
+    }
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                {user?.full_name?.charAt(0) || 'P'}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Olá, {user?.full_name || 'Prestador'}! 👋</h1>
+                <p className="text-gray-600">{profile?.fantasy_name || 'Seu Negócio'}</p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <Star className="text-yellow-400" size={16} />
+                  <span className="text-sm font-semibold">{profile?.rating_average?.toFixed(1) || '0.0'}</span>
+                  <span className="text-gray-500 text-sm">({profile?.rating_count || 0} avaliações)</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowProfileModal(true)}>
+                <User size={16} className="mr-2" />
+                Meu Perfil
+              </Button>
+              <Button variant="outline" onClick={onLogout}>
+                <LogOut size={16} className="mr-2" />
+                Sair
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Saldo</p>
+                  <p className="text-2xl font-bold text-green-600">R$ {user?.balance?.toFixed(2) || '0,00'}</p>
+                </div>
+                <DollarSign className="text-green-500" size={32} />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Serviços</p>
+                  <p className="text-2xl font-bold text-blue-600">{services.length}</p>
+                </div>
+                <Briefcase className="text-blue-500" size={32} />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Agendamentos</p>
+                  <p className="text-2xl font-bold text-purple-600">{appointments.length}</p>
+                </div>
+                <Calendar className="text-purple-500" size={32} />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Avaliação</p>
+                  <p className="text-2xl font-bold text-yellow-600">{profile?.rating_average?.toFixed(1) || '0.0'} ⭐</p>
+                </div>
+                <TrendingUp className="text-yellow-500" size={32} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-10 bg-white text-xs sm:text-sm">
+            <TabsTrigger value="services" className="px-2">
+              <Briefcase className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Serviços</span>
+              <span className="sm:hidden">Serv</span>
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="px-2">
+              <Calendar className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Agendamentos</span>
+              <span className="sm:hidden">Agenda</span>
+            </TabsTrigger>
+            <TabsTrigger value="pos" className="px-2">
+              <QrCode className="mr-1 sm:mr-2" size={14} />
+              <span>POS</span>
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="px-2">
+              <History className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Extrato</span>
+              <span className="sm:hidden">Ext</span>
+            </TabsTrigger>
+            <TabsTrigger value="deposit" className="px-2">
+              <ArrowDownLeft className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Depósito</span>
+              <span className="sm:hidden">Dep</span>
+            </TabsTrigger>
+            <TabsTrigger value="referral" className="px-2">
+              <Users className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Indicar</span>
+              <span className="sm:hidden">Ind</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="px-2">
+              <FileImage className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Docs</span>
+              <span className="sm:hidden">Doc</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="px-2">
+              <User className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Perfil</span>
+              <span className="sm:hidden">Perf</span>
+            </TabsTrigger>
+            <TabsTrigger value="usdt" className="px-2">
+              <Coins className="mr-1 sm:mr-2" size={14} />
+              <span>USDT</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="px-2">
+              <Settings className="mr-1 sm:mr-2" size={14} />
+              <span className="hidden sm:inline">Config</span>
+              <span className="sm:hidden">Cfg</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Services Tab */}
+          <TabsContent value="services">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Gerenciar Serviços</CardTitle>
+                    <CardDescription>Cadastre e gerencie os serviços que você oferece</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowServiceForm(!showServiceForm)}>
+                    <Plus size={16} className="mr-2" />
+                    Novo Serviço
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(showServiceForm || editingService) && (
+                  <form onSubmit={editingService ? handleUpdateService : handleCreateService} className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold mb-4">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <Label>Nome do Serviço*</Label>
+                        <Input
+                          value={serviceForm.name}
+                          onChange={(e) => setServiceForm({...serviceForm, name: e.target.value})}
+                          placeholder="Ex: Instalação Elétrica"
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label>Descrição</Label>
+                        <textarea
+                          value={serviceForm.description}
+                          onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
+                          placeholder="Descreva o serviço oferecido..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          rows="3"
+                        />
+                      </div>
+                      <div>
+                        <Label>Preço (R$)*</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={serviceForm.price}
+                          onChange={(e) => setServiceForm({...serviceForm, price: e.target.value})}
+                          placeholder="150.00"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Duração (minutos)*</Label>
+                        <Input
+                          type="number"
+                          value={serviceForm.estimated_duration}
+                          onChange={(e) => setServiceForm({...serviceForm, estimated_duration: e.target.value})}
+                          placeholder="60"
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label>Categoria</Label>
+                        <Select value={serviceForm.category} onValueChange={(value) => setServiceForm({...serviceForm, category: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="geral">Geral</SelectItem>
+                            <SelectItem value="eletrica">Elétrica</SelectItem>
+                            <SelectItem value="hidraulica">Hidráulica</SelectItem>
+                            <SelectItem value="beleza">Beleza</SelectItem>
+                            <SelectItem value="saude">Saúde</SelectItem>
+                            <SelectItem value="educacao">Educação</SelectItem>
+                            <SelectItem value="tecnologia">Tecnologia</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button type="submit" disabled={loading}>
+                        {loading ? 'Salvando...' : editingService ? 'Atualizar' : 'Criar Serviço'}
+                      </Button>
+                      {editingService && (
+                        <Button type="button" variant="outline" onClick={cancelEdit}>Cancelar</Button>
+                      )}
+                    </div>
+                  </form>
+                )}
+
+                <div className="space-y-4">
+                  {services.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Briefcase className="mx-auto text-gray-400 mb-4" size={48} />
+                      <p className="text-gray-600">Nenhum serviço cadastrado ainda</p>
+                      <p className="text-sm text-gray-500">Clique em "Novo Serviço" para começar</p>
+                    </div>
+                  ) : (
+                    services.map(service => (
+                      <div key={service.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{service.name}</h3>
+                            <p className="text-gray-600 text-sm mt-1">{service.description}</p>
+                            <div className="flex gap-4 mt-3">
+                              <span className="text-sm text-gray-600">
+                                <DollarSign className="inline" size={14} /> R$ {service.price?.toFixed(2)}
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                <Clock className="inline" size={14} /> {service.estimated_duration} min
+                              </span>
+                              <span className={`text-sm ${service.is_available ? 'text-green-600' : 'text-red-600'}`}>
+                                {service.is_available ? '● Disponível' : '● Indisponível'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => editService(service)}>
+                              <Edit2 size={14} />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteService(service.id)}>
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Appointments Tab */}
+          <TabsContent value="appointments">
+            <Card>
+              <CardHeader>
+                <CardTitle>Agenda de Agendamentos</CardTitle>
+                <CardDescription>Gerencie os agendamentos dos seus clientes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {appointments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
+                    <p className="text-gray-600">Nenhum agendamento no momento</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {appointments.map(apt => (
+                      <div key={apt.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold">{apt.service_name}</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              <User className="inline" size={14} /> {apt.client_name}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <Phone className="inline" size={14} /> {apt.client_phone}
+                            </p>
+                          </div>
+                          {getStatusBadge(apt.status)}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <Calendar className="inline text-gray-400" size={14} />
+                            <span className="ml-2">{new Date(apt.appointment_datetime).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <div>
+                            <Clock className="inline text-gray-400" size={14} />
+                            <span className="ml-2">{new Date(apt.appointment_datetime).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</span>
+                          </div>
+                          <div>
+                            <DollarSign className="inline text-gray-400" size={14} />
+                            <span className="ml-2">R$ {apt.total_value?.toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <Clock className="inline text-gray-400" size={14} />
+                            <span className="ml-2">{apt.estimated_duration} min</span>
+                          </div>
+                        </div>
+
+                        {apt.client_notes && (
+                          <div className="bg-yellow-50 p-2 rounded text-sm mb-3">
+                            <strong>Obs do cliente:</strong> {apt.client_notes}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 flex-wrap">
+                          {apt.status === 'pending' && (
+                            <>
+                              <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'confirmed')}>
+                                <Check size={14} className="mr-1" /> Confirmar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateAppointmentStatus(apt.id, 'cancelled')}>
+                                <X size={14} className="mr-1" /> Recusar
+                              </Button>
+                            </>
+                          )}
+                          {apt.status === 'confirmed' && (
+                            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'in_progress')}>
+                              Iniciar Serviço
+                            </Button>
+                          )}
+                          {apt.status === 'in_progress' && (
+                            <Button size="sm" onClick={() => handleCompleteAppointment(apt.id)}>
+                              <QrCode size={14} className="mr-1" /> Concluir e Gerar QR Code
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* POS Tab */}
+          <TabsContent value="pos">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <QrCode size={20} />
+                  <span>POS - Gerar Cobrança</span>
+                </CardTitle>
+                <CardDescription>Gere QR Codes para receber pagamentos de serviços</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Form */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="pos-amount">Valor (R$)*</Label>
+                      <Input
+                        id="pos-amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={posAmount}
+                        onChange={(e) => setPosAmount(e.target.value)}
+                        placeholder="0,00"
+                        className="text-lg font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="pos-description">Descrição</Label>
+                      <textarea
+                        id="pos-description"
+                        value={posDescription}
+                        onChange={(e) => setPosDescription(e.target.value)}
+                        placeholder="Descrição do serviço..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        rows="3"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={generatePOSQRCode} 
+                        disabled={loading || !posAmount}
+                        className="flex-1"
+                      >
+                        {loading ? 'Gerando...' : 'Gerar QR Code'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={clearPOSForm}
+                        disabled={loading}
+                      >
+                        Limpar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* QR Code Display */}
+                  <div className="flex items-center justify-center">
+                    {generatedQRCode ? (
+                      <div className="text-center space-y-4">
+                        <div className="bg-white p-6 rounded-lg border-2 border-gray-200 inline-block">
+                          <QRCodeCanvas 
+                            value={generatedQRCode} 
+                            size={200}
+                            level="H"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">Código Digital</Label>
+                          <div className="flex gap-2 mt-1">
+                            <Input 
+                              value={digitalCodeGenerated} 
+                              readOnly 
+                              className="font-mono text-sm"
+                            />
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={copyDigitalCode}
+                            >
+                              <Copy size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded text-sm">
+                          <p><strong>Valor:</strong> R$ {parseFloat(posAmount).toFixed(2)}</p>
+                          {posDescription && <p><strong>Descrição:</strong> {posDescription}</p>}
+                          <p className="text-xs text-gray-600 mt-2">
+                            Cashback: {((profile?.cashback_rate || 0.05) * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-400">
+                        <QrCode size={100} className="mx-auto mb-4" />
+                        <p>QR Code aparecerá aqui</p>
+                        <p className="text-sm">Preencha o valor e clique em "Gerar QR Code"</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Transactions Tab */}
+          <TabsContent value="transactions">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <History size={20} />
+                  <span>Extrato de Movimentações</span>
+                </CardTitle>
+                <CardDescription>Histórico completo de todas as suas transações</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Button onClick={fetchTransactions} disabled={transactionsLoading}>
+                    {transactionsLoading ? 'Carregando...' : 'Atualizar Extrato'}
+                  </Button>
+
+                  {transactionsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                      <p className="text-gray-600 mt-4">Carregando transações...</p>
+                    </div>
+                  ) : transactions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <History className="mx-auto text-gray-400 mb-4" size={48} />
+                      <p className="text-gray-600">Nenhuma transação encontrada</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {transactions.map((transaction, index) => (
+                        <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                {transaction.amount >= 0 ? (
+                                  <ArrowDownLeft className="text-green-500" size={16} />
+                                ) : (
+                                  <ArrowUpRight className="text-red-500" size={16} />
+                                )}
+                                <span className="font-semibold">{transaction.description}</span>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {formatDateTime(transaction.created_at)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-lg font-bold ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {transaction.amount >= 0 ? '+' : ''}R$ {Math.abs(transaction.amount).toFixed(2)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Saldo: R$ {transaction.balance_after?.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Deposit Tab */}
+          <TabsContent value="deposit" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <ArrowDownLeft size={20} />
+                  <span>Fazer Depósito via PIX</span>
+                </CardTitle>
+                <CardDescription>
+                  Adicione saldo à sua conta através de PIX instantâneo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleDeposit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Valor do Depósito (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        value={depositData.amount}
+                        onChange={(e) => setDepositData({ ...depositData, amount: e.target.value })}
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Tipo de Depósito</Label>
+                      <Select
+                        value={depositData.method}
+                        onValueChange={(value) => setDepositData({ ...depositData, method: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pix">PIX → BRL (direto em reais)</SelectItem>
+                          <SelectItem value="pix-usdt">PIX → USDT (com conversão)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Mostrar informações de conversão se PIX-USDT selecionado */}
+                  {depositData.method === 'pix-usdt' && depositData.amount && exchangeRate && (
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-yellow-600">ℹ️</span>
+                        <span className="text-yellow-800 font-medium text-sm">Conversão BRL → USDT</span>
+                      </div>
+                      <div className="text-xs text-yellow-700 space-y-1">
+                        <p>Valor bruto: <strong>R$ {parseFloat(depositData.amount).toFixed(2)}</strong></p>
+                        <p>Taxa conversão USDT (3,99%): <strong className="text-red-600">-R$ {(parseFloat(depositData.amount) * 0.0399).toFixed(2)}</strong></p>
+                        <p>Valor líquido: <strong>R$ {(parseFloat(depositData.amount) * 0.9601).toFixed(2)}</strong></p>
+                        <p>Receberá aproximadamente: <strong className="text-green-600">{((parseFloat(depositData.amount) * 0.9601) / exchangeRate).toFixed(6)} USDT</strong></p>
+                        <p>Taxa atual: 1 USD = R$ {exchangeRate.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button 
+                    type="submit" 
+                    disabled={depositLoading || !depositData.amount || parseFloat(depositData.amount) <= 0}
+                    className="w-full"
+                  >
+                    {depositLoading ? 'Gerando PIX...' : 'Gerar PIX para Depósito'}
+                  </Button>
+                </form>
+
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">Como funciona:</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>PIX → BRL:</strong> Valor depositado diretamente em reais na sua conta</li>
+                    <li>• <strong>PIX → USDT:</strong> Valor convertido automaticamente para USDT com taxa de 3,99%</li>
+                    <li>• PIX é gerado instantaneamente após confirmar</li>
+                    <li>• Saldo é creditado automaticamente após pagamento</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users size={20} />
+                  <span>Sistema de Indicação</span>
+                </CardTitle>
+                <CardDescription>Indique clientes e ganhe cashback nas compras deles</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReferralSystem />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* USDT Tab */}
+          <TabsContent value="usdt" className="space-y-6">
+            <div className="space-y-6">
+              {/* Saldo USDT */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Coins size={20} className="text-blue-600" />
+                    <span>Saldo USDT</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Sua carteira digital USDT no AgitoCoin
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+                    <div className="text-center">
+                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-2">Saldo Atual USDT</p>
+                      <p className="text-3xl font-bold text-blue-800 dark:text-blue-300">
+                        {(user?.usdt_balance || 0).toFixed(6)} USDT
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        ≈ R$ {((user?.usdt_balance || 0) * 5.50).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs">Cotação atual</p>
+                      <p className="font-semibold">1 USDT = R$ 5,50</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs">Última atualização</p>
+                      <p className="font-semibold text-xs">{new Date().toLocaleTimeString('pt-BR')}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                      <strong>💡 Como adquirir USDT:</strong> Use a aba "Serviços" para receber pagamentos em USDT ou converta saldo BRL existente.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Funcionalidades USDT */}
+              <Tabs defaultValue="convert-usdt" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="convert-usdt" className="flex items-center space-x-2">
+                    <ArrowUpRight size={16} />
+                    <span>Converter para BRL</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="transfer-external" className="flex items-center space-x-2">
+                    <ArrowDownLeft size={16} />
+                    <span>Transferir Externa</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Conversão USDT → BRL */}
+                <TabsContent value="convert-usdt" className="mt-6">
+                  <USDTCalculator user={user} />
+                </TabsContent>
+
+                {/* Transferência Externa USDT */}
+                <TabsContent value="transfer-external" className="mt-6">
+                  <USDTTransfer user={user} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents">
+            <CompleteUserProfile />
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Meu Perfil Profissional</CardTitle>
+                <CardDescription>Informações do seu perfil como prestador de serviço</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-600">Nome Completo</Label>
+                        <p className="font-medium">{user?.full_name}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Nome Fantasia</Label>
+                        <p className="font-medium">{profile.fantasy_name || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Email</Label>
+                        <p className="font-medium">{user?.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Telefone</Label>
+                        <p className="font-medium">{user?.phone}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Tipo de Prestador</Label>
+                        <p className="font-medium">{profile.provider_type?.name || '-'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Categoria</Label>
+                        <p className="font-medium capitalize">{profile.provider_type?.category || '-'}</p>
+                      </div>
+                    </div>
+
+                    {profile.address && (
+                      <div>
+                        <Label className="text-gray-600">Endereço</Label>
+                        <p className="font-medium">
+                          <MapPin className="inline" size={14} />
+                          {` ${profile.address.street}, ${profile.address.number} - ${profile.address.neighborhood}, ${profile.address.city}/${profile.address.state}`}
+                        </p>
+                      </div>
+                    )}
+
+                    {profile.profile_description && (
+                      <div>
+                        <Label className="text-gray-600">Descrição do Perfil</Label>
+                        <p className="font-medium">{profile.profile_description}</p>
+                      </div>
+                    )}
+
+                    {profile.working_hours && (
+                      <div>
+                        <Label className="text-gray-600">Horários de Trabalho</Label>
+                        <p className="font-medium">{profile.working_hours}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                      <div>
+                        <Label className="text-gray-600">Avaliação Média</Label>
+                        <p className="font-medium text-lg">⭐ {profile.rating_average?.toFixed(1) || '0.0'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Total de Avaliações</Label>
+                        <p className="font-medium text-lg">{profile.rating_count || 0}</p>
+                      </div>
+                      <div>
+                        <Label className="text-gray-600">Aceita Emergências</Label>
+                        <p className="font-medium text-lg">{profile.accepts_emergency ? '✅ Sim' : '❌ Não'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Configurações do Prestador</CardTitle>
+                    <CardDescription>Gerencie suas informações, endereço e configurações</CardDescription>
+                  </div>
+                  {!editingProfile && (
+                    <Button onClick={() => setEditingProfile(true)}>
+                      <Edit2 size={16} className="mr-2" />
+                      Editar
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {editingProfile ? (
+                  <form onSubmit={handleUpdateProfile} className="space-y-6">
+                    {/* Informações do Negócio */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Informações do Negócio</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <Label>Nome Fantasia*</Label>
+                          <Input
+                            value={profileEditForm.fantasy_name}
+                            onChange={(e) => setProfileEditForm({...profileEditForm, fantasy_name: e.target.value})}
+                            placeholder="Ex: JS Elétrica"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Descrição do Perfil</Label>
+                          <textarea
+                            value={profileEditForm.profile_description}
+                            onChange={(e) => setProfileEditForm({...profileEditForm, profile_description: e.target.value})}
+                            placeholder="Descreva sua experiência e especialidades..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[100px]"
+                            rows="4"
+                          />
+                        </div>
+                        <div>
+                          <Label>Horários de Trabalho</Label>
+                          <Input
+                            value={profileEditForm.working_hours}
+                            onChange={(e) => setProfileEditForm({...profileEditForm, working_hours: e.target.value})}
+                            placeholder="Ex: Seg-Sex: 8h-18h"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 pt-6">
+                          <input
+                            type="checkbox"
+                            id="accepts-emergency"
+                            checked={profileEditForm.accepts_emergency}
+                            onChange={(e) => setProfileEditForm({...profileEditForm, accepts_emergency: e.target.checked})}
+                            className="rounded border-gray-300"
+                          />
+                          <Label htmlFor="accepts-emergency" className="cursor-pointer">Aceito atendimentos de emergência</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Configurações de Pagamento */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Configurações de Pagamento</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Taxa de Cashback (%)*</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="10"
+                            value={profileEditForm.cashback_rate}
+                            onChange={(e) => setProfileEditForm({...profileEditForm, cashback_rate: e.target.value})}
+                            placeholder="5.0"
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Valor entre 1% e 10%</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Endereço */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Endereço</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <Label>Rua*</Label>
+                          <Input
+                            value={profileEditForm.address.street}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, street: e.target.value}
+                            })}
+                            placeholder="Nome da rua"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>Número*</Label>
+                          <Input
+                            value={profileEditForm.address.number}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, number: e.target.value}
+                            })}
+                            placeholder="123"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>Complemento</Label>
+                          <Input
+                            value={profileEditForm.address.complement}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, complement: e.target.value}
+                            })}
+                            placeholder="Apto, Sala, etc"
+                          />
+                        </div>
+                        <div>
+                          <Label>Bairro*</Label>
+                          <Input
+                            value={profileEditForm.address.neighborhood}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, neighborhood: e.target.value}
+                            })}
+                            placeholder="Centro"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>Cidade*</Label>
+                          <Input
+                            value={profileEditForm.address.city}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, city: e.target.value}
+                            })}
+                            placeholder="São Paulo"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>Estado*</Label>
+                          <Input
+                            value={profileEditForm.address.state}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, state: e.target.value}
+                            })}
+                            placeholder="SP"
+                            maxLength="2"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>CEP*</Label>
+                          <Input
+                            value={profileEditForm.address.zipcode}
+                            onChange={(e) => setProfileEditForm({
+                              ...profileEditForm,
+                              address: {...profileEditForm.address, zipcode: e.target.value}
+                            })}
+                            placeholder="01000-000"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Google Maps */}
+                    <div className="pb-4">
+                      <h3 className="text-lg font-semibold mb-4">Localização</h3>
+                      <div>
+                        <Label>URL do Google Maps</Label>
+                        <Input
+                          value={profileEditForm.google_maps_url}
+                          onChange={(e) => setProfileEditForm({...profileEditForm, google_maps_url: e.target.value})}
+                          placeholder="https://maps.app.goo.gl/..."
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Cole o link do Google Maps do seu estabelecimento para facilitar que clientes te encontrem
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button type="submit" disabled={loading}>
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                            Salvando...
+                          </>
+                        ) : (
+                          'Salvar Alterações'
+                        )}
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => {
+                          setEditingProfile(false);
+                          fetchProfile(); // Recarregar dados originais
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  /* View Mode */
+                  <div className="space-y-6">
+                    {/* Informações do Negócio */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Informações do Negócio</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-gray-600">Nome Fantasia</Label>
+                          <p className="font-medium">{profile?.fantasy_name || '-'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-600">Horários</Label>
+                          <p className="font-medium">{profile?.working_hours || '-'}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label className="text-gray-600">Descrição</Label>
+                          <p className="font-medium">{profile?.profile_description || '-'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-600">Emergências</Label>
+                          <p className="font-medium">{profile?.accepts_emergency ? '✅ Sim' : '❌ Não'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pagamento */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Configurações de Pagamento</h3>
+                      <div>
+                        <Label className="text-gray-600">Taxa de Cashback</Label>
+                        <p className="font-medium text-lg">{((profile?.cashback_rate || 0.05) * 100).toFixed(1)}%</p>
+                      </div>
+                    </div>
+
+                    {/* Endereço */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-semibold mb-4">Endereço</h3>
+                      {profile?.address ? (
+                        <div className="flex items-start space-x-2">
+                          <MapPin size={18} className="text-gray-400 mt-1" />
+                          <p className="font-medium">
+                            {profile.address.street}, {profile.address.number}
+                            {profile.address.complement && ` - ${profile.address.complement}`}
+                            <br />
+                            {profile.address.neighborhood}, {profile.address.city}/{profile.address.state}
+                            <br />
+                            CEP: {profile.address.zipcode}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">Endereço não cadastrado</p>
+                      )}
+                    </div>
+
+                    {/* Google Maps */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Localização</h3>
+                      {profile?.google_maps_url ? (
+                        <a 
+                          href={profile.google_maps_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center space-x-2"
+                        >
+                          <MapPin size={16} />
+                          <span>Ver no Google Maps</span>
+                          <ExternalLink size={14} />
+                        </a>
+                      ) : (
+                        <p className="text-gray-500">Link do Google Maps não cadastrado</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* PIX Deposit Modal */}
+        {showPixModal && pixDetails && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md m-4">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <ArrowDownLeft size={20} />
+                  <span>PIX Gerado para Depósito</span>
+                </CardTitle>
+                <CardDescription>
+                  Use o QR Code ou código PIX para realizar o depósito
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <div className="bg-white p-4 rounded-lg border">
+                    <QRCodeCanvas
+                      value={pixDetails.qr_code_pix}
+                      size={200}
+                      level="M"
+                      includeMargin
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">Valor:</span>
+                    <span className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(pixDetails.original_amount)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">Moeda:</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      pixDetails.currency === 'USDT' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                    }`}>
+                      {pixDetails.currency}
+                    </span>
+                  </div>
+
+                  {pixDetails.currency === 'USDT' && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="font-medium">USDT Estimado:</span>
+                      <span className="font-bold text-blue-600">
+                        {pixDetails.usdt_amount} USDT
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Código PIX (Copia e Cola):</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      value={pixDetails.qr_code_pix}
+                      readOnly
+                      className="text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(pixDetails.qr_code_pix);
+                        alert('Código PIX copiado!');
+                      }}
+                    >
+                      <Copy size={16} />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>⏰ Importante:</strong> O PIX expira em 30 minutos. 
+                    O saldo será creditado automaticamente após o pagamento.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setShowPixModal(false);
+                    setPixDetails(null);
+                  }}
+                  className="w-full"
+                >
+                  Fechar
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* QR Code Modal */}
+        {qrCodeData && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md m-4">
+              <CardHeader>
+                <CardTitle>Pagamento Gerado com Sucesso! 🎉</CardTitle>
+                <CardDescription>Mostre este QR Code para o cliente pagar</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                  <div className="text-center">
+                    <QrCode className="mx-auto mb-2" size={100} />
+                    <p className="text-sm text-gray-600">QR Code para pagamento</p>
+                  </div>
+                </div>
+                <div>
+                  <Label>Código Digital</Label>
+                  <div className="flex gap-2">
+                    <Input value={qrCodeData.digital_code} readOnly />
+                    <Button onClick={() => navigator.clipboard.writeText(qrCodeData.digital_code)}>
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm"><strong>Valor:</strong> R$ {qrCodeData.amount?.toFixed(2)}</p>
+                  <p className="text-sm"><strong>Serviço:</strong> {qrCodeData.service_name}</p>
+                  <p className="text-sm"><strong>Cashback:</strong> {(qrCodeData.cashback_rate * 100).toFixed(0)}%</p>
+                </div>
+                <Button className="w-full" onClick={() => setQrCodeData(null)}>Fechar</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal de Perfil Completo */}
+        <ServiceProviderProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          user={user}
+          profile={profile}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ServiceProviderDashboard;

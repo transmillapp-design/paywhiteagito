@@ -1,0 +1,469 @@
+{
+  "digital_codes": {
+    "count": 11,
+    "fields": {
+      "_id": {
+        "type": "ObjectId",
+        "nullable": false,
+        "examples": [
+          "68d92889c123f0b6f9fd3ac9",
+          "68d92c1bc123f0b6f9fd3aca",
+          "68d92c26c123f0b6f9fd3acb"
+        ]
+      },
+      "digital_code": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "AGITO-8946-187A-7D1F",
+          "AGITO-FD21-3190-C808",
+          "AGITO-8B60-4F0C-A0CA"
+        ]
+      },
+      "qr_code": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "AGITOCASH_eyJtZXJjaGFudF9pZCI6ICJsb2ppc3RhLWRlbW8tMDAxIiwgIm1lcmNoYW50X25hbWUiOiAiTG9qYSBEZW1vIExUREEiLCAiY2FzaGJhY2tfcmF0ZSI6IDUuMCwgImFtb3VudCI6IDI1LjAsICJ0aW1lc3RhbXAiOiAiMjAyNS0wOS0yOFQxMjoyMjozMy44MjQ1NzArMDA6MDAiLCAiY29kZSI6ICJCUEE2QVdZMSJ9",
+          "AGITOCASH_eyJtZXJjaGFudF9pZCI6ICJsb2ppc3RhLWRlbW8tMDAxIiwgIm1lcmNoYW50X25hbWUiOiAiTG9qYSBEZW1vIExUREEiLCAiY2FzaGJhY2tfcmF0ZSI6IDUuMCwgImFtb3VudCI6IDI1LjAsICJ0aW1lc3RhbXAiOiAiMjAyNS0wOS0yOFQxMjozNzo0Ny42NzI5MTYrMDA6MDAiLCAiY29kZSI6ICJVQk1TR0UzUiJ9",
+          "AGITOCASH_eyJtZXJjaGFudF9pZCI6ICJsb2ppc3RhLWRlbW8tMDAxIiwgIm1lcmNoYW50X25hbWUiOiAiTG9qYSBEZW1vIExUREEiLCAiY2FzaGJhY2tfcmF0ZSI6IDUuMCwgImFtb3VudCI6IDI1LjAsICJ0aW1lc3RhbXAiOiAiMjAyNS0wOS0yOFQxMjozNzo1OC4wOTM2NzUrMDA6MDAiLCAiY29kZSI6ICJLMDVWRFU2UiJ9"
+        ]
+      },
+      "merchant_id": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "lojista-demo-001"
+        ]
+      },
+      "amount": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          25.0
+        ]
+      },
+      "created_at": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "2025-09-28T12:22:33.824634+00:00",
+          "2025-09-28T12:37:47.672973+00:00",
+          "2025-09-28T12:37:58.093726+00:00"
+        ]
+      },
+      "expires_at": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "2025-09-28T14:22:33.824637+00:00",
+          "2025-09-28T14:37:47.672975+00:00",
+          "2025-09-28T14:37:58.093729+00:00"
+        ]
+      }
+    }
+  },
+  "users": {
+    "count": 8,
+    "fields": {
+      "_id": {
+        "type": "ObjectId",
+        "nullable": false,
+        "examples": [
+          "68d927188fe077ce52e59ef5",
+          "68d927188fe077ce52e59ef6",
+          "68d927188fe077ce52e59ef7"
+        ]
+      },
+      "id": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "cliente-demo-001",
+          "lojista-demo-001",
+          "master-demo-001"
+        ]
+      },
+      "email": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "cliente@demo.com",
+          "lojista@demo.com",
+          "master@agitocash.com"
+        ]
+      },
+      "password_hash": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "$2b$12$IlFL37jWt.qJ8qOmr0TOWeSkGtS1PetxyF5Py7Skv3Ervwy8tX2d2",
+          "$2b$12$uvGKBmYVow3hnkxAzZFNye7l9PG3VcywLfGubeC2jRtU4aPcLMGs.",
+          "$2b$12$lXV16yK7rKWtiFbaza36hui/q5RH6rdTGKsw7RNVk0JOWTRYiyGdG"
+        ]
+      },
+      "full_name": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "Cliente Demo",
+          "João Silva",
+          "Master Admin"
+        ]
+      },
+      "phone": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "11987654321",
+          "11988888888",
+          "11999999999"
+        ]
+      },
+      "user_type": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "cliente",
+          "lojista",
+          "master"
+        ]
+      },
+      "balance": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          100.0,
+          500.0,
+          0.0
+        ]
+      },
+      "cashback_balance": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          0.0
+        ]
+      },
+      "referral_code": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "Z9AAVSIM",
+          "V7TM9YJF",
+          "MASTER01"
+        ]
+      },
+      "referred_by": {
+        "type": "NoneType",
+        "nullable": true,
+        "examples": [
+          "lojista-demo-001"
+        ]
+      },
+      "is_blocked": {
+        "type": "bool",
+        "nullable": false,
+        "examples": [
+          false
+        ]
+      },
+      "created_at": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "2025-09-28T12:16:23.058540",
+          "2025-09-28T12:16:23.584175",
+          "2025-09-28T12:16:24.268562"
+        ]
+      },
+      "whatsapp": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "11988888888",
+          "11999001234",
+          "11999005678"
+        ]
+      },
+      "cashback_rate": {
+        "type": "float",
+        "nullable": true,
+        "examples": [
+          5.0
+        ]
+      },
+      "company_name": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "Loja Demo LTDA"
+        ]
+      },
+      "cnpj": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "12.345.678/0001-90"
+        ]
+      },
+      "address": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "Rua das Flores, 123"
+        ]
+      },
+      "state": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "São Paulo",
+          "Rio de Janeiro"
+        ]
+      },
+      "city": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "São Paulo",
+          "Rio de Janeiro"
+        ]
+      },
+      "neighborhood": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "Centro"
+        ]
+      },
+      "business_segment": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "Alimentação"
+        ]
+      },
+      "menu_catalog_url": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          ""
+        ]
+      },
+      "referral_count": {
+        "type": "int",
+        "nullable": false,
+        "examples": [
+          1,
+          0
+        ]
+      },
+      "is_master_account": {
+        "type": "bool",
+        "nullable": false,
+        "examples": [
+          true,
+          false
+        ]
+      },
+      "platform_balance": {
+        "type": "int",
+        "nullable": false,
+        "examples": [
+          0
+        ]
+      },
+      "hierarchical_role": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "consultor",
+          "socio_operador",
+          "mini_agencia"
+        ]
+      },
+      "function": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "consultor"
+        ]
+      },
+      "is_active": {
+        "type": "bool",
+        "nullable": false,
+        "examples": [
+          true
+        ]
+      },
+      "is_verified": {
+        "type": "bool",
+        "nullable": false,
+        "examples": [
+          false
+        ]
+      },
+      "cpf": {
+        "type": "NoneType",
+        "nullable": true,
+        "examples": [
+          "11144477735"
+        ]
+      },
+      "google_maps_url": {
+        "type": "NoneType",
+        "nullable": true,
+        "examples": []
+      },
+      "hierarchical_user_id": {
+        "type": "str",
+        "nullable": true,
+        "examples": [
+          "6a837a84-e718-4f4d-b13a-2b831fb49c90"
+        ]
+      },
+      "profile_image": {
+        "type": "NoneType",
+        "nullable": true,
+        "examples": []
+      },
+      "theme": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "light"
+        ]
+      }
+    }
+  },
+  "hierarchical_users": {
+    "count": 1,
+    "fields": {
+      "_id": {
+        "type": "ObjectId",
+        "nullable": false,
+        "examples": [
+          "68d94aa48b475b3d82b760a9"
+        ]
+      },
+      "id": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "6a837a84-e718-4f4d-b13a-2b831fb49c90"
+        ]
+      },
+      "email": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "carlos@agitocash.com"
+        ]
+      },
+      "full_name": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "Carlos Silva Operador"
+        ]
+      },
+      "phone": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "11999999999"
+        ]
+      },
+      "whatsapp": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "11999999999"
+        ]
+      },
+      "state": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "São Paulo"
+        ]
+      },
+      "city": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "São Paulo"
+        ]
+      },
+      "role": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "socio_operador"
+        ]
+      },
+      "balance": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          0.0
+        ]
+      },
+      "cashback_balance": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          0.0
+        ]
+      },
+      "commission_balance": {
+        "type": "float",
+        "nullable": false,
+        "examples": [
+          0.0
+        ]
+      },
+      "parent_user_id": {
+        "type": "NoneType",
+        "nullable": true,
+        "examples": []
+      },
+      "network_users": {
+        "type": "list",
+        "nullable": false,
+        "examples": [
+          []
+        ]
+      },
+      "is_active": {
+        "type": "bool",
+        "nullable": false,
+        "examples": [
+          true
+        ]
+      },
+      "created_at": {
+        "type": "datetime",
+        "nullable": false,
+        "examples": [
+          "2025-09-28 14:48:04.261000"
+        ]
+      },
+      "created_by": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "master-demo-001"
+        ]
+      },
+      "password_hash": {
+        "type": "str",
+        "nullable": false,
+        "examples": [
+          "$2b$12$lrPZlfSmysiE/4k4ogNchOzC1WmV8NGH3/5FtOa94.raZb9u/63pG"
+        ]
+      }
+    }
+  }
+}

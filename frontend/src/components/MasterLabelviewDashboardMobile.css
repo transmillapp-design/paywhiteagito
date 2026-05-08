@@ -1,0 +1,102 @@
+/* Responsividade Master Labelview Dashboard */
+
+/* Mobile - Sidebar collapsible */
+@media (max-width: 768px) {
+  .labelview-sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 1000;
+    transition: left 0.3s ease;
+  }
+
+  .labelview-sidebar.open {
+    left: 0;
+  }
+
+  .labelview-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .labelview-sidebar-overlay.visible {
+    display: block;
+  }
+
+  .labelview-content {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .labelview-mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .labelview-hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    padding: 8px;
+  }
+
+  .labelview-hamburger span {
+    display: block;
+    width: 24px;
+    height: 3px;
+    background: currentColor;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+}
+
+/* Desktop - Sidebar sempre visível */
+@media (min-width: 769px) {
+  .labelview-sidebar {
+    position: relative;
+    width: 256px;
+  }
+
+  .labelview-sidebar-overlay {
+    display: none !important;
+  }
+
+  .labelview-mobile-header {
+    display: none;
+  }
+
+  .labelview-hamburger {
+    display: none;
+  }
+}
+
+/* Tabelas responsivas */
+@media (max-width: 768px) {
+  .labelview-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .labelview-table {
+    min-width: 600px;
+  }
+}
+
+/* Cards em mobile */
+@media (max-width: 640px) {
+  .labelview-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .labelview-stats-card {
+    padding: 1rem;
+  }
+}

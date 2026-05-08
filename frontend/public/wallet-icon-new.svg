@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background com bordas arredondadas -->
+  <rect width="512" height="512" rx="80" ry="80" fill="url(#grad)"/>
+  
+  <!-- Carteira principal -->
+  <g transform="translate(80,120)">
+    <!-- Corpo da carteira com sombra -->
+    <rect x="0" y="40" width="352" height="200" rx="25" ry="25" fill="white" opacity="0.95" filter="url(#shadow)"/>
+    
+    <!-- Cartão principal (verde) -->
+    <rect x="20" y="70" width="312" height="50" rx="12" ry="12" fill="#ffffff" stroke="#10B981" stroke-width="3"/>
+    
+    <!-- Chip do cartão -->
+    <rect x="40" y="85" width="25" height="20" rx="3" ry="3" fill="#FFD700"/>
+    
+    <!-- Linha do cartão -->
+    <line x1="80" y1="95" x2="250" y2="95" stroke="#10B981" stroke-width="2" opacity="0.7"/>
+    
+    <!-- Segundo cartão (mais escuro) -->
+    <rect x="20" y="140" width="312" height="50" rx="12" ry="12" fill="#f3f4f6" stroke="#059669" stroke-width="2"/>
+    
+    <!-- Chip do segundo cartão -->
+    <rect x="40" y="155" width="25" height="20" rx="3" ry="3" fill="#C0C0C0"/>
+    
+    <!-- Terceiro cartão (parcial) -->
+    <rect x="20" y="200" width="312" height="30" rx="8" ry="8" fill="#e5e7eb" stroke="#047857" stroke-width="1"/>
+  </g>
+  
+  <!-- Símbolo $ no topo -->
+  <circle cx="256" cy="80" r="30" fill="white" opacity="0.9"/>
+  <text x="256" y="95" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#10B981">$</text>
+  
+  <!-- Texto "COIN" na parte inferior -->
+  <text x="256" y="460" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="white" opacity="0.9">COIN</text>
+</svg>

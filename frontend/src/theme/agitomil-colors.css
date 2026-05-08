@@ -1,0 +1,61 @@
+/* AGITOMIL - Paleta de Cores Militar/Tática */
+
+:root {
+  /* Cores Primárias */
+  --color-olive: #556B2F;          /* Verde-Oliva Principal */
+  --color-olive-light: #6B8239;    /* Verde-Oliva Claro */
+  --color-olive-dark: #3F5123;     /* Verde-Oliva Escuro */
+  --color-olive-darker: #2A3618;   /* Verde-Oliva Mais Escuro */
+  
+  --color-gray: #4B4B4B;           /* Cinza Escuro Principal */
+  --color-gray-light: #6B6B6B;     /* Cinza Claro */
+  --color-gray-medium: #8B8B8B;
+  --color-gray-lighter: #ABABAB;
+  
+  --color-gold: #D4AF37;           /* Dourado Principal */
+  --color-gold-light: #E5C34A;     /* Dourado Claro */
+  --color-gold-dark: #B89B2F;      /* Dourado Escuro */
+  
+  /* Cores de Suporte */
+  --color-white: #FFFFFF;
+  --color-silver: #C0C0C0;
+  --color-black: #1A1A1A;
+  
+  /* Cores de Status */
+  --color-success: #556B2F;
+  --color-warning: #D4AF37;
+  --color-error: #8B0000;
+  --color-info: #4B4B4B;
+  
+  /* Gradientes Mesclados (estilo da imagem) */
+  --gradient-dark-olive: linear-gradient(135deg, #2A3618 0%, #1A1A1A 100%);
+  --gradient-olive-gray: linear-gradient(135deg, #3F5123 0%, #4B4B4B 100%);
+  --gradient-gold-olive: linear-gradient(135deg, #D4AF37 0%, #556B2F 100%);
+  --gradient-subtle-olive: linear-gradient(180deg, #3F5123 0%, #2A3618 100%);
+  
+  /* Sombras */
+  --shadow-gold: 0 4px 12px rgba(212, 175, 55, 0.3);
+  --shadow-olive: 0 4px 12px rgba(85, 107, 47, 0.3);
+}
+
+/* Classes Utilitárias */
+.bg-olive { background-color: var(--color-olive); }
+.bg-olive-light { background-color: var(--color-olive-light); }
+.bg-olive-dark { background-color: var(--color-olive-dark); }
+.bg-olive-darker { background-color: var(--color-olive-darker); }
+
+.bg-gray { background-color: var(--color-gray); }
+.bg-gray-light { background-color: var(--color-gray-light); }
+
+.bg-gold { background-color: var(--color-gold); }
+.bg-gold-light { background-color: var(--color-gold-light); }
+.bg-gold-dark { background-color: var(--color-gold-dark); }
+
+.text-olive { color: var(--color-olive); }
+.text-gold { color: var(--color-gold); }
+.text-gray { color: var(--color-gray); }
+.text-silver { color: var(--color-silver); }
+
+.gradient-dark-olive { background: var(--gradient-dark-olive); }
+.gradient-olive-gray { background: var(--gradient-olive-gray); }
+.gradient-gold-olive { background: var(--gradient-gold-olive); }

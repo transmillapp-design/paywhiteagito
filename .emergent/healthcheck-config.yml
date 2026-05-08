@@ -1,0 +1,33 @@
+# Configuração de Health Check para Emergent Platform
+# Sugestão de configuração para resolver timeout de deploy
+
+healthcheck:
+  # Backend health check
+  backend:
+    endpoint: /healthz
+    port: 8001
+    protocol: http
+    initialDelaySeconds: 180  # 3 minutos - aguarda build terminar
+    periodSeconds: 30
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 10      # 10 tentativas = ~5 minutos de tolerância
+    
+  # Frontend health check
+  frontend:
+    endpoint: /
+    port: 3000
+    protocol: http
+    initialDelaySeconds: 180  # 3 minutos
+    periodSeconds: 30
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 10
+
+# Tempo máximo de deploy
+deployment:
+  timeout: 900  # 15 minutos total para deploy
+  
+# Build settings
+build:
+  timeout: 600  # 10 minutos para build

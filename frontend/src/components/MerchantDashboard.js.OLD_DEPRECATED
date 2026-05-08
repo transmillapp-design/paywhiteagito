@@ -1,0 +1,2911 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../App';
+import { useSearchParams } from 'react-router-dom';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Label } from './ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { toast } from 'sonner';
+import { QRCodeCanvas } from 'qrcode.react';
+import AgitoCoinLogoCompact from './AgitoCoinLogoCompact';
+import ThemeToggle from './ThemeToggle';
+import USDTCalculator from './USDTCalculator';
+import USDTTransfer from './USDTTransfer';
+import CompleteUserProfile from './CompleteUserProfile';
+import MerchantCatalog from './MerchantCatalog';
+import MerchantOrders from './MerchantOrders';
+import { 
+  Store, 
+  QrCode, 
+  TrendingUp, 
+  Settings,
+  Package,
+  ShoppingBag, 
+  History, 
+  LogOut,
+  User,
+  Users,
+  FileImage,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Gift,
+  Building2,
+  Percent,
+  Smartphone,
+  Download,
+  Eye,
+  EyeOff,
+  Bell,
+  BellRing,
+  Copy,
+  Share,
+  MessageCircle,
+  CreditCard,
+  MapPin,
+  Coins,
+  UserCog
+} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import axios from 'axios';
+import SubUsersManager from './SubUsersManager';
+
+const MerchantDashboard = () => {
+  const { user, logout, updateUser, token, API } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('pos');
+  const [balance, setBalance] = useState({ 
+    balance: 0, 
+    cashback_balance: 0, 
+    usdt_balance: 0,
+    total: 0 
+  });
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState({ balance: true, transactions: true });
+  
+  // Função para tratar erros estruturados do backend
+  const handleApiError = (error, defaultMessage = 'Erro na operação') => {
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail;
+      
+      if (Array.isArray(detail)) {
+        const errorMessages = detail.map(err => err.msg).slice(0, 2);
+        return errorMessages.join('; ');
+      } else if (typeof detail === 'string') {
+        return detail;
+      } else {
+        return 'Erro de validação nos dados';
+      }
+    } else {
+      return defaultMessage;
+    }
+  };
+  // QR Code generator states
+  const [qrCode, setQrCode] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [saleAmount, setSaleAmount] = useState('');
+  const [qrSaleAmount, setQrSaleAmount] = useState(0);
+  
+  // Cashback rate states
+  const [cashbackRate, setCashbackRate] = useState(user?.cashback_rate || 0);
+  const [newCashbackRate, setNewCashbackRate] = useState('');
+  const [cashbackLoading, setCashbackLoading] = useState(false);
+  
+  // Delivery settings states
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
+  
+  // Withdrawal states
+  const [withdrawalData, setWithdrawalData] = useState({ 
+    amount: '', 
+    pix_key: '', 
+    pix_key_type: 'cpf',
+    bank_name: ''
+  });
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false);
+
+  // Deposit states
+  const [depositData, setDepositData] = useState({ 
+    amount: '', 
+    method: 'pix', 
+    currency: 'BRL' 
+  });
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [pixDetails, setPixDetails] = useState(null);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(null);
+
+  // Profile states
+  const [profileData, setProfileData] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+    company_name: '',
+    cnpj: '',
+    address: '',
+    whatsapp: '',
+    state: '',
+    city: '',
+    neighborhood: '',
+    business_segment: '',
+    google_maps_url: '',
+    menu_catalog_url: '',
+    profile_image: '',
+    // Novos campos bancários
+    pix_key: '',
+    pix_key_type: '',
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    admin_name: '',
+    admin_cpf: '',
+    admin_email: '',
+    admin_whatsapp: ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  
+  // Form options states
+  const [businessSegments, setBusinessSegments] = useState([]);
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [filteredCities, setFilteredCities] = useState([]);
+  const [loadingSegments, setLoadingSegments] = useState(false);
+  const [loadingFilters, setLoadingFilters] = useState(false);
+  
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // Notifications states
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Referral system states
+  const [referralData, setReferralData] = useState(null);
+  const [networkData, setNetworkData] = useState(null);
+  const [referralLoading, setReferralLoading] = useState(true);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  useEffect(() => {
+    fetchMerchantData();
+    fetchBusinessSegments();
+    fetchLocationFilters();
+    fetchNotifications(); // Carregar notificações
+    fetchReferralData(); // Carregar dados de indicação
+    fetchNetworkData(); // Carregar rede de indicações
+    fetchExchangeRate(); // Load exchange rate
+    // Preencher dados do perfil com informações atuais do usuário
+    if (user) {
+      setProfileData({
+        full_name: user.full_name || '',
+        phone: user.phone || '',
+        email: user.email || '',
+        company_name: user.company_name || '',
+        cnpj: user.cnpj || '',
+        address: user.address || '',
+        whatsapp: user.whatsapp || '',
+        state: user.state || '',
+        city: user.city || '',
+        neighborhood: user.neighborhood || '',
+        business_segment: user.business_segment || '',
+        google_maps_url: user.google_maps_url || '',
+        menu_catalog_url: user.menu_catalog_url || '',
+        profile_image: user.profile_image || '',
+        // Novos campos bancários
+        pix_key: user.pix_key || '',
+        pix_key_type: user.pix_key_type || '',
+        cep: user.cep || '',
+        street: user.street || '',
+        number: user.number || '',
+        complement: user.complement || '',
+        admin_name: user.admin_name || '',
+        admin_cpf: user.admin_cpf || '',
+        admin_email: user.admin_email || '',
+        admin_whatsapp: user.admin_whatsapp || ''
+      });
+      setImagePreview(user.profile_image || null);
+      
+      // Se o usuário já tem um estado selecionado, carregar as cidades
+      if (user.state) {
+        fetchCitiesByState(user.state);
+      }
+    }
+  }, [user]);
+
+  // Ler parâmetro tab da URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      console.log('Setting merchant tab from URL:', tabParam);
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const fetchMerchantData = async () => {
+    try {
+      // Fetch balance
+      const balanceResponse = await axios.get(`${API}/user/balance`, { headers });
+      setBalance(balanceResponse.data);
+      setLoading(prev => ({ ...prev, balance: false }));
+
+      // Fetch transactions
+      const transactionsResponse = await axios.get(`${API}/transactions/history`, { headers });
+      setTransactions(transactionsResponse.data);
+      setLoading(prev => ({ ...prev, transactions: false }));
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Erro ao carregar dados');
+    }
+  };
+
+  // Função para carregar segmentos de negócio ativos
+  const fetchBusinessSegments = async () => {
+    setLoadingSegments(true);
+    try {
+      const response = await axios.get(`${API}/business-segments/active`);
+      setBusinessSegments(response.data.segments || []);
+    } catch (error) {
+      console.error('Error fetching business segments:', error);
+      toast.error('Erro ao carregar segmentos de negócio');
+    } finally {
+      setLoadingSegments(false);
+    }
+  };
+
+  // Função para carregar filtros de localização (estados, cidades)
+  const fetchLocationFilters = async () => {
+    setLoadingFilters(true);
+    try {
+      const response = await axios.get(`${API}/api/stores/filters`);
+      setStates(response.data.states || []);
+      setCities(response.data.cities || []);
+    } catch (error) {
+      console.error('Error fetching location filters:', error);
+      toast.error('Erro ao carregar dados de localização');
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  // Função para filtrar cidades por estado selecionado
+  const handleStateChange = (selectedState) => {
+    setProfileData({ ...profileData, state: selectedState, city: '' });
+    
+    // Buscar cidades específicas do estado selecionado
+    fetchCitiesByState(selectedState);
+  };
+
+  // Função para buscar cidades de um estado específico
+  const fetchCitiesByState = async (state) => {
+    if (!state) {
+      setFilteredCities([]);
+      return;
+    }
+    
+    setLoadingFilters(true);
+    try {
+      const response = await axios.get(`${API}/api/stores/cities/${encodeURIComponent(state)}`);
+      setFilteredCities(response.data.cities || []);
+    } catch (error) {
+      console.error('Error fetching cities by state:', error);
+      toast.error('Erro ao carregar cidades do estado');
+      setFilteredCities([]);
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  const generateQRCode = async (e) => {
+    e.preventDefault();
+    
+    if (!saleAmount || parseFloat(saleAmount) <= 0) {
+      toast.error('Digite um valor válido para a venda');
+      return;
+    }
+    
+    setQrLoading(true);
+    
+    try {
+      const response = await axios.post(`${API}/merchant/qr-code`, 
+        { amount: parseFloat(saleAmount) },
+        { headers }
+      );
+      setQrCode(response.data);
+      setQrSaleAmount(parseFloat(saleAmount));
+      toast.success(`QR Code gerado para venda de ${formatCurrency(parseFloat(saleAmount))}!`);
+    } catch (error) {
+      console.error('QR Code error:', error);
+      toast.error('Erro ao gerar QR Code');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const updateCashbackRate = async (e) => {
+    e.preventDefault();
+    setCashbackLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/merchant/cashback-rate`,
+        { cashback_rate: parseFloat(newCashbackRate) },
+        { headers }
+      );
+      
+      setCashbackRate(parseFloat(newCashbackRate));
+      setNewCashbackRate('');
+      toast.success('Taxa de cashback atualizada com sucesso!');
+    } catch (error) {
+      console.error('Cashback error:', error);
+      toast.error(handleApiError(error, 'Erro ao atualizar taxa'));
+    } finally {
+      setCashbackLoading(false);
+    }
+  };
+
+  const updateDeliverySettings = async () => {
+    setDeliveryLoading(true);
+
+    // Validar que pelo menos uma opção está selecionada
+    if (!merchantProfile?.accepts_pickup && !merchantProfile?.accepts_delivery) {
+      toast.error('Selecione pelo menos um tipo de entrega');
+      setDeliveryLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.put(`${API}/merchant/profile`,
+        {
+          accepts_pickup: merchantProfile.accepts_pickup,
+          accepts_delivery: merchantProfile.accepts_delivery,
+          preparation_time: parseInt(merchantProfile.preparation_time || merchantProfile.estimated_delivery_time)
+        },
+        { headers }
+      );
+      
+      toast.success('Configurações de entrega atualizadas com sucesso!');
+      // Atualizar merchantProfile com resposta do servidor
+      if (response.data.merchant) {
+        setMerchantProfile(response.data.merchant);
+      }
+    } catch (error) {
+      console.error('Delivery settings error:', error);
+      toast.error(handleApiError(error, 'Erro ao atualizar configurações'));
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
+
+  const handleWithdrawal = async (e) => {
+    e.preventDefault();
+    setWithdrawalLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/transactions/withdrawal`,
+        { 
+          ...withdrawalData, 
+          amount: parseFloat(withdrawalData.amount)
+        },
+        { headers }
+      );
+      
+      toast.success(
+        `Saque processado via PIX! 
+         Valor: ${formatCurrency(response.data.amount)}
+         Taxa: ${formatCurrency(response.data.fee)}
+         ID XGate: ${response.data.xgate_transaction_id || 'N/A'}`,
+        { duration: 5000 }
+      );
+      setWithdrawalData({ amount: '', pix_key: '', pix_key_type: 'cpf', bank_name: '' });
+      fetchMerchantData(); // Refresh data
+    } catch (error) {
+      console.error('Withdrawal error:', error);
+      toast.error(handleApiError(error, 'Erro ao realizar saque'));
+    } finally {
+      setWithdrawalLoading(false);
+    }
+  };
+
+  const handleDeposit = async (e) => {
+    e.preventDefault();
+    setDepositLoading(true);
+
+    try {
+      let response;
+      const amount = parseFloat(depositData.amount);
+      
+      if (depositData.method === 'pix') {
+        // Depósito direto em BRL via XGate PIX
+        response = await axios.post(`${API}/xgate/pix-deposit`, 
+          { 
+            amount: amount,
+            description: `Depósito Lojista AgitoCoin via PIX - R$ ${amount.toFixed(2)}`
+          },
+          { headers }
+        );
+      } else if (depositData.method === 'pix-usdt') {
+        // Depósito convertido para USDT via XGate
+        response = await axios.post(`${API}/xgate/convert-brl-usdt`, 
+          { 
+            brl_amount: amount
+          },
+          { headers }
+        );
+      }
+      
+      if (response.data.success) {
+        const pixData = response.data.data;
+        
+        // Store PIX details and show modal
+        setPixDetails({
+          ...pixData,
+          currency: depositData.method === 'pix-usdt' ? 'USDT' : 'BRL',
+          original_amount: amount
+        });
+        setShowPixModal(true);
+        
+        const currency = depositData.method === 'pix-usdt' ? 'USDT' : 'BRL';
+        toast.success(`PIX gerado com sucesso para depósito em ${currency}! Use o QR Code para pagar.`);
+      } else {
+        throw new Error(response.data.error);
+      }
+      
+      setDepositData({ amount: '', method: 'pix', currency: 'BRL' });
+      fetchMerchantData(); // Refresh data
+    } catch (error) {
+      console.error('Deposit error:', error);
+      const errorMessage = handleApiError(error, 'Erro ao realizar depósito');
+      toast.error(errorMessage);
+    } finally {
+      setDepositLoading(false);
+    }
+  };
+
+  // Função para buscar taxa de câmbio
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await axios.get(`${API}/xgate/exchange-rate`, { headers });
+      if (response.data.success) {
+        setExchangeRate(response.data.data.rate);
+      }
+    } catch (error) {
+      console.error('Error fetching exchange rate:', error);
+    }
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('pt-BR');
+  };
+
+  // Profile management functions
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        toast.error('Por favor, selecione apenas arquivos de imagem');
+        return;
+      }
+      
+      // Validar tamanho (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Imagem deve ter no máximo 2MB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64String = event.target.result;
+        setImagePreview(base64String);
+        
+        // Atualizar imagem automaticamente
+        try {
+          await axios.put(`${API}/user/profile-image`, 
+            { profile_image: base64String },
+            { headers }
+          );
+          
+          // Buscar dados do usuário atualizados para atualizar o header
+          const profileResponse = await axios.get(`${API}/user/profile`, { headers });
+          updateUser(profileResponse.data);
+          
+          toast.success('Logo da empresa atualizado!');
+        } catch (error) {
+          console.error('Error updating image:', error);
+          toast.error('Erro ao atualizar logo da empresa');
+          setImagePreview(user?.profile_image || null);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+
+    try {
+      await axios.put(`${API}/user/profile-data`, profileData, { headers });
+      toast.success('Perfil da loja atualizado com sucesso!');
+      
+      // Optionally reload user data if needed
+      // fetchUserData();
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast.error(handleApiError(error, 'Erro ao atualizar perfil da loja'));
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      toast.error('A confirmação de senha não confere');
+      return;
+    }
+
+    setProfileLoading(true);
+
+    try {
+      await axios.put(`${API}/user/password`, {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      }, { headers });
+      
+      toast.success('Senha atualizada com sucesso!');
+      setPasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+    } catch (error) {
+      console.error('Password update error:', error);
+      toast.error(handleApiError(error, 'Erro ao atualizar senha'));
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Notifications functions
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(`${API}/notifications`, { headers });
+      setNotifications(response.data.notifications || []);
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await axios.put(`${API}/notifications/${notificationId}/read`, {}, { headers });
+      await fetchNotifications(); // Refresh notifications
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Referral system functions
+  const fetchReferralData = async () => {
+    try {
+      const response = await axios.get(`${API}/referral/my-code`, { headers });
+      setReferralData(response.data);
+    } catch (error) {
+      console.error('Error fetching referral data:', error);
+      toast.error('Erro ao carregar dados de indicação');
+    }
+  };
+
+  const fetchNetworkData = async () => {
+    try {
+      const response = await axios.get(`${API}/referral/my-network`, { headers });
+      setNetworkData(response.data);
+      setReferralLoading(false);
+    } catch (error) {
+      console.error('Error fetching network data:', error);
+      toast.error('Erro ao carregar dados da rede de indicações');
+      setReferralLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text) => {
+    try {
+      // Tentar usar a API moderna first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        toast.success('Copiado para a área de transferência!');
+      } else {
+        // Fallback para browsers antigos ou contextos não seguros
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          toast.success('Copiado para a área de transferência!');
+        } else {
+          throw new Error('Falha ao copiar usando fallback');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao copiar para clipboard:', error);
+      toast.error('Erro ao copiar. Tente selecionar e copiar manualmente.');
+    }
+  };
+
+  const shareOnWhatsApp = () => {
+    if (referralData?.whatsapp_link) {
+      window.open(referralData.whatsapp_link, '_blank');
+    }
+  };
+
+  const salesTransactions = transactions.filter(t => t.transaction_type === 'sale');
+  const totalSales = salesTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors">
+      {/* Mobile-optimized container */}
+      <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Header - Mobile Optimized */}
+        <div className="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+            {/* Profile Picture - Smaller on mobile */}
+            {user?.profile_image ? (
+              <img
+                src={user.profile_image}
+                alt="Logo da empresa"
+                className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full object-cover border-2 border-emerald-200 shadow-md flex-shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-blue-200 dark:border-blue-700 shadow-md flex-shrink-0">
+                <span className="text-blue-600 dark:text-blue-300 font-bold text-xs sm:text-sm lg:text-lg">
+                  {(user?.company_name || user?.full_name)?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+              </div>
+            )}
+            
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm sm:text-lg lg:text-2xl xl:text-3xl font-bold text-gray-900 dark:text-white leading-tight truncate">
+                {user?.company_name || user?.full_name} 🏪
+              </h1>
+              <div className="hidden sm:flex items-center space-x-2 mt-1">
+                <AgitoCoinLogoCompact width={120} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
+            {/* Notifications Bell */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-1.5 sm:p-2 h-8 sm:h-9"
+              >
+                {unreadCount > 0 ? <BellRing size={14} className="text-blue-600 sm:w-4 sm:h-4" /> : <Bell size={14} className="sm:w-4 sm:h-4" />}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[10px] sm:text-xs">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 border-b dark:border-gray-700">
+                    <h3 className="font-semibold dark:text-white">Notificações {unreadCount > 0 && `(${unreadCount} não lidas)`}</h3>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      <Bell size={32} className="mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma notificação</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y dark:divide-gray-700">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id}
+                          className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-l-blue-500' : ''}`}
+                          onClick={() => !notification.is_read && markNotificationAsRead(notification.id)}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className="font-medium text-sm dark:text-white">{notification.title}</h4>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(notification.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
+                          {!notification.is_read && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400 mt-1 block">Nova</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="p-1.5 sm:p-2 h-8 sm:h-9 text-xs sm:text-sm"
+                  data-testid="merchant-menu-btn"
+                >
+                  <Store size={14} className="sm:w-4 sm:h-4" />
+                  <span className="ml-1 sm:ml-2 hidden sm:inline">{(user?.company_name || user?.full_name)?.split(' ')[0] || 'Menu'}</span>
+                  <span className="ml-1 sm:hidden">Menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem 
+                  onClick={() => setShowProfileModal(true)}
+                  className="cursor-pointer"
+                >
+                  <User className="mr-2" size={16} />
+                  Meu Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={logout}
+                  className="cursor-pointer text-red-600"
+                >
+                  <LogOut className="mr-2" size={16} />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Business Stats Cards - Mobile Optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <Card className="bg-agito-card-light dark:bg-agito-card-dark text-white overflow-hidden">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-center justify-between h-full min-h-[80px]">
+                <div className="flex flex-col justify-center flex-1">
+                  <p className="text-white/80 text-sm font-medium mb-2">Saldo Disponível</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white leading-tight" data-testid="merchant-balance">
+                    {formatCurrency(balance.balance)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center ml-4">
+                  <DollarSign className="text-white/60" size={28} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-agito-card-light dark:bg-agito-card-dark text-white overflow-hidden">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-center justify-between h-full min-h-[80px]">
+                <div className="flex flex-col justify-center flex-1">
+                  <p className="text-white/80 text-sm font-medium mb-2">Vendas Hoje</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white leading-tight" data-testid="total-sales">
+                    {formatCurrency(totalSales)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center ml-4">
+                  <TrendingUp className="text-white/60" size={28} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-agito-card-light dark:bg-agito-card-dark text-white overflow-hidden">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-center justify-between h-full min-h-[80px]">
+                <div className="flex flex-col justify-center flex-1">
+                  <p className="text-white/80 text-sm font-medium mb-2">Cashback Oferecido</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white leading-tight" data-testid="cashback-rate">
+                    {cashbackRate}%
+                  </p>
+                </div>
+                <div className="flex items-center justify-center ml-4">
+                  <Gift className="text-white/60" size={28} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-agito-card-light dark:bg-agito-card-dark text-white overflow-hidden">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex items-center justify-between h-full min-h-[80px]">
+                <div className="flex flex-col justify-center flex-1">
+                  <p className="text-white/80 text-sm font-medium mb-2">Total de Vendas</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white leading-tight" data-testid="sales-count">
+                    {salesTransactions.length}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center ml-4">
+                  <Store className="text-white/60" size={28} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Mobile and Desktop Tab Navigation */}
+          <div className="w-full">
+            {/* Mobile: Scrollable horizontal tabs with better spacing */}
+            <div className="block sm:hidden">
+              <div className="overflow-x-auto pb-2">
+                <TabsList className="flex w-max bg-white rounded-xl shadow-sm p-2 gap-2 min-w-full">
+                  <TabsTrigger value="pos" data-testid="pos-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <QrCode className="mr-2" size={16} />
+                    <span>POS</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="sales" data-testid="sales-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <History className="mr-2" size={16} />
+                    <span>Vendas</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="extract" data-testid="extract-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <DollarSign className="mr-2" size={16} />
+                    <span>Extrato</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="deposit" data-testid="deposit-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <ArrowDownLeft className="mr-2" size={16} />
+                    <span>Depósito</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="withdrawal" data-testid="withdrawal-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <ArrowUpRight className="mr-2" size={16} />
+                    <span>Sacar</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="usdt" data-testid="usdt-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <Coins className="mr-2" size={16} />
+                    <span>USDT</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="referral" data-testid="referral-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <Users className="mr-2" size={16} />
+                    <span>Indicar</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" data-testid="settings-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <Settings className="mr-2" size={16} />
+                    <span>Config</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="catalog" data-testid="catalog-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <Package className="mr-2" size={16} />
+                    <span>Catálogo</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="orders" data-testid="orders-tab" className="flex items-center justify-center px-4 py-3 text-sm font-medium whitespace-nowrap min-w-[80px]">
+                    <ShoppingBag className="mr-2" size={16} />
+                    <span>Pedidos</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+
+            {/* Desktop: Grid layout */}
+            <div className="hidden sm:block">
+              <TabsList className="grid w-full grid-cols-11 bg-white rounded-xl shadow-sm">
+                <TabsTrigger value="pos" data-testid="pos-tab">
+                  <QrCode className="mr-2" size={16} />
+                  POS
+                </TabsTrigger>
+                <TabsTrigger value="sales" data-testid="sales-tab">
+                  <History className="mr-2" size={16} />
+                  Vendas
+                </TabsTrigger>
+                <TabsTrigger value="extract" data-testid="extract-tab">
+                  <DollarSign className="mr-2" size={16} />
+                  Extrato
+                </TabsTrigger>
+                <TabsTrigger value="deposit" data-testid="deposit-tab">
+                  <ArrowDownLeft className="mr-2" size={16} />
+                  Depósito
+                </TabsTrigger>
+                <TabsTrigger value="withdrawal" data-testid="withdrawal-tab">
+                  <ArrowUpRight className="mr-2" size={16} />
+                  Sacar
+                </TabsTrigger>
+                <TabsTrigger value="usdt" data-testid="usdt-tab">
+                  <Coins className="mr-2" size={16} />
+                  USDT
+                </TabsTrigger>
+                <TabsTrigger value="referral" data-testid="referral-tab">
+                  <Users className="mr-2" size={16} />
+                  Indicar
+                </TabsTrigger>
+                <TabsTrigger value="documents" data-testid="documents-tab">
+                  <FileImage className="mr-2" size={16} />
+                  Docs
+                </TabsTrigger>
+                <TabsTrigger value="settings" data-testid="settings-tab">
+                  <Settings className="mr-2" size={16} />
+                  Config
+                </TabsTrigger>
+                <TabsTrigger value="catalog" data-testid="catalog-tab">
+                  <Package className="mr-2" size={16} />
+                  Catálogo
+                </TabsTrigger>
+                <TabsTrigger value="orders" data-testid="orders-tab">
+                  <ShoppingBag className="mr-2" size={16} />
+                  Pedidos
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
+
+          {/* POS Tab */}
+          <TabsContent value="pos" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* QR Code Generator */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <QrCode size={20} />
+                    <span>Gerar QR Code</span>
+                  </CardTitle>
+                  <CardDescription>Digite o valor da venda e gere o QR Code para recebimento</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <form onSubmit={generateQRCode} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-amount">Valor da Venda (R$)</Label>
+                      <Input
+                        id="sale-amount"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="0,00"
+                        value={saleAmount}
+                        onChange={(e) => setSaleAmount(e.target.value)}
+                        required
+                        className="input-field text-lg font-semibold"
+                        data-testid="sale-amount-input"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Cliente pagará este valor e receberá {(cashbackRate * 0.50).toFixed(1)}% de cashback (50% da taxa oferecida)
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={qrLoading || !saleAmount}
+                      className="w-full btn-primary"
+                      data-testid="generate-qr-btn"
+                    >
+                      {qrLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Gerando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <QrCode size={16} />
+                          <span>Gerar QR Code {saleAmount ? `- ${formatCurrency(parseFloat(saleAmount))}` : ''}</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+
+                  {qrCode && (
+                    <div className="qr-code-display animate-fade-in text-center space-y-4 mt-6 p-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg border-2 border-emerald-200">
+                      {/* QR Code Visual */}
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3">QR Code</h4>
+                        <div className="flex justify-center mb-4">
+                          <div className="bg-white p-4 rounded-lg border-2 border-gray-200 shadow-sm">
+                            <QRCodeCanvas 
+                              value={qrCode.qr_code} 
+                              size={200}
+                              level="M"
+                              includeMargin={false}
+                              fgColor="#000000"
+                              bgColor="#FFFFFF"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">Cliente deve escanear com a câmera</p>
+                      </div>
+
+                      {/* Código Digitável */}
+                      <div className="border-t border-emerald-200 pt-4">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3">Código Digitável</h4>
+                        <div className="text-2xl font-bold text-blue-600 bg-white p-4 rounded border-2 border-blue-200 tracking-wider">
+                          {qrCode.digital_code}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Cliente pode digitar este código se a câmera não funcionar
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2 pt-4 border-t border-emerald-200">
+                        <div className="text-2xl font-bold text-emerald-600">
+                          {formatCurrency(qrSaleAmount)}
+                        </div>
+                        <p className="font-semibold text-gray-900">{qrCode.merchant_name}</p>
+                        <div className="flex items-center justify-center space-x-4">
+                          <Badge className="bg-emerald-100 text-emerald-800">
+                            {qrCode.cashback_rate}% cashback
+                          </Badge>
+                          <Badge className="bg-orange-100 text-orange-800">
+                            Cliente ganha: {formatCurrency(qrSaleAmount * (qrCode.cashback_rate / 100))}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-3 border-t border-emerald-200">
+                        <p className="text-sm text-gray-600">
+                          ID: {qrCode.merchant_id.substring(0, 8)}...
+                        </p>
+                        <div className="text-xs text-gray-500 mt-2 space-y-1">
+                          <p>📱 <strong>Opção 1:</strong> Cliente escaneia o QR Code</p>
+                          <p>⌨️ <strong>Opção 2:</strong> Cliente digita o código manually</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 pt-4">
+                        <Button
+                          onClick={() => navigator.clipboard?.writeText(qrCode.digital_code)}
+                          variant="outline"
+                          className="w-full"
+                          data-testid="copy-digital-code-btn"
+                        >
+                          <Download size={16} />
+                          Copiar Código
+                        </Button>
+                        
+                        <Button
+                          onClick={() => {
+                            setQrCode(null);
+                            setSaleAmount('');
+                            setQrSaleAmount(0);
+                          }}
+                          variant="outline"
+                          className="w-full"
+                          data-testid="new-qr-btn"
+                        >
+                          Gerar Novo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp size={20} />
+                    <span>Resumo do Dia</span>
+                  </CardTitle>
+                  <CardDescription>Performance das suas vendas hoje</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{salesTransactions.length}</p>
+                      <p className="text-sm text-blue-800">Vendas</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalSales)}</p>
+                      <p className="text-sm text-green-800">Faturamento</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-orange-800 font-medium">Cashback Distribuído</span>
+                      <span className="text-orange-600 font-bold">
+                        {formatCurrency(totalSales * (cashbackRate / 100))}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Sales History Tab */}
+          <TabsContent value="sales" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <History size={20} />
+                  <span>Extrato de Vendas</span>
+                </CardTitle>
+                <CardDescription>Histórico detalhado de vendas e cashback oferecido</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading.transactions ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-gray-600 mt-2">Carregando vendas...</p>
+                  </div>
+                ) : salesTransactions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Store className="mx-auto text-gray-400 mb-4" size={48} />
+                    <p className="text-gray-600">Nenhuma venda encontrada</p>
+                    <p className="text-sm text-gray-500 mt-1">Gere um QR Code para começar a vender</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    <div className="space-y-2">
+                      {/* Header do extrato */}
+                      <div className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 border-b-2 border-gray-200">
+                        <div>Data/Hora</div>
+                        <div>Cliente/Descrição</div>
+                        <div className="text-center">Tipo</div>
+                        <div className="text-right">Valor</div>
+                        <div className="text-right">Saldo</div>
+                      </div>
+
+                      {/* Expandir vendas para mostrar cashback oferecido separadamente */}
+                      {(() => {
+                        return salesTransactions.map((sale) => {
+                          const clientName = sale.description?.replace('Venda para ', '') || 'Cliente';
+                          const currentCashbackRate = user?.cashback_rate || 5;
+                          
+                          // Calcular cashback baseado no valor da venda
+                          const totalSaleAmount = sale.amount; // Valor que o lojista recebeu
+                          const fullSaleAmount = totalSaleAmount / (1 - (currentCashbackRate / 100));
+                          const cashbackAmount = fullSaleAmount - totalSaleAmount;
+
+                          return (
+                            <div 
+                              key={sale.id} 
+                              className="p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                              data-testid={`sale-${sale.id}`}
+                            >
+                              {/* Header da venda */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-2">
+                                  <div className="p-2 bg-green-100 rounded-lg">
+                                    <Store className="text-green-600" size={16} />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900">{clientName}</h3>
+                                    <p className="text-sm text-gray-500">
+                                      {new Date(sale.created_at).toLocaleString('pt-BR')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge className="bg-green-100 text-green-800">Concluída</Badge>
+                              </div>
+
+                              {/* Detalhes financeiros */}
+                              <div className="grid grid-cols-3 gap-4 p-3 bg-gray-50 rounded-lg">
+                                <div className="text-center">
+                                  <p className="text-xs text-gray-600 mb-1">Valor Total da Venda</p>
+                                  <p className="font-bold text-gray-900">{formatCurrency(fullSaleAmount)}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs text-orange-600 mb-1">Cashback Oferecido ({currentCashbackRate}%)</p>
+                                  <p className="font-bold text-orange-600">-{formatCurrency(cashbackAmount)}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs text-green-600 mb-1">Você Recebeu</p>
+                                  <p className="font-bold text-green-600">+{formatCurrency(totalSaleAmount)}</p>
+                                </div>
+                              </div>
+
+                              {/* Resumo */}
+                              <div className="mt-3 pt-3 border-t border-gray-200 text-center">
+                                <p className="text-sm text-gray-600">
+                                  <Gift className="inline w-4 h-4 mr-1" />
+                                  Cliente ganhou {formatCurrency(cashbackAmount)} de volta • Você lucrou {formatCurrency(totalSaleAmount)}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+
+                      {/* Saldo atual - Responsivo */}
+                      <div className="p-4 bg-emerald-50 rounded-lg border-2 border-emerald-200 font-bold">
+                        {/* Desktop */}
+                        <div className="hidden md:block space-y-2">
+                          <div className="text-emerald-800 text-lg">SALDOS ATUAIS</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-700 font-medium">BRL:</span>
+                              <span className="text-emerald-600 text-lg">{formatCurrency(balance.balance)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-yellow-700 font-medium">USDT:</span>
+                              <span className="text-yellow-600 text-base">{(balance.usdt_balance || 0).toFixed(6)} USDT</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mobile */}
+                        <div className="md:hidden space-y-2">
+                          <div className="text-emerald-800 text-sm font-bold">SALDOS ATUAIS</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-700 text-sm">BRL:</span>
+                              <span className="text-emerald-600 text-base">{formatCurrency(balance.balance)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-yellow-700 text-sm">USDT:</span>
+                              <span className="text-yellow-600 text-sm">{(balance.usdt_balance || 0).toFixed(6)} USDT</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Extract Tab - Complete Transaction History */}
+          <TabsContent value="extract" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign size={20} />
+                  <span>Extrato Completo</span>
+                </CardTitle>
+                <CardDescription>Histórico detalhado de todas as transações (vendas, cashback, saques, taxas)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading.transactions ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-gray-600 mt-2">Carregando extrato...</p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <DollarSign className="mx-auto text-gray-400 mb-4" size={48} />
+                    <p className="text-gray-600">Nenhuma transação encontrada</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    <div className="space-y-2">
+                      {/* Header do extrato - Oculto no mobile para economizar espaço */}
+                      <div className="hidden md:grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 border-b-2 border-gray-200">
+                        <div>Data/Hora</div>
+                        <div>Descrição</div>
+                        <div className="text-center">Tipo</div>
+                        <div className="text-right">Valor</div>
+                        <div className="text-right">Saldo</div>
+                      </div>
+
+                      {/* Expandir transações para mostrar cashback separadamente */}
+                      {(() => {
+                        const expandedTransactions = [];
+                        
+                        // Processar todas as transações do mais recente para o mais antigo
+                        const sortedTransactions = [...transactions].sort((a, b) => 
+                          new Date(b.created_at) - new Date(a.created_at)
+                        );
+
+                        sortedTransactions.forEach((transaction) => {
+                          // Para vendas, criar duas entradas: crédito da venda e débito do cashback
+                          if (transaction.transaction_type === 'sale') {
+                            const clientName = transaction.description?.replace('Venda para ', '') || 'Cliente';
+                            const currentCashbackRate = user?.cashback_rate || 5;
+                            
+                            // Calcular cashback oferecido
+                            const saleAmount = transaction.amount;
+                            const fullSaleAmount = saleAmount / (1 - (currentCashbackRate / 100));
+                            const cashbackAmount = fullSaleAmount - saleAmount;
+
+                            // Entrada do cashback oferecido (débito)
+                            if (cashbackAmount > 0.01) {
+                              expandedTransactions.push({
+                                ...transaction,
+                                id: transaction.id + '_cashback',
+                                transaction_type: 'cashback_offered',
+                                amount: cashbackAmount,
+                                description: `Cashback oferecido - ${clientName}`,
+                                is_credit: false
+                              });
+                            }
+
+                            // Entrada da venda (crédito)
+                            expandedTransactions.push({
+                              ...transaction,
+                              description: `Venda recebida - ${clientName}`,
+                              is_credit: true
+                            });
+                          } else {
+                            // Outras transações (withdrawal, withdrawal_fee, hierarchical_cashback, etc.)
+                            expandedTransactions.push({
+                              ...transaction,
+                              is_credit: transaction.transaction_type === 'deposit' || transaction.transaction_type === 'hierarchical_cashback'
+                            });
+                          }
+                        });
+
+                        // Calcular saldo para cada transação
+                        let currentBalance = 0;
+                        
+                        const transactionsWithBalance = expandedTransactions.reverse().map((transaction) => {
+                          if (transaction.is_credit) {
+                            currentBalance += transaction.amount;
+                          } else {
+                            currentBalance -= transaction.amount;
+                          }
+                          
+                          return { ...transaction, balanceAfter: currentBalance };
+                        }).reverse();
+
+                        return transactionsWithBalance.map((transaction) => (
+                          <div 
+                            key={transaction.id} 
+                            className="bg-white p-3 hover:bg-gray-50 rounded-lg border border-gray-100 text-sm mb-3"
+                            data-testid={`extract-${transaction.id}`}
+                          >
+                            {/* Layout Desktop - Grid de 5 colunas */}
+                            <div className="hidden md:grid grid-cols-5 gap-4 items-center">
+                              {/* Data/Hora */}
+                              <div className="text-gray-600">
+                                <div className="font-medium">
+                                  {new Date(transaction.created_at).toLocaleDateString('pt-BR')}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(transaction.created_at).toLocaleTimeString('pt-BR')}
+                                </div>
+                              </div>
+
+                              {/* Descrição */}
+                              <div>
+                                <div className="font-medium text-gray-900 mb-1">
+                                  {transaction.description}
+                                </div>
+                                <div className="text-xs text-gray-500 flex items-center space-x-1">
+                                  {transaction.transaction_type === 'sale' && <><Store size={12} /> <span>Venda</span></>}
+                                  {transaction.transaction_type === 'cashback_offered' && <><Gift size={12} /> <span>Cashback</span></>}
+                                  {transaction.transaction_type === 'withdrawal' && <><ArrowUpRight size={12} /> <span>Saque PIX</span></>}
+                                  {transaction.transaction_type === 'withdrawal_fee' && <><DollarSign size={12} /> <span>Taxa Saque</span></>}
+                                  {transaction.transaction_type === 'hierarchical_cashback' && <><Gift size={12} className="text-purple-600" /> <span className="text-purple-600">Comissão Extra</span></>}
+                                </div>
+                              </div>
+
+                              {/* Tipo */}
+                              <div className="text-center">
+                                <Badge 
+                                  className={`text-xs ${
+                                    transaction.is_credit 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {transaction.is_credit ? 'CRÉDITO' : 'DÉBITO'}
+                                </Badge>
+                              </div>
+
+                              {/* Valor */}
+                              <div className={`text-right font-bold ${
+                                transaction.is_credit ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {transaction.is_credit ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
+                              </div>
+
+                              {/* Saldo após transação */}
+                              <div className="text-right font-medium text-gray-900">
+                                {formatCurrency(transaction.balanceAfter)}
+                              </div>
+                            </div>
+
+                            {/* Layout Mobile - Stack vertical */}
+                            <div className="md:hidden space-y-2">
+                              {/* Primeira linha: Data e Valor */}
+                              <div className="flex justify-between items-start">
+                                <div className="text-gray-600">
+                                  <div className="text-xs font-medium">
+                                    {new Date(transaction.created_at).toLocaleDateString('pt-BR')}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(transaction.created_at).toLocaleTimeString('pt-BR', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </div>
+                                </div>
+                                <div className={`font-bold text-right ${
+                                  transaction.is_credit ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  <div className="flex items-center space-x-1">
+                                    <Badge 
+                                      className={`text-xs ${
+                                        transaction.is_credit 
+                                          ? 'bg-green-100 text-green-800' 
+                                          : 'bg-red-100 text-red-800'
+                                      }`}
+                                    >
+                                      {transaction.is_credit ? 'CRÉDITO' : 'DÉBITO'}
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-1">
+                                    {transaction.is_credit ? '+' : '-'}
+                                    {formatCurrency(transaction.amount)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Segunda linha: Descrição e tipo */}
+                              <div className="space-y-1">
+                                <div className="font-medium text-gray-900 text-sm leading-tight">
+                                  {transaction.description}
+                                </div>
+                                <div className="text-xs text-gray-500 flex items-center space-x-1">
+                                  {transaction.transaction_type === 'sale' && <><Store size={12} /> <span>Venda</span></>}
+                                  {transaction.transaction_type === 'cashback_offered' && <><Gift size={12} /> <span>Cashback Oferecido</span></>}
+                                  {transaction.transaction_type === 'withdrawal' && <><ArrowUpRight size={12} /> <span>Saque PIX</span></>}
+                                  {transaction.transaction_type === 'withdrawal_fee' && <><DollarSign size={12} /> <span>Taxa Saque</span></>}
+                                  {transaction.transaction_type === 'hierarchical_cashback' && <><Gift size={12} className="text-purple-600" /> <span className="text-purple-600">Comissão Extra</span></>}
+                                </div>
+                              </div>
+
+                              {/* Terceira linha: Saldo após transação */}
+                              <div className="flex justify-end">
+                                <div className="text-xs text-gray-600">
+                                  Saldo: <span className="font-medium text-gray-900">{formatCurrency(transaction.balanceAfter)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+
+                      {/* Saldo atual - Responsivo */}
+                      <div className="p-4 bg-emerald-50 rounded-lg border-2 border-emerald-200 font-bold">
+                        {/* Desktop */}
+                        <div className="hidden md:block space-y-2">
+                          <div className="text-emerald-800 text-lg">SALDOS ATUAIS</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-700 font-medium">BRL:</span>
+                              <span className="text-emerald-600 text-lg">{formatCurrency(balance.balance)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-yellow-700 font-medium">USDT:</span>
+                              <span className="text-yellow-600 text-base">{(balance.usdt_balance || 0).toFixed(6)} USDT</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mobile */}
+                        <div className="md:hidden space-y-2">
+                          <div className="text-emerald-800 text-sm font-bold">SALDOS ATUAIS</div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-700 text-sm">BRL:</span>
+                              <span className="text-emerald-600 text-base">{formatCurrency(balance.balance)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-yellow-700 text-sm">USDT:</span>
+                              <span className="text-yellow-600 text-sm">{(balance.usdt_balance || 0).toFixed(6)} USDT</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Deposit Tab */}
+          <TabsContent value="deposit" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <ArrowDownLeft size={20} />
+                  <span>Fazer Depósito via PIX</span>
+                </CardTitle>
+                <CardDescription>
+                  Adicione saldo à sua conta através de PIX instantâneo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleDeposit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Valor do Depósito (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        value={depositData.amount}
+                        onChange={(e) => setDepositData({ ...depositData, amount: e.target.value })}
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Tipo de Depósito</Label>
+                      <Select
+                        value={depositData.method}
+                        onValueChange={(value) => setDepositData({ ...depositData, method: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pix">PIX → BRL (direto em reais)</SelectItem>
+                          <SelectItem value="pix-usdt">PIX → USDT (com conversão)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Mostrar informações de conversão se PIX-USDT selecionado */}
+                  {depositData.method === 'pix-usdt' && depositData.amount && exchangeRate && (
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-yellow-600">ℹ️</span>
+                        <span className="text-yellow-800 font-medium text-sm">Conversão BRL → USDT</span>
+                      </div>
+                      <div className="text-xs text-yellow-700 space-y-1">
+                        <p>Valor bruto: <strong>R$ {parseFloat(depositData.amount).toFixed(2)}</strong></p>
+                        <p>Taxa conversão USDT (3,99%): <strong className="text-red-600">-R$ {(parseFloat(depositData.amount) * 0.0399).toFixed(2)}</strong></p>
+                        <p>Valor líquido: <strong>R$ {(parseFloat(depositData.amount) * 0.9601).toFixed(2)}</strong></p>
+                        <p>Receberá aproximadamente: <strong className="text-green-600">{((parseFloat(depositData.amount) * 0.9601) / exchangeRate).toFixed(6)} USDT</strong></p>
+                        <p>Taxa atual: 1 USD = R$ {exchangeRate.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button 
+                    type="submit" 
+                    disabled={depositLoading || !depositData.amount || parseFloat(depositData.amount) <= 0}
+                    className="w-full"
+                  >
+                    {depositLoading ? 'Gerando PIX...' : 'Gerar PIX para Depósito'}
+                  </Button>
+                </form>
+
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">Como funciona:</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>PIX → BRL:</strong> Valor depositado diretamente em reais na sua conta</li>
+                    <li>• <strong>PIX → USDT:</strong> Valor convertido automaticamente para USDT com taxa de 3,99%</li>
+                    <li>• PIX é gerado instantaneamente após confirmar</li>
+                    <li>• Saldo é creditado automaticamente após pagamento</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Withdrawal Tab */}
+          <TabsContent value="withdrawal">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <ArrowUpRight size={20} />
+                  <span>Sacar Faturamento via PIX</span>
+                </CardTitle>
+                <CardDescription>Transfira seus ganhos para sua conta PIX via XGate</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleWithdrawal} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="withdrawal-amount">Valor (R$)</Label>
+                    <Input
+                      id="withdrawal-amount"
+                      type="number"
+                      step="0.01"
+                      min="3.01"
+                      max={balance.balance}
+                      placeholder="0,00"
+                      value={withdrawalData.amount}
+                      onChange={(e) => setWithdrawalData({ ...withdrawalData, amount: e.target.value })}
+                      required
+                      className="input-field"
+                      data-testid="merchant-withdrawal-amount-input"
+                    />
+                    <p className="text-sm text-gray-600">
+                      Saldo disponível: {formatCurrency(balance.balance)} | Valor mínimo: R$ 3,01
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pix-key-type">Tipo de Chave PIX</Label>
+                    <Select 
+                      value={withdrawalData.pix_key_type} 
+                      onValueChange={(value) => setWithdrawalData({ ...withdrawalData, pix_key_type: value, pix_key: '' })}
+                    >
+                      <SelectTrigger className="input-field">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="phone">Telefone</SelectItem>
+                        <SelectItem value="random">Chave Aleatória</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pix-key">Chave PIX</Label>
+                    <Input
+                      id="pix-key"
+                      type="text"
+                      placeholder={
+                        withdrawalData.pix_key_type === 'cpf' ? '000.000.000-00' :
+                        withdrawalData.pix_key_type === 'email' ? 'loja@email.com' :
+                        withdrawalData.pix_key_type === 'phone' ? '(11) 99999-9999' :
+                        'chave-aleatória-uuid'
+                      }
+                      value={withdrawalData.pix_key}
+                      onChange={(e) => setWithdrawalData({ ...withdrawalData, pix_key: e.target.value })}
+                      required
+                      className="input-field"
+                      data-testid="merchant-pix-key-input"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bank-name">Banco de Destino</Label>
+                    <Select 
+                      value={withdrawalData.bank_name} 
+                      onValueChange={(value) => setWithdrawalData({ ...withdrawalData, bank_name: value })}
+                    >
+                      <SelectTrigger className="input-field">
+                        <SelectValue placeholder="Selecione o banco" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Nubank">Nubank</SelectItem>
+                        <SelectItem value="Banco do Brasil">Banco do Brasil</SelectItem>
+                        <SelectItem value="Bradesco">Bradesco</SelectItem>
+                        <SelectItem value="Itaú">Itaú</SelectItem>
+                        <SelectItem value="Santander">Santander</SelectItem>
+                        <SelectItem value="Caixa">Caixa Econômica</SelectItem>
+                        <SelectItem value="Inter">Inter</SelectItem>
+                        <SelectItem value="PicPay">PicPay</SelectItem>
+                        <SelectItem value="C6 Bank">C6 Bank</SelectItem>
+                        <SelectItem value="Outros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {withdrawalData.amount && (
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      {(() => {
+                        const amount = parseFloat(withdrawalData.amount);
+                        const fee = Math.max(amount * 0.0399, 3.00);
+                        const total = amount + fee;
+                        return (
+                          <div className="text-sm text-yellow-800 space-y-1">
+                            <p><strong>Valor solicitado:</strong> {formatCurrency(amount)}</p>
+                            <p><strong>Taxa (3,99% - mín. R$ 3,00):</strong> {formatCurrency(fee)}</p>
+                            <p><strong>Total debitado:</strong> {formatCurrency(total)}</p>
+                            <div className="mt-2 p-2 bg-blue-50 rounded text-blue-800 text-xs">
+                              🏦 <strong>XGate API:</strong> Transferência instantânea via PIX para conta empresarial
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={withdrawalLoading || !withdrawalData.amount || !withdrawalData.pix_key || !withdrawalData.bank_name}
+                    className="w-full btn-primary"
+                    data-testid="merchant-withdrawal-submit-btn"
+                  >
+                    {withdrawalLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Processando via XGate...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <ArrowUpRight size={16} />
+                        <span>Sacar {withdrawalData.amount ? formatCurrency(parseFloat(withdrawalData.amount)) : 'R$ 0,00'} via PIX</span>
+                      </div>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* USDT Tab */}
+          <TabsContent value="usdt" className="space-y-6">
+            <div className="space-y-6">
+              {/* Saldo USDT */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Coins size={20} className="text-blue-600" />
+                    <span>Saldo USDT</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Sua carteira digital USDT no AgitoCoin
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+                    <div className="text-center">
+                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-2">Saldo Atual USDT</p>
+                      <p className="text-3xl font-bold text-blue-800 dark:text-blue-300">
+                        {(user?.usdt_balance || 0).toFixed(6)} USDT
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        ≈ R$ {((user?.usdt_balance || 0) * 5.50).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs">Cotação atual</p>
+                      <p className="font-semibold">1 USDT = R$ 5,50</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs">Última atualização</p>
+                      <p className="font-semibold text-xs">{new Date().toLocaleTimeString('pt-BR')}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                      <strong>💡 Como adquirir USDT:</strong> Use a aba "Depósito" e selecione "PIX → USDT (com conversão)" para converter reais em USDT.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Funcionalidades USDT */}
+              <Tabs defaultValue="convert-usdt" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="convert-usdt" className="flex items-center space-x-2">
+                    <ArrowUpRight size={16} />
+                    <span>Converter para BRL</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="transfer-external" className="flex items-center space-x-2">
+                    <Download size={16} />
+                    <span>Transferir Externa</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Conversão USDT → BRL */}
+                <TabsContent value="convert-usdt" className="mt-6">
+                  <USDTCalculator user={user} onUpdate={fetchMerchantData} />
+                </TabsContent>
+
+                {/* Transferência Externa USDT */}
+                <TabsContent value="transfer-external" className="mt-6">
+                  <USDTTransfer user={user} onUpdate={fetchMerchantData} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </TabsContent>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Referral Info Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>Seu Código de Indicação</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Indique novos clientes e ganhe comissões por cada transação
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {referralLoading ? (
+                    <div className="text-center py-4">Carregando dados...</div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Seu Código</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            value={referralData?.referral_code || ''}
+                            readOnly
+                            className="font-mono text-lg text-center bg-gray-50"
+                          />
+                          <Button
+                            onClick={() => copyToClipboard(referralData?.referral_code)}
+                            variant="outline"
+                            size="icon"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Link de Indicação</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            value={referralData?.referral_link || ''}
+                            readOnly
+                            className="flex-1 text-sm"
+                          />
+                          <Button
+                            onClick={() => copyToClipboard(referralData?.referral_link)}
+                            variant="outline"
+                            size="icon"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <Button 
+                          onClick={shareOnWhatsApp}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Compartilhar no WhatsApp
+                        </Button>
+                        <Button 
+                          onClick={() => copyToClipboard(referralData?.referral_link)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Share className="mr-2 h-4 w-4" />
+                          Copiar Link
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Referral Stats Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5" />
+                    <span>Estatísticas de Indicação</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {referralLoading ? (
+                    <div className="text-center py-4">Carregando estatísticas...</div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {referralData?.referral_count || 0}
+                          </div>
+                          <div className="text-sm text-gray-600">Clientes Indicados</div>
+                        </div>
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                          <div className="text-2xl font-bold text-green-600">
+                            R$ {networkData?.total_earnings?.toFixed(2) || '0,00'}
+                          </div>
+                          <div className="text-sm text-gray-600">Total Ganho</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-semibold text-sm">Você aparece como:</h4>
+                          <p className="text-sm text-blue-600 font-medium">
+                            "{referralData?.indicador_name || user?.company_name || user?.full_name}" está te indicando para fazer parte da melhor plataforma de consumo com cashback do Brasil!
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-semibold text-sm">Como Funciona:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Compartilhe seu código com novos clientes</li>
+                            <li>• Quando se cadastram usando seu código, você ganha comissão</li>
+                            <li>• Receba uma porcentagem de cada transação deles</li>
+                            <li>• Ganhos são creditados automaticamente no seu saldo</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Referral Network Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Sua Rede de Indicações</span>
+                </CardTitle>
+                <CardDescription>
+                  Clientes que você indicou para o AgitoCoin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {referralLoading ? (
+                  <div className="text-center py-8">Carregando rede...</div>
+                ) : networkData?.referred_users?.length > 0 ? (
+                  <div className="space-y-3">
+                    {networkData.referred_users.map((referredUser, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                            <User className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="font-medium">{referredUser.name}</div>
+                            <div className="text-sm text-gray-500">
+                              Cadastrado em {new Date(referredUser.joined_date).toLocaleDateString('pt-BR')}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant="outline">
+                          {referredUser.user_type === 'cliente' ? 'Cliente' : 'Lojista'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Você ainda não indicou nenhum cliente.</p>
+                    <p className="text-sm">Compartilhe seu código e comece a ganhar!</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents">
+            <CompleteUserProfile />
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Cashback Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Percent size={20} />
+                    <span>Taxa de Cashback</span>
+                  </CardTitle>
+                  <CardDescription>Configure o percentual de cashback para seus clientes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={updateCashbackRate} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cashback-rate">Taxa de Cashback (%)</Label>
+                      <Input
+                        id="cashback-rate"
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        max="10"
+                        placeholder="Entre 1 e 10"
+                        value={newCashbackRate}
+                        onChange={(e) => setNewCashbackRate(e.target.value)}
+                        required
+                        className="input-field"
+                        data-testid="cashback-rate-input"
+                      />
+                      <p className="text-sm text-gray-600">
+                        Taxa atual: <strong>{cashbackRate}%</strong>
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={cashbackLoading || !newCashbackRate}
+                      className="w-full btn-primary"
+                      data-testid="update-cashback-btn"
+                    >
+                      {cashbackLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Atualizando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Settings size={16} />
+                          <span>Atualizar Taxa</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Delivery Settings - NOVO */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Package size={20} />
+                    <span>Configurações de Entrega</span>
+                  </CardTitle>
+                  <CardDescription>Configure os tipos de entrega e tempo de preparo</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    updateDeliverySettings();
+                  }} className="space-y-4">
+                    {/* Tipos de Entrega */}
+                    <div className="space-y-3">
+                      <Label className="font-semibold">Tipos de Entrega</Label>
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={merchantProfile?.accepts_pickup || false}
+                            onChange={(e) => setMerchantProfile({...merchantProfile, accepts_pickup: e.target.checked})}
+                            className="w-4 h-4"
+                          />
+                          <span>🏪 Retirada no Local (Balcão)</span>
+                        </label>
+                        
+                        <label className="flex items-center space-x-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={merchantProfile?.accepts_delivery || false}
+                            onChange={(e) => setMerchantProfile({...merchantProfile, accepts_delivery: e.target.checked})}
+                            className="w-4 h-4"
+                          />
+                          <span>🚚 Delivery (Entrega)</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        Marque pelo menos uma opção
+                      </p>
+                    </div>
+
+                    {/* Tempo de Preparo */}
+                    <div className="space-y-2">
+                      <Label htmlFor="prep-time">Tempo de Preparo (minutos)</Label>
+                      <Input
+                        id="prep-time"
+                        type="number"
+                        min="10"
+                        max="180"
+                        placeholder="Ex: 30"
+                        value={merchantProfile?.preparation_time || merchantProfile?.estimated_delivery_time || ''}
+                        onChange={(e) => setMerchantProfile({...merchantProfile, preparation_time: e.target.value})}
+                        required
+                        className="input-field"
+                      />
+                      <p className="text-sm text-gray-600">
+                        Tempo médio para preparar e entregar (10 a 180 min)
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={deliveryLoading || (!merchantProfile?.accepts_pickup && !merchantProfile?.accepts_delivery)}
+                      className="w-full btn-primary"
+                    >
+                      {deliveryLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Salvando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Settings size={16} />
+                          <span>Salvar Configurações</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Business Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 size={20} />
+                    <span>Informações da Empresa</span>
+                  </CardTitle>
+                  <CardDescription>Dados cadastrais da sua empresa</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Nome:</span>
+                      <span className="font-medium">{user?.company_name || user?.full_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">CNPJ:</span>
+                      <span className="font-medium">{user?.cnpj || 'Não informado'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Email:</span>
+                      <span className="font-medium">{user?.email}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Telefone:</span>
+                      <span className="font-medium">{user?.phone}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">WhatsApp:</span>
+                      <span className="font-medium">{user?.whatsapp || 'Não informado'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Endereço:</span>
+                      <span className="font-medium">{user?.address || 'Não informado'}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                      Para alterar essas informações, entre em contato com o suporte.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Catalog Tab */}
+          <TabsContent value="catalog">
+            <MerchantCatalog API={API} token={token} />
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders">
+            <MerchantOrders />
+          </TabsContent>
+
+        </Tabs>
+
+        {/* Profile Modal */}
+        <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Building2 size={20} />
+                <span>Perfil da Empresa</span>
+              </DialogTitle>
+              <DialogDescription>
+                Gerencie as informações da sua empresa e configurações de conta
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              {/* Dados da Empresa */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 size={20} />
+                    <span>Dados da Empresa</span>
+                  </CardTitle>
+                  <CardDescription>Atualize as informações da sua empresa</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Upload de Logo */}
+                  <div className="text-center space-y-4">
+                    {imagePreview ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Logo da empresa"
+                          className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                        />
+                        <button
+                          onClick={() => {
+                            setImagePreview(null);
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 mx-auto">
+                        <Building2 className="text-gray-400" size={32} />
+                      </div>
+                    )}
+                    
+                    <div>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="max-w-xs"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        JPG, PNG - máx. 2MB
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Formulário de Dados */}
+                  <form onSubmit={handleProfileUpdate} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-company-name">Nome da Empresa</Label>
+                        <Input
+                          id="profile-company-name"
+                          type="text"
+                          value={profileData.company_name}
+                          onChange={(e) => setProfileData({ ...profileData, company_name: e.target.value })}
+                          className="input-field"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-cnpj">CNPJ</Label>
+                        <Input
+                          id="profile-cnpj"
+                          type="text"
+                          value={profileData.cnpj}
+                          onChange={(e) => setProfileData({ ...profileData, cnpj: e.target.value })}
+                          className="input-field"
+                          placeholder="00.000.000/0000-00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="profile-address">Endereço</Label>
+                      <Input
+                        id="profile-address"
+                        type="text"
+                        value={profileData.address}
+                        onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                        className="input-field"
+                        placeholder="Rua, número, bairro - Cidade"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-name">Nome do Responsável</Label>
+                        <Input
+                          id="profile-name"
+                          type="text"
+                          value={profileData.full_name}
+                          onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })}
+                          className="input-field"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-email">Email</Label>
+                        <Input
+                          id="profile-email"
+                          type="email"
+                          value={profileData.email}
+                          onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                          className="input-field"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-phone">Telefone</Label>
+                        <Input
+                          id="profile-phone"
+                          type="tel"
+                          value={profileData.phone}
+                          onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                          className="input-field"
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-whatsapp">WhatsApp</Label>
+                        <Input
+                          id="profile-whatsapp"
+                          type="tel"
+                          value={profileData.whatsapp}
+                          onChange={(e) => setProfileData({ ...profileData, whatsapp: e.target.value })}
+                          className="input-field"
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                    </div>
+
+                    {/* === DADOS PIX PARA SAQUE === */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        💳 Dados PIX para Saque
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-pix-type">Tipo da Chave PIX *</Label>
+                          <Select 
+                            value={profileData.pix_key_type} 
+                            onValueChange={(value) => setProfileData({...profileData, pix_key_type: value})}
+                          >
+                            <SelectTrigger className="input-field">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cpf">CPF</SelectItem>
+                              <SelectItem value="cnpj">CNPJ</SelectItem>
+                              <SelectItem value="email">E-mail</SelectItem>
+                              <SelectItem value="phone">Telefone</SelectItem>
+                              <SelectItem value="random">Chave Aleatória</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-pix-key">Chave PIX *</Label>
+                          <Input
+                            id="profile-pix-key"
+                            type="text"
+                            value={profileData.pix_key}
+                            onChange={(e) => setProfileData({ ...profileData, pix_key: e.target.value })}
+                            className="input-field"
+                            placeholder={
+                              profileData.pix_key_type === 'cpf' ? '000.000.000-00' :
+                              profileData.pix_key_type === 'cnpj' ? '00.000.000/0000-00' :
+                              profileData.pix_key_type === 'email' ? 'email@exemplo.com' :
+                              profileData.pix_key_type === 'phone' ? '(11) 99999-9999' :
+                              'Sua chave PIX'
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500">
+                        💡 <strong>Importante:</strong> Esta chave PIX será usada para receber seus saques. Certifique-se de que está correta.
+                      </p>
+                    </div>
+
+                    {/* === ENDEREÇO COMPLETO === */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        🏠 Endereço Completo
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-cep">CEP *</Label>
+                          <Input
+                            id="profile-cep"
+                            type="text"
+                            value={profileData.cep}
+                            onChange={(e) => setProfileData({ ...profileData, cep: e.target.value })}
+                            className="input-field"
+                            placeholder="00000-000"
+                            maxLength={9}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="profile-street">Rua *</Label>
+                          <Input
+                            id="profile-street"
+                            type="text"
+                            value={profileData.street}
+                            onChange={(e) => setProfileData({ ...profileData, street: e.target.value })}
+                            className="input-field"
+                            placeholder="Nome da rua"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-number">Número *</Label>
+                          <Input
+                            id="profile-number"
+                            type="text"
+                            value={profileData.number}
+                            onChange={(e) => setProfileData({ ...profileData, number: e.target.value })}
+                            className="input-field"
+                            placeholder="123"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="profile-complement">Complemento</Label>
+                          <Input
+                            id="profile-complement"
+                            type="text"
+                            value={profileData.complement}
+                            onChange={(e) => setProfileData({ ...profileData, complement: e.target.value })}
+                            className="input-field"
+                            placeholder="Apto, sala, loja, etc."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* === SÓCIO ADMINISTRADOR === */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        👤 Sócio Administrador
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-admin-name">Nome Completo do Sócio *</Label>
+                          <Input
+                            id="profile-admin-name"
+                            type="text"
+                            value={profileData.admin_name}
+                            onChange={(e) => setProfileData({ ...profileData, admin_name: e.target.value })}
+                            className="input-field"
+                            placeholder="Nome completo do sócio administrador"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-admin-cpf">CPF do Sócio *</Label>
+                          <Input
+                            id="profile-admin-cpf"
+                            type="text"
+                            value={profileData.admin_cpf}
+                            onChange={(e) => setProfileData({ ...profileData, admin_cpf: e.target.value })}
+                            className="input-field"
+                            placeholder="000.000.000-00"
+                            maxLength={14}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-admin-email">E-mail do Sócio *</Label>
+                          <Input
+                            id="profile-admin-email"
+                            type="email"
+                            value={profileData.admin_email}
+                            onChange={(e) => setProfileData({ ...profileData, admin_email: e.target.value })}
+                            className="input-field"
+                            placeholder="email.socio@exemplo.com"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-admin-whatsapp">WhatsApp do Sócio *</Label>
+                          <Input
+                            id="profile-admin-whatsapp"
+                            type="tel"
+                            value={profileData.admin_whatsapp}
+                            onChange={(e) => setProfileData({ ...profileData, admin_whatsapp: e.target.value })}
+                            className="input-field"
+                            placeholder="(11) 99999-9999"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500">
+                        ⚖️ <strong>Conformidade Legal:</strong> Dados do sócio administrador são obrigatórios para empresas (CNPJ) conforme regulamentação bancária.
+                      </p>
+                    </div>
+
+                    {/* Localização da Loja */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                        📍 Localização da Loja
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-state">Estado *</Label>
+                          <Select 
+                            value={profileData.state} 
+                            onValueChange={(value) => {
+                              if (value !== "__loading__" && value !== "__empty__") {
+                                handleStateChange(value)
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="input-field">
+                              <SelectValue placeholder="Selecione o estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {loadingFilters ? (
+                                <SelectItem value="__loading__" disabled>Carregando estados...</SelectItem>
+                              ) : states.length === 0 ? (
+                                <SelectItem value="__empty__" disabled>Nenhum estado encontrado</SelectItem>
+                              ) : (
+                                states.map((state, index) => (
+                                  <SelectItem key={`state-${index}`} value={state}>
+                                    {state}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-city">Cidade *</Label>
+                          <Select 
+                            value={profileData.city} 
+                            onValueChange={(value) => {
+                              if (value !== "__loading__" && value !== "__empty__") {
+                                setProfileData({ ...profileData, city: value })
+                              }
+                            }}
+                            disabled={!profileData.state}
+                          >
+                            <SelectTrigger className="input-field">
+                              <SelectValue placeholder={profileData.state ? "Selecione a cidade" : "Selecione primeiro o estado"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {loadingFilters ? (
+                                <SelectItem value="__loading__" disabled>Carregando cidades...</SelectItem>
+                              ) : filteredCities.length === 0 ? (
+                                <SelectItem value="__empty__" disabled>
+                                  {profileData.state ? "Nenhuma cidade encontrada" : "Selecione um estado primeiro"}
+                                </SelectItem>
+                              ) : (
+                                filteredCities.map((city, index) => (
+                                  <SelectItem key={`city-${index}`} value={city}>
+                                    {city}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-neighborhood">Bairro *</Label>
+                          <Input
+                            id="profile-neighborhood"
+                            type="text"
+                            value={profileData.neighborhood}
+                            onChange={(e) => setProfileData({ ...profileData, neighborhood: e.target.value })}
+                            className="input-field"
+                            placeholder="Ex: Vila Madalena"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-segment">Segmento de Negócio *</Label>
+                          <Select 
+                            value={profileData.business_segment} 
+                            onValueChange={(value) => {
+                              if (value !== "__loading__" && value !== "__empty__") {
+                                setProfileData({ ...profileData, business_segment: value })
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="input-field">
+                              <SelectValue placeholder="Selecione o segmento de negócio" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {loadingSegments ? (
+                                <SelectItem value="__loading__" disabled>Carregando segmentos...</SelectItem>
+                              ) : businessSegments.length === 0 ? (
+                                <SelectItem value="__empty__" disabled>Nenhum segmento cadastrado</SelectItem>
+                              ) : (
+                                businessSegments.map((segment, index) => (
+                                  <SelectItem key={`segment-${index}`} value={segment}>
+                                    {segment}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {businessSegments.length === 0 && !loadingSegments && (
+                            <p className="text-xs text-gray-500">
+                              💡 Segmentos são cadastrados pelo administrador da plataforma.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-maps-url">URL do Google Maps</Label>
+                        <Input
+                          id="profile-maps-url"
+                          type="url"
+                          value={profileData.google_maps_url}
+                          onChange={(e) => setProfileData({ ...profileData, google_maps_url: e.target.value })}
+                          className="input-field"
+                          placeholder="https://maps.app.goo.gl/example ou https://goo.gl/maps/example"
+                        />
+                        <p className="text-xs text-gray-500">
+                          💡 <strong>Como obter:</strong> Abra o Google Maps, busque sua loja, clique em "Compartilhar" e cole o link aqui.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-menu-url">🛒 URL do Cardápio/Catálogo AgitoAI</Label>
+                        <Input
+                          id="profile-menu-url"
+                          type="url"
+                          value={profileData.menu_catalog_url}
+                          onChange={(e) => setProfileData({ ...profileData, menu_catalog_url: e.target.value })}
+                          className="input-field"
+                          placeholder="https://agito.ai/cardapio/sua-loja ou link do seu catálogo"
+                        />
+                        <p className="text-xs text-gray-500">
+                          🎯 <strong>Cardápio Digital:</strong> Cole aqui o link do seu cardápio ou catálogo digital do AgitoAI. Aparecerá para clientes com ícone de carrinho.
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="w-full btn-primary"
+                    >
+                      {profileLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Salvando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Settings size={16} />
+                          <span>Salvar Dados da Empresa</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Alterar Senha */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Settings size={20} />
+                    <span>Alterar Senha</span>
+                  </CardTitle>
+                  <CardDescription>Atualize sua senha de acesso</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Senha Atual</Label>
+                      <div className="relative">
+                        <Input
+                          id="current-password"
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={passwordData.current_password}
+                          onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+                          className="input-field pr-10"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                        >
+                          {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">Nova Senha</Label>
+                      <div className="relative">
+                        <Input
+                          id="new-password"
+                          type={showNewPassword ? "text" : "password"}
+                          value={passwordData.new_password}
+                          onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                          className="input-field pr-10"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500">Mínimo 6 caracteres</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={passwordData.confirm_password}
+                        onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                        className="input-field"
+                        required
+                      />
+                      {passwordData.new_password && passwordData.confirm_password && 
+                       passwordData.new_password !== passwordData.confirm_password && (
+                        <p className="text-xs text-red-500">As senhas não conferem</p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={profileLoading || !passwordData.current_password || !passwordData.new_password || 
+                               passwordData.new_password !== passwordData.confirm_password}
+                      className="w-full btn-primary"
+                    >
+                      {profileLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Atualizando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Settings size={16} />
+                          <span>Alterar Senha</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      <strong>Dica de Segurança:</strong> Use uma senha forte com pelo menos 6 caracteres, incluindo números e letras.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Seção de Documentos */}
+            <div className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documentos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CompleteUserProfile />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Seção de Colaboradores */}
+            <div className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Colaboradores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SubUsersManager />
+                </CardContent>
+              </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* PIX Deposit Modal */}
+        <Dialog open={showPixModal} onOpenChange={setShowPixModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <ArrowDownLeft size={20} />
+                <span>PIX Gerado para Depósito</span>
+              </DialogTitle>
+              <DialogDescription>
+                Use o QR Code ou código PIX para realizar o depósito
+              </DialogDescription>
+            </DialogHeader>
+            
+            {pixDetails && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="bg-white p-4 rounded-lg border">
+                    <QRCodeCanvas
+                      value={pixDetails.qr_code_pix}
+                      size={200}
+                      level="M"
+                      includeMargin
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">Valor:</span>
+                    <span className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(pixDetails.original_amount)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">Moeda:</span>
+                    <Badge variant={pixDetails.currency === 'USDT' ? 'secondary' : 'default'}>
+                      {pixDetails.currency}
+                    </Badge>
+                  </div>
+
+                  {pixDetails.currency === 'USDT' && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="font-medium">USDT Estimado:</span>
+                      <span className="font-bold text-blue-600">
+                        {pixDetails.usdt_amount} USDT
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Código PIX (Copia e Cola):</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      value={pixDetails.qr_code_pix}
+                      readOnly
+                      className="text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(pixDetails.qr_code_pix);
+                        toast.success('Código PIX copiado!');
+                      }}
+                    >
+                      <Copy size={16} />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>⏰ Importante:</strong> O PIX expira em 30 minutos. 
+                    O saldo será creditado automaticamente após o pagamento.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setShowPixModal(false);
+                    setPixDetails(null);
+                  }}
+                  className="w-full"
+                >
+                  Fechar
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
+
+export default MerchantDashboard;

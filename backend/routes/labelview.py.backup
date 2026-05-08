@@ -1,0 +1,4037 @@
+"""
+Labelview - Sistema de Proteção Veicular
+Endpoints para o Master Dashboard
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, File, UploadFile, Query
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+from uuid import uuid4
+import logging
+import os
+from pathlib import Path
+from passlib.hash import bcrypt
+import sys
+sys.path.append('/app/backend')
+from services.cloudinary_service import upload_file_to_cloudinary
+
+logger = logging.getLogger(__name__)
+
+labelview_router = APIRouter(prefix="/api/labelview", tags=["labelview"])
+
+@labelview_router.get("/version-check")
+async def version_check():
+    """Verificar se API está funcionando"""
+    import os
+    from datetime import datetime
+    
+    # Ler versão do arquivo
+    try:
+        with open('/app/VERSION.txt', 'r') as f:
+            lines = f.readlines()
+            version = lines[0].strip() if len(lines) > 0 else 'v2.1.1'
+            build_date = lines[1].strip() if len(lines) > 1 else '2025-01-02 02:30:00'
+            last_change = lines[2].strip() if len(lines) > 2 else 'Versão inicial'
+    except:
+        version = 'v2.1.1'
+        build_date = '2025-01-02 02:30:00'
+        last_change = 'Arquivo VERSION.txt não encontrado'
+    
+    cloudinary_configured = bool(os.environ.get('CLOUDINARY_CLOUD_NAME') and os.environ.get('CLOUDINARY_API_KEY'))
+    
+    return {
+        'success': True,
+        'version': version,
+        'build_date': build_date,
+        'last_change': last_change,
+        'timestamp': datetime.utcnow().isoformat(),
+        'environment': {
+            'cloudinary_configured': cloudinary_configured,
+            'has_debug_logs': True
+        }
+    }
+
+
+# Endpoint de monitor/status removido - causava erro
+
+
+@labelview_router.get("/debug/last-unidades")
+async def debug_last_unidades():
+    """Debug: Verificar últimas unidades criadas"""
+    from server import db as db_instance
+    
+    try:
+        # Buscar últimas 3 unidades
+        unidades = await db_instance.users.find(
+            {'user_type': 'labelview_unidade'}
+        ).sort('created_at', -1).limit(3).to_list(length=3)
+        
+        # Formatar resposta
+        result = []
+        for u in unidades:
+            result.append({
+                'id': u.get('id'),
+                'nome_fantasia': u.get('nome_fantasia'),
+                'email': u.get('email'),
+                'logo_url': u.get('logo_url'),
+                'contrato_social_url': u.get('contrato_social_url'),
+                'doc_cnpj_url': u.get('doc_cnpj_url'),
+                'created_at': u.get('created_at'),
+                'has_logo': bool(u.get('logo_url')),
+                'has_docs': bool(u.get('contrato_social_url') or u.get('doc_cnpj_url'))
+            })
+        
+        return {
+            'success': True,
+            'total': len(result),
+            'unidades': result
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+@labelview_router.get("/debug/cloudinary-test")
+async def test_cloudinary():
+    """Debug: Testar conexão com Cloudinary"""
+    import os
+    import sys
+    sys.path.append('/app/backend')
+    from services.cloudinary_service import upload_file_to_cloudinary
+    
+    try:
+        # Criar imagem de teste pequena (1x1 pixel PNG)
+        test_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        
+        # Tentar upload
+        url = await upload_file_to_cloudinary(
+            file_content=test_image,
+            filename="test_debug",
+            folder="labelview/test",
+            resource_type="image"
+        )
+        
+        return {
+            'success': bool(url),
+            'url': url,
+            'cloudinary_cloud_name': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+            'cloudinary_configured': bool(os.environ.get('CLOUDINARY_CLOUD_NAME') and os.environ.get('CLOUDINARY_API_KEY'))
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }
+
+# Cache para db (inicializado na primeira chamada)
+_db_cache = None
+
+def get_db():
+    """Obter db com cache"""
+    global _db_cache
+    if _db_cache is None:
+        from server import db
+        _db_cache = db
+    return _db_cache
+
+# Usar import lazy de db para evitar circular import
+# db será acessado via função auxiliar
+def get_db_lazy():
+    """Lazy load do db"""
+    import server
+    return server.db
+
+# Criar wrapper que funciona como db mas faz import lazy
+class LazyDbProxy:
+    def __getattribute__(self, name):
+        if name == '__class__':
+            return object.__getattribute__(self, name)
+        db_instance = get_db_lazy()
+        return getattr(db_instance, name)
+
+db = LazyDbProxy()
+
+# Função wrapper para evitar circular import
+async def get_current_user_dependency(request: Request):
+    """Wrapper para get_current_user que resolve em runtime"""
+    from server import db as db_instance
+    import jwt
+    import os
+    
+    # Extrai o token do header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    
+    try:
+        token = auth_header.replace("Bearer ", "")
+        SECRET_KEY = os.environ.get('JWT_SECRET', 'agitocoin_secret_key_2024')
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        
+        user_data = await db_instance.users.find_one({"id": user_id})
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Usuário não encontrado")
+        
+        # Retornar dict ao invés de User object
+        user_data.pop('_id', None)
+        return user_data
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    except Exception as e:
+        logger.error(f"Error in authentication: {e}")
+        raise HTTPException(status_code=401, detail="Erro na autenticação")
+
+# ============================================
+# HELPERS
+# ============================================
+
+async def verify_labelview_master(user_id: str):
+    """Verifica se o usuário é master da Labelview"""
+    
+    from server import db as db_instance
+    user = await db_instance.users.find_one({'id': user_id})
+    if not user or not user.get('is_labelview_master'):
+        raise HTTPException(status_code=403, detail="Acesso negado. Apenas Master Labelview.")
+    return user
+
+# ============================================
+# LINK DE INDICAÇÃO / REFERRAL
+# ============================================
+
+@labelview_router.get("/verificar-link/{user_id}")
+async def verificar_link_indicacao(user_id: str):
+    """
+    Verifica se o link de indicação é válido
+    Retorna informações do vendedor (Unidade, Regional ou Consultor)
+    """
+    from server import db as db_instance
+    
+    try:
+        # Buscar usuário pelo ID
+        user = await db_instance.users.find_one({'id': user_id})
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Link inválido ou expirado")
+        
+        # Verificar se o usuário pode ter link de indicação (apenas Unidade, Regional, Consultor)
+        valid_types = ['labelview_unidade', 'labelview_regional', 'labelview_consultor']
+        
+        if user.get('user_type') not in valid_types:
+            raise HTTPException(status_code=403, detail="Este usuário não pode enviar indicações")
+        
+        # Retornar informações do vendedor com campos corretos baseados no tipo
+        vendedor_data = {
+            'id': user.get('id'),
+            'nome': user.get('nome_fantasia') or user.get('full_name'),
+            'tipo': user.get('user_type'),
+            'logo_url': user.get('logo_url'),
+            'cor_primaria': user.get('cor_primaria'),
+            'cor_secundaria': user.get('cor_secundaria')
+        }
+        
+        # Adicionar campos específicos por tipo para o frontend
+        if user.get('user_type') == 'labelview_unidade':
+            vendedor_data['nome_fantasia'] = user.get('nome_fantasia')
+            vendedor_data['full_name'] = user.get('nome_fantasia')  # Unidade usa nome_fantasia
+        elif user.get('user_type') == 'labelview_regional':
+            vendedor_data['nome_fantasia'] = user.get('nome_fantasia')
+            vendedor_data['full_name'] = user.get('nome_fantasia')  # Regional usa nome_fantasia
+        else:  # labelview_consultor
+            # Consultor pode ser CPF (full_name) ou CNPJ (nome_fantasia)
+            vendedor_data['full_name'] = user.get('full_name') or user.get('nome_fantasia')
+            if user.get('nome_fantasia'):
+                vendedor_data['nome_fantasia'] = user.get('nome_fantasia')
+        
+        # Retornar informações do vendedor
+        return {
+            'success': True,
+            'vendedor': vendedor_data
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao verificar link: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro ao verificar link")
+
+# ============================================
+# COLABORADORES
+# ============================================
+
+@labelview_router.get("/employees")
+async def get_employees(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar colaboradores"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        employees = await db_instance.labelview_employees.find({}).to_list(length=1000)
+        
+        # Remove MongoDB _id field to avoid serialization issues
+        for employee in employees:
+            if '_id' in employee:
+                employee.pop('_id')
+        
+        return {
+            'success': True,
+            'employees': employees,
+            'total': len(employees)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching employees: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/employees")
+async def create_employee(
+    employee_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar novo colaborador"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        employee = {
+            'id': str(uuid4()),
+            'full_name': employee_data.get('full_name'),
+            'cpf': employee_data.get('cpf'),
+            'email': employee_data.get('email'),
+            'phone': employee_data.get('phone'),
+            'role': employee_data.get('role'),
+            'regional': employee_data.get('regional'),
+            'commission_percentage': employee_data.get('commission_percentage', 0.0),
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        # Validate required fields
+        required_fields = ['full_name', 'email', 'role']
+        missing_fields = [field for field in required_fields if not employee_data.get(field)]
+        if missing_fields:
+            raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing_fields)}")
+        
+        await db_instance.labelview_employees.insert_one(employee)
+        
+        # Remove _id from response to avoid serialization issues
+        employee_response = employee.copy()
+        employee_response.pop('_id', None)
+        
+        return {
+            'success': True,
+            'message': 'Colaborador criado com sucesso',
+            'employee': employee_response
+        }
+    except Exception as e:
+        logger.error(f"Error creating employee: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.put("/employees/{employee_id}")
+async def update_employee(
+    employee_id: str,
+    employee_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Atualizar colaborador"""
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        employee_data['updated_at'] = datetime.utcnow()
+        
+        result = await db_instance.labelview_employees.update_one(
+            {'id': employee_id},
+            {'$set': employee_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Colaborador não encontrado")
+        
+        return {
+            'success': True,
+            'message': 'Colaborador atualizado com sucesso'
+        }
+    except Exception as e:
+        logger.error(f"Error updating employee: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# GERENTES REGIONAIS
+# ============================================
+
+@labelview_router.get("/regional-managers")
+async def get_regional_managers(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar gerentes regionais"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        managers = await db_instance.labelview_regional_managers.find({}).to_list(length=1000)
+        return {
+            'success': True,
+            'managers': managers,
+            'total': len(managers)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching regional managers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/regional-managers")
+async def create_regional_manager(
+    manager_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar gerente regional"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        manager = {
+            'id': str(uuid4()),
+            'employee_id': manager_data.get('employee_id'),
+            'full_name': manager_data['full_name'],
+            'email': manager_data['email'],
+            'phone': manager_data['phone'],
+            'regional': manager_data['regional'],
+            'cities': manager_data.get('cities', []),
+            'commission_percentage': manager_data.get('commission_percentage', 0.0),
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_regional_managers.insert_one(manager)
+        
+        return {
+            'success': True,
+            'message': 'Gerente regional criado com sucesso',
+            'manager': manager
+        }
+    except Exception as e:
+        logger.error(f"Error creating regional manager: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# CONSULTORES
+# ============================================
+
+@labelview_router.get("/consultants")
+async def get_consultants(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar consultores"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        consultants = await db_instance.labelview_consultants.find({}).to_list(length=1000)
+        return {
+            'success': True,
+            'consultants': consultants,
+            'total': len(consultants)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching consultants: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/consultants")
+async def create_consultant(
+    consultant_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar consultor"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        consultant = {
+            'id': str(uuid4()),
+            'employee_id': consultant_data.get('employee_id'),
+            'agitomil_user_id': consultant_data.get('agitomil_user_id'),
+            'full_name': consultant_data['full_name'],
+            'email': consultant_data['email'],
+            'phone': consultant_data['phone'],
+            'cpf': consultant_data['cpf'],
+            'regional': consultant_data.get('regional'),
+            'manager_id': consultant_data.get('manager_id'),
+            'commission_percentage': consultant_data.get('commission_percentage', 0.0),
+            'total_sales': 0,
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_consultants.insert_one(consultant)
+        
+        return {
+            'success': True,
+            'message': 'Consultor criado com sucesso',
+            'consultant': consultant
+        }
+    except Exception as e:
+        logger.error(f"Error creating consultant: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# COMISSÕES
+# ============================================
+
+@labelview_router.get("/commission-rules")
+async def get_commission_rules(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Buscar regras de comissão"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        rules = await db_instance.labelview_commission_rules.find_one({})
+        
+        if not rules:
+            # Criar regras padrão
+            rules = {
+                'id': str(uuid4()),
+                'labelview_percentage': 50.0,
+                'agitoauto_percentage': 20.0,
+                'mini_agency_percentage': 10.0,
+                'consultant_percentage': 10.0,
+                'cashback_percentage': 10.0,
+                'updated_at': datetime.utcnow()
+            }
+            await db_instance.labelview_commission_rules.insert_one(rules)
+        
+        return {
+            'success': True,
+            'rules': rules
+        }
+    except Exception as e:
+        logger.error(f"Error fetching commission rules: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/commission-rules")
+async def update_commission_rules(
+    rules_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Atualizar regras de comissão"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        # Validar que soma das porcentagens = 100%
+        total = (
+            rules_data.get('labelview_percentage', 0) +
+            rules_data.get('agitoauto_percentage', 0) +
+            rules_data.get('mini_agency_percentage', 0) +
+            rules_data.get('consultant_percentage', 0) +
+            rules_data.get('cashback_percentage', 0)
+        )
+        
+        if abs(total - 100.0) > 0.01:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Soma das porcentagens deve ser 100%. Atual: {total}%"
+            )
+        
+        rules_data['updated_at'] = datetime.utcnow()
+        rules_data['updated_by'] = current_user["id"]
+        
+        existing = await db_instance.labelview_commission_rules.find_one({})
+        
+        if existing:
+            await db_instance.labelview_commission_rules.update_one(
+                {'id': existing['id']},
+                {'$set': rules_data}
+            )
+        else:
+            rules_data['id'] = str(uuid4())
+            await db_instance.labelview_commission_rules.insert_one(rules_data)
+        
+        return {
+            'success': True,
+            'message': 'Regras de comissão atualizadas com sucesso',
+            'rules': rules_data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating commission rules: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Continuação nos próximos arquivos...
+
+# ============================================
+# CLIENTES
+# ============================================
+
+@labelview_router.get("/clients")
+async def get_clients(
+    status: Optional[str] = None,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar clientes com proteção"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        query = {}
+        if status:
+            query['is_active'] = (status == 'active')
+        
+        clients = await db_instance.labelview_clients.find(query).to_list(length=10000)
+        
+        return {
+            'success': True,
+            'clients': clients,
+            'total': len(clients)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching clients: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.get("/clients/{client_id}")
+async def get_client_details(
+    client_id: str,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Detalhes completos do cliente"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        client = await db_instance.labelview_clients.find_one({'id': client_id})
+        
+        if not client:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        
+        # Buscar pagamentos do cliente
+        payments = await db_instance.labelview_payments.find({'client_id': client_id}).to_list(length=1000)
+        
+        # Buscar solicitações de serviço
+        service_requests = await db_instance.labelview_service_requests.find({'client_id': client_id}).to_list(length=1000)
+        
+        return {
+            'success': True,
+            'client': client,
+            'payments': payments,
+            'service_requests': service_requests
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching client details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# SOLICITAÇÕES DE SERVIÇO
+# ============================================
+
+@labelview_router.get("/service-requests")
+@labelview_router.get("/solicitacoes")  # 🔧 ALIAS: Endpoint em português
+async def get_service_requests(
+    status: Optional[str] = None,
+    type: Optional[str] = None,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar solicitações de serviço"""
+    from server import db as db_instance
+    
+    # 🔧 CORREÇÃO: Permitir todos os tipos de usuário Labelview ver solicitações
+    user_type = current_user.get('user_type')
+    user_id = current_user.get('id')
+    
+    try:
+        query = {}
+        
+        # Filtros opcionais
+        if status:
+            query['status'] = status
+        if type:
+            query['type'] = type
+        
+        # 🔧 Aplicar filtro hierárquico
+        if user_type == 'labelview_master':
+            # Master vê todas
+            pass
+        elif user_type == 'labelview_unidade':
+            # Unidade vê solicitações de sua rede
+            query['unidade_id'] = user_id
+        elif user_type == 'labelview_regional':
+            # Regional vê solicitações de seus consultores
+            query['regional_id'] = user_id
+        elif user_type == 'labelview_consultor':
+            # Consultor vê apenas suas solicitações
+            query['consultor_id'] = user_id
+        elif user_type == 'labelview_fornecedor':
+            # Fornecedor vê solicitações atribuídas a ele
+            query['assigned_to'] = user_id
+        
+        logger.info(f"📋 Buscando solicitações - User: {user_type}, Query: {query}")
+        
+        requests = await db_instance.labelview_service_requests.find(query).sort('requested_at', -1).to_list(length=1000)
+        
+        logger.info(f"✅ Encontradas {len(requests)} solicitações")
+        
+        return {
+            'success': True,
+            'requests': requests,
+            'total': len(requests)
+        }
+    except Exception as e:
+        logger.error(f"❌ Error fetching service requests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/service-requests")
+async def create_service_request(
+    request_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar solicitação de serviço"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        service_request = {
+            'id': str(uuid4()),
+            'client_id': request_data['client_id'],
+            'type': request_data['type'],
+            'status': 'pending',
+            'description': request_data['description'],
+            'location': request_data.get('location'),
+            'priority': request_data.get('priority', 'normal'),
+            'assigned_to': request_data.get('assigned_to'),
+            'provider_id': request_data.get('provider_id'),
+            'requested_at': datetime.utcnow(),
+            'estimated_cost': request_data.get('estimated_cost', 0.0),
+            'photos': request_data.get('photos', []),
+            'documents': request_data.get('documents', []),
+            'notes': request_data.get('notes')
+        }
+        
+        await db_instance.labelview_service_requests.insert_one(service_request)
+        
+        return {
+            'success': True,
+            'message': 'Solicitação criada com sucesso',
+            'request': service_request
+        }
+    except Exception as e:
+        logger.error(f"Error creating service request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.patch("/service-requests/{request_id}")
+async def update_service_request(
+    request_id: str,
+    update_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Atualizar solicitação de serviço"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        # Se mudou para in_progress, registrar data
+        if update_data.get('status') == 'in_progress' and 'started_at' not in update_data:
+            update_data['started_at'] = datetime.utcnow()
+        
+        # Se completou, registrar data
+        if update_data.get('status') == 'completed' and 'completed_at' not in update_data:
+            update_data['completed_at'] = datetime.utcnow()
+        
+        result = await db_instance.labelview_service_requests.update_one(
+            {'id': request_id},
+            {'$set': update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+        
+        return {
+            'success': True,
+            'message': 'Solicitação atualizada com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating service request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# RASTREADORES
+# ============================================
+
+@labelview_router.get("/trackers")
+async def get_trackers(
+    status: Optional[str] = None,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar rastreadores"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        query = {}
+        if status:
+            query['status'] = status
+        
+        trackers = await db_instance.labelview_trackers.find(query).to_list(length=10000)
+        
+        return {
+            'success': True,
+            'trackers': trackers,
+            'total': len(trackers)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching trackers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/trackers")
+async def create_tracker(
+    tracker_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Cadastrar rastreador"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        tracker = {
+            'id': str(uuid4()),
+            'number': tracker_data['number'],
+            'company': tracker_data['company'],
+            'model': tracker_data.get('model'),
+            'status': 'available',
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_trackers.insert_one(tracker)
+        
+        return {
+            'success': True,
+            'message': 'Rastreador cadastrado com sucesso',
+            'tracker': tracker
+        }
+    except Exception as e:
+        logger.error(f"Error creating tracker: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# CONTRATOS
+# ============================================
+
+@labelview_router.get("/contract-templates")
+async def get_contract_templates(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar modelos de contrato"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        templates = await db_instance.labelview_contract_templates.find({}).to_list(length=1000)
+        
+        return {
+            'success': True,
+            'templates': templates,
+            'total': len(templates)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching contract templates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/contract-templates")
+async def create_contract_template(
+    template_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar modelo de contrato"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        template = {
+            'id': str(uuid4()),
+            'name': template_data['name'],
+            'version': template_data.get('version', '1.0'),
+            'content': template_data['content'],
+            'pdf_url': template_data.get('pdf_url'),
+            'variables': template_data.get('variables', []),
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_contract_templates.insert_one(template)
+        
+        return {
+            'success': True,
+            'message': 'Modelo de contrato criado com sucesso',
+            'template': template
+        }
+    except Exception as e:
+        logger.error(f"Error creating contract template: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# FORNECEDORES
+# ============================================
+
+@labelview_router.get("/providers")
+async def get_providers(
+    type: Optional[str] = None,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar fornecedores"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        query = {}
+        if type:
+            query['type'] = type
+        
+        providers = await db_instance.labelview_providers.find(query).to_list(length=10000)
+        
+        return {
+            'success': True,
+            'providers': providers,
+            'total': len(providers)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching providers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.post("/providers")
+async def create_provider(
+    provider_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Cadastrar fornecedor"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        provider = {
+            'id': str(uuid4()),
+            'name': provider_data['name'],
+            'type': provider_data['type'],
+            'cnpj': provider_data.get('cnpj'),
+            'email': provider_data.get('email'),
+            'phone': provider_data['phone'],
+            'cep': provider_data.get('cep'),
+            'street': provider_data.get('street'),
+            'number': provider_data.get('number'),
+            'city': provider_data.get('city'),
+            'state': provider_data.get('state'),
+            'services': provider_data.get('services', []),
+            'coverage_cities': provider_data.get('coverage_cities', []),
+            'rating': 0.0,
+            'is_active': True,
+            'created_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_providers.insert_one(provider)
+        
+        return {
+            'success': True,
+            'message': 'Fornecedor cadastrado com sucesso',
+            'provider': provider
+        }
+    except Exception as e:
+        logger.error(f"Error creating provider: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@labelview_router.put("/providers/{provider_id}")
+async def update_provider(
+    provider_id: str,
+    provider_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Atualizar fornecedor"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        provider_data['updated_at'] = datetime.utcnow()
+        
+        result = await db_instance.labelview_providers.update_one(
+            {'id': provider_id},
+            {'$set': provider_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        
+        return {
+            'success': True,
+            'message': 'Fornecedor atualizado com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating provider: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# DASHBOARD/STATS
+# ============================================
+
+@labelview_router.get("/dashboard/stats")
+async def get_dashboard_stats(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Estatísticas do dashboard"""
+    from server import db as db_instance
+    # Não precisa ser master - Unidade, Regional e Master podem acessar
+    
+    try:
+        # Clientes ativos
+        total_clients = await db_instance.labelview_clients.count_documents({'is_active': True})
+        
+        # Solicitações pendentes
+        pending_requests = await db_instance.labelview_service_requests.count_documents({'status': 'pending'})
+        
+        # Rastreadores disponíveis
+        available_trackers = await db_instance.labelview_trackers.count_documents({'status': 'available'})
+        
+        # Fornecedores ativos
+        active_providers = await db_instance.labelview_providers.count_documents({'is_active': True})
+        
+        # Consultores ativos
+        active_consultants = await db_instance.labelview_consultants.count_documents({'is_active': True})
+        
+        # Receita do mês atual
+        from datetime import datetime as dt
+        current_month = dt.utcnow().strftime('%Y-%m')
+        month_payments = await db_instance.labelview_payments.find({
+            'reference_month': current_month
+        }).to_list(length=10000)
+        
+        month_revenue = sum(p.get('labelview_amount', 0) for p in month_payments)
+        
+        return {
+            'success': True,
+            'stats': {
+                'total_clients': total_clients,
+                'pending_requests': pending_requests,
+                'available_trackers': available_trackers,
+                'active_providers': active_providers,
+                'active_consultants': active_consultants,
+                'month_revenue': month_revenue,
+                'total_payments': len(month_payments)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# CRM - LEADS E PROTEÇÕES
+# ============================================
+
+@labelview_router.get("/crm/leads")
+async def get_crm_leads(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar leads do CRM"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        leads = await db_instance.labelview_crm_leads.find({}).to_list(length=1000)
+        
+        # Remover _id do MongoDB
+        for lead in leads:
+            lead.pop('_id', None)
+        
+        return {
+            'success': True,
+            'leads': leads,
+            'total': len(leads)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching CRM leads: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.get("/crm/protecoes")
+async def get_crm_protecoes(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar proteções por status (funil de vendas) - Respeitando hierarquia"""
+    from server import db as db_instance
+    
+    try:
+        # 🔧 Filtrar por hierarquia
+        filtro = {}
+        user_type = current_user.get('user_type')
+        
+        if user_type == 'labelview_consultor':
+            # Consultor vê apenas suas próprias proteções
+            filtro['consultor_id'] = current_user['id']
+        elif user_type == 'labelview_regional':
+            # Regional vê suas próprias + dos consultores da regional
+            filtro['$or'] = [
+                {'regional_id': current_user['id']},
+                {'consultor_id': {'$in': await get_consultores_ids_da_regional(current_user['id'], db_instance)}}
+            ]
+        elif user_type == 'labelview_unidade':
+            # Unidade vê tudo da unidade (regionais + consultores)
+            filtro['unidade_id'] = current_user['id']
+        elif current_user.get('is_labelview_master'):
+            # Master vê tudo
+            pass
+        else:
+            # Outros tipos não têm acesso
+            raise HTTPException(status_code=403, detail="Sem permissão para acessar CRM")
+        
+        # Buscar proteções com filtro
+        all_protecoes = await db_instance.labelview_crm_protecoes.find(filtro).to_list(length=1000)
+        
+        # Organizar por status
+        interesse = []
+        negociacao = []
+        aguardando_aprovacao = []
+        
+        for protecao in all_protecoes:
+            protecao.pop('_id', None)
+            
+            status = protecao.get('status', 'interesse')
+            if status == 'interesse':
+                interesse.append(protecao)
+            elif status == 'negociacao':
+                negociacao.append(protecao)
+            elif status == 'aguardando_aprovacao':
+                aguardando_aprovacao.append(protecao)
+        
+        return {
+            'success': True,
+            'interesse': interesse,
+            'negociacao': negociacao,
+            'aguardando_aprovacao': aguardando_aprovacao,
+            'total': len(all_protecoes)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching CRM protecoes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_consultores_ids_da_regional(regional_id: str, db_instance):
+    """Helper para buscar IDs dos consultores de uma regional"""
+    consultores = await db_instance.users.find({'regional_id': regional_id, 'user_type': 'labelview_consultor'}).to_list(length=1000)
+    return [c['id'] for c in consultores]
+
+
+@labelview_router.post("/crm/protecoes")
+async def create_crm_protecao(
+    protecao_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar nova proteção no CRM"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        new_protecao = {
+            'id': str(uuid4()),
+            'title': protecao_data.get('title'),
+            'client_name': protecao_data.get('client_name'),
+            'vehicle': protecao_data.get('vehicle'),
+            'status': protecao_data.get('status', 'interesse'),
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'created_by': current_user["id"]
+        }
+        
+        await db_instance.labelview_crm_protecoes.insert_one(new_protecao)
+        new_protecao.pop('_id', None)
+        
+        return {
+            'success': True,
+            'message': 'Proteção criada com sucesso',
+            'protecao': new_protecao
+        }
+    except Exception as e:
+        logger.error(f"Error creating CRM protecao: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/crm/leads")
+async def create_crm_lead(
+    lead_data: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar novo lead no CRM"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        new_lead = {
+            'id': str(uuid4()),
+            'name': lead_data.get('name'),
+            'email': lead_data.get('email'),
+            'phone': lead_data.get('phone'),
+            'source': lead_data.get('source', 'manual'),
+            'created_at': datetime.utcnow(),
+            'created_by': current_user["id"]
+        }
+        
+        await db_instance.labelview_crm_leads.insert_one(new_lead)
+        new_lead.pop('_id', None)
+        
+        return {
+            'success': True,
+            'message': 'Lead criado com sucesso',
+            'lead': new_lead
+        }
+    except Exception as e:
+        logger.error(f"Error creating CRM lead: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ============================================
+# CRM - INTEGRAÇÃO COM COTAÇÃO
+# ============================================
+
+@labelview_router.post("/crm/cotacao-to-lead")
+async def criar_lead_de_cotacao(
+    dados: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar lead no CRM a partir da cotação (Step 1 - CPF digitado)"""
+    from server import db as db_instance
+    
+    try:
+        # Extrair dados da hierarquia do usuário
+        unidade_id = current_user.get('unidade_id') or current_user.get('id') if current_user.get('user_type') == 'labelview_unidade' else None
+        regional_id = current_user.get('regional_id') or current_user.get('id') if current_user.get('user_type') == 'labelview_regional' else None
+        consultor_id = current_user.get('id') if current_user.get('user_type') == 'labelview_consultor' else None
+        
+        # Criar lead
+        novo_lead = {
+            'id': str(uuid4()),
+            'name': dados.get('nome', ''),
+            'cpf': dados.get('cpf', ''),
+            'email': dados.get('email', ''),
+            'phone': dados.get('telefone', ''),
+            'source': 'cotacao_online',
+            'status': 'ativo',
+            'unidade_id': unidade_id,
+            'regional_id': regional_id,
+            'consultor_id': consultor_id,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'created_by': current_user['id'],
+            'cotacao_temp_id': dados.get('cotacao_temp_id')  # Link com cotação
+        }
+        
+        await db_instance.labelview_crm_leads.insert_one(novo_lead)
+        novo_lead.pop('_id', None)
+        
+        logger.info(f"✅ Lead criado no CRM: {novo_lead['name']} - CPF: {novo_lead['cpf']}")
+        
+        return {
+            'success': True,
+            'message': 'Lead criado no CRM',
+            'lead': novo_lead
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar lead de cotação: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/crm/cotacao-to-interesse")
+async def mover_para_interesse(
+    dados: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Mover para Interesse em Proteção (Step 2 - Veículo preenchido)"""
+    from server import db as db_instance
+    
+    try:
+        # Extrair dados da hierarquia
+        unidade_id = current_user.get('unidade_id') or current_user.get('id') if current_user.get('user_type') == 'labelview_unidade' else None
+        regional_id = current_user.get('regional_id') or current_user.get('id') if current_user.get('user_type') == 'labelview_regional' else None
+        consultor_id = current_user.get('id') if current_user.get('user_type') == 'labelview_consultor' else None
+        
+        # Criar registro de proteção no funil
+        nova_protecao = {
+            'id': str(uuid4()),
+            'cliente_nome': dados.get('cliente_nome', ''),
+            'cliente_cpf': dados.get('cliente_cpf', ''),
+            'cliente_email': dados.get('cliente_email', ''),
+            'cliente_telefone': dados.get('cliente_telefone', ''),
+            'veiculo_tipo': dados.get('veiculo_tipo', ''),
+            'veiculo_marca': dados.get('veiculo_marca', ''),
+            'veiculo_modelo': dados.get('veiculo_modelo', ''),
+            'veiculo_ano': dados.get('veiculo_ano', ''),
+            'veiculo_placa': dados.get('veiculo_placa', ''),
+            'veiculo_valor_fipe': dados.get('veiculo_valor_fipe', ''),
+            'status': 'interesse',  # Primeira coluna do funil
+            'unidade_id': unidade_id,
+            'regional_id': regional_id,
+            'consultor_id': consultor_id,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'created_by': current_user['id'],
+            'cotacao_temp_id': dados.get('cotacao_temp_id')
+        }
+        
+        await db_instance.labelview_crm_protecoes.insert_one(nova_protecao)
+        nova_protecao.pop('_id', None)
+        
+        logger.info(f"✅ Proteção movida para INTERESSE: {nova_protecao['cliente_nome']}")
+        
+        return {
+            'success': True,
+            'message': 'Proteção movida para Interesse',
+            'protecao': nova_protecao
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao mover para interesse: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/crm/cotacao-to-negociacao/{protecao_id}")
+async def mover_para_negociacao(
+    protecao_id: str,
+    dados: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Mover para Negociação em Proteção (Step 3 - Plano escolhido)"""
+    from server import db as db_instance
+    
+    try:
+        # Atualizar proteção existente
+        resultado = await db_instance.labelview_crm_protecoes.update_one(
+            {'id': protecao_id},
+            {
+                '$set': {
+                    'status': 'negociacao',  # Segunda coluna do funil
+                    'plano_nome': dados.get('plano_nome', ''),
+                    'plano_valor': dados.get('plano_valor', 0),
+                    'adicionais': dados.get('adicionais', []),
+                    'valor_total': dados.get('valor_total', 0),
+                    'updated_at': datetime.utcnow()
+                }
+            }
+        )
+        
+        if resultado.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Proteção não encontrada")
+        
+        logger.info(f"✅ Proteção movida para NEGOCIAÇÃO: {protecao_id}")
+        
+        return {
+            'success': True,
+            'message': 'Proteção movida para Negociação'
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao mover para negociação: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/crm/cotacao-to-aguardando/{protecao_id}")
+async def mover_para_aguardando_aprovacao(
+    protecao_id: str,
+    dados: dict,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Mover para Aguardando Aprovação (Step 4 - Vistoria iniciada)"""
+    from server import db as db_instance
+    
+    try:
+        # Atualizar proteção existente
+        resultado = await db_instance.labelview_crm_protecoes.update_one(
+            {'id': protecao_id},
+            {
+                '$set': {
+                    'status': 'aguardando_aprovacao',  # Terceira coluna do funil
+                    'vistoria_fotos': dados.get('vistoria_fotos', []),
+                    'vistoria_data': datetime.utcnow(),
+                    'updated_at': datetime.utcnow()
+                }
+            }
+        )
+        
+        if resultado.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Proteção não encontrada")
+        
+        logger.info(f"✅ Proteção movida para AGUARDANDO APROVAÇÃO: {protecao_id}")
+        
+        return {
+            'success': True,
+            'message': 'Proteção movida para Aguardando Aprovação'
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao mover para aguardando aprovação: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# UNIDADES
+# ============================================
+
+@labelview_router.get("/unidades/{unidade_id}")
+async def get_unidade_by_id(
+    unidade_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """
+    🔧 NOVO: Buscar dados de uma unidade específica por ID
+    Usado por Regionais e Consultores para carregar identidade visual da unidade
+    """
+    try:
+        logger.info(f"📥 GET /unidades/{unidade_id} - Buscando unidade específica")
+        logger.info(f"   Solicitante: {current_user.get('email')} ({current_user.get('user_type')})")
+        
+        # Buscar unidade no banco
+        unidade = await db.users.find_one({
+            'id': unidade_id,
+            'user_type': 'labelview_unidade'
+        })
+        
+        if not unidade:
+            logger.warning(f"❌ Unidade {unidade_id} não encontrada")
+            raise HTTPException(status_code=404, detail="Unidade não encontrada")
+        
+        logger.info(f"✅ Unidade encontrada: {unidade.get('nome_fantasia')}")
+        
+        # Retornar dados da unidade (sem senha)
+        unidade_data = {
+            'id': unidade.get('id'),
+            'nome_fantasia': unidade.get('nome_fantasia'),
+            'email': unidade.get('email'),
+            'logo_url': unidade.get('logo_url', ''),
+            'cor_primaria': unidade.get('cor_primaria', '#1a59ad'),
+            'cor_secundaria': unidade.get('cor_secundaria', '#2fa31c'),
+            'phone': unidade.get('phone', ''),
+            'cnpj': unidade.get('cnpj', ''),
+            'address': unidade.get('address', ''),
+            'city': unidade.get('city', ''),
+            'state': unidade.get('state', '')
+        }
+        
+        return unidade_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar unidade: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar unidade: {str(e)}")
+
+@labelview_router.get("/unidades")
+async def get_unidades(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar unidades"""
+    from server import db as db_instance
+    
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        # Buscar unidades na coleção users
+        unidades = await db_instance.users.find({'user_type': 'labelview_unidade'}).to_list(length=1000)
+        
+        # Formatar resposta
+        unidades_list = []
+        for unidade in unidades:
+            unidade.pop('_id', None)
+            unidade.pop('password_hash', None)  # Não expor hash de senha
+            
+            # Retornar temporary_password apenas se ainda não trocou a senha
+            if not unidade.get('must_change_password', False):
+                unidade.pop('temporary_password', None)
+            
+            # Garantir que name está presente (mapeado de nome_fantasia)
+            if 'nome_fantasia' in unidade and not unidade.get('name'):
+                unidade['name'] = unidade['nome_fantasia']
+            
+            unidades_list.append(unidade)
+        
+        return {
+            'success': True,
+            'unidades': unidades_list,
+            'total': len(unidades_list)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching unidades: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/unidades")
+async def create_unidade(
+    # Dados da Empresa
+    nome_fantasia: str = Form(...),
+    razao_social: str = Form(...),
+    cnpj: str = Form(...),
+    inscricao_municipal: Optional[str] = Form(None),
+    inscricao_estadual: Optional[str] = Form(None),
+    telefone: Optional[str] = Form(None),
+    whatsapp: Optional[str] = Form(None),
+    
+    # Dados do Responsável
+    responsavel_nome: str = Form(...),
+    responsavel_cpf: str = Form(...),
+    responsavel_email: Optional[str] = Form(None),
+    responsavel_whatsapp: Optional[str] = Form(None),
+    
+    # Dados PIX
+    pix_key: str = Form(...),
+    pix_key_type: str = Form(...),
+    
+    # Identidade Visual
+    logo: Optional[UploadFile] = File(None),
+    cor_primaria: str = Form(...),
+    cor_secundaria: str = Form(...),
+    
+    # Endereço
+    cep: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    number: Optional[str] = Form(None),
+    complement: Optional[str] = Form(None),
+    neighborhood: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    state: Optional[str] = Form(None),
+    
+    # Documentos
+    contrato_social: Optional[UploadFile] = File(None),
+    doc_cnpj: Optional[UploadFile] = File(None),
+    rg_front: Optional[UploadFile] = File(None),
+    rg_back: Optional[UploadFile] = File(None),
+    
+    # Dados de Acesso (opcionais - gerados se não fornecidos)
+    email: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar nova unidade Labelview"""
+    # Importar db dentro da função para evitar circular import
+    from server import db as db_instance
+    
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        logger.info(f"📋 Criando nova unidade: {nome_fantasia}")
+        
+        # Gerar ID único para a unidade
+        unidade_id = str(uuid4())
+        
+        # Processar logo - Upload para Cloudinary
+        logo_url = None
+        if logo and logo.filename:
+            logger.info(f"🖼️ Fazendo upload da logo para Cloudinary...")
+            logo_content = await logo.read()
+            logo_filename = f"logo_unidade_{unidade_id}"
+            logo_url = await upload_file_to_cloudinary(
+                file_content=logo_content,
+                filename=logo_filename,
+                folder="labelview/unidades/logos",
+                resource_type="image"
+            )
+            if logo_url:
+                logger.info(f"✅ Logo salva no Cloudinary: {logo_url}")
+            else:
+                logger.warning(f"⚠️ Falha ao fazer upload da logo")
+        
+        # Processar documentos - Upload para Cloudinary
+        doc_urls = {}
+        docs = {
+            'contrato_social': contrato_social,
+            'doc_cnpj': doc_cnpj,
+            'rg_front': rg_front,
+            'rg_back': rg_back
+        }
+        
+        for doc_name, doc_file in docs.items():
+            if doc_file and doc_file.filename:
+                logger.info(f"📄 Fazendo upload do documento {doc_name} para Cloudinary...")
+                doc_content = await doc_file.read()
+                doc_filename = f"{doc_name}_unidade_{unidade_id}"
+                doc_url = await upload_file_to_cloudinary(
+                    file_content=doc_content,
+                    filename=doc_filename,
+                    folder="labelview/unidades/documentos",
+                    resource_type="raw"  # raw para documentos PDF, etc
+                )
+                if doc_url:
+                    doc_urls[doc_name] = doc_url
+                    logger.info(f"✅ Documento {doc_name} salvo no Cloudinary: {doc_url}")
+                else:
+                    logger.warning(f"⚠️ Falha ao fazer upload do documento {doc_name}")
+        
+        # Gerar credenciais de acesso se não fornecidas
+        if not email:
+            # Gerar email único baseado no CNPJ
+            cnpj_numbers = ''.join(filter(str.isdigit, cnpj))
+            email = f"unidade.{cnpj_numbers}@labelview.agitomil.com"
+        
+        # Gerar senha provisória se não fornecida
+        temporary_password = password if password else "SenhaProvisoria2024!"
+        password_hash = bcrypt.hash(temporary_password)
+        
+        logger.info(f"🔑 Credenciais geradas - Email: {email}")
+        
+        # Criar usuário na coleção users
+        user_data = {
+            'id': unidade_id,
+            'email': email,
+            'password_hash': password_hash,
+            'temporary_password': temporary_password,  # Salvar senha provisória para visualização
+            'full_name': nome_fantasia,
+            'phone': telefone or '',
+            'user_type': 'labelview_unidade',
+            'is_labelview_master': False,
+            'is_active': True,
+            'is_blocked': False,
+            'must_change_password': True,
+            'profile_complete': True,
+            'balance': 0.0,
+            'cashback_balance': 0.0,
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+            
+            # Dados específicos da Unidade Labelview
+            'nome_fantasia': nome_fantasia,
+            'razao_social': razao_social,
+            'cnpj': cnpj,
+            'inscricao_municipal': inscricao_municipal or '',
+            'inscricao_estadual': inscricao_estadual or '',
+            'telefone': telefone or '',
+            'whatsapp': whatsapp or '',
+            
+            # Responsável
+            'responsavel_nome': responsavel_nome,
+            'responsavel_cpf': responsavel_cpf,
+            'responsavel_email': responsavel_email,
+            'responsavel_whatsapp': responsavel_whatsapp or '',
+            
+            # PIX
+            'pix_key': pix_key,
+            'pix_key_type': pix_key_type,
+            
+            # Identidade Visual
+            'logo_url': logo_url,
+            'cor_primaria': cor_primaria,
+            'cor_secundaria': cor_secundaria,
+            
+            # Endereço
+            'cep': cep or '',
+            'address': address or '',
+            'street': address or '',  # Alias para compatibilidade
+            'number': number or '',
+            'complement': complement or '',
+            'neighborhood': neighborhood or '',
+            'city': city or '',
+            'state': state or '',
+            
+            # Documentos
+            'contrato_social_url': doc_urls.get('contrato_social'),
+            'doc_cnpj_url': doc_urls.get('doc_cnpj'),
+            'rg_front_url': doc_urls.get('rg_front'),
+            'rg_back_url': doc_urls.get('rg_back'),
+            
+            # Admin fields para compatibilidade
+            'admin_name': responsavel_nome,
+            'admin_cpf': responsavel_cpf,
+            'admin_email': responsavel_email,
+            
+            # Referral Transmill - Unidade criada pelo Master
+            'referred_by': current_user["id"],  # Master que criou esta unidade
+            'referral_code': f"UNIT_{unidade_id[:8].upper()}",  # Código único da unidade
+            'referral_code_used': current_user.get('referral_code', ''),  # Código de quem indicou
+        }
+        
+        # Inserir usuário
+        logger.info(f"📝 Pronto para inserir no banco - user_data tem {len(user_data)} campos")
+        logger.info(f"🔑 user_data keys: {list(user_data.keys())}")
+        
+        insert_result = await db_instance.users.insert_one(user_data)
+        logger.info(f"✅ Insert executado - MongoDB _id: {insert_result.inserted_id}")
+        
+        # Verificar se realmente salvou
+        verify = await db_instance.users.find_one({'id': unidade_id})
+        if verify:
+            logger.info(f"✅ Verificado: Usuário está no banco! Email: {verify.get('email')}")
+        else:
+            logger.error(f"❌ CRÍTICO: Insert retornou OK mas usuário NÃO está no banco!")
+        
+        logger.info(f"✅ Usuário criado com sucesso: {unidade_id}")
+        
+        # Retornar resposta
+        return {
+            'success': True,
+            'message': 'Unidade criada com sucesso',
+            'unidade_id': unidade_id,
+            'credentials': {
+                'email': email,
+                'password': temporary_password
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar unidade: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao criar unidade: {str(e)}")
+
+
+@labelview_router.delete("/unidades/{unidade_id}")
+async def delete_unidade(
+    unidade_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Deletar unidade"""
+    from server import db as db_instance
+    
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        logger.info(f"🗑️ Deletando unidade: {unidade_id}")
+        
+        # Verificar se unidade existe
+        unidade = await db_instance.users.find_one({'id': unidade_id, 'user_type': 'labelview_unidade'})
+        if not unidade:
+            raise HTTPException(status_code=404, detail="Unidade não encontrada")
+        
+        # Deletar unidade
+        result = await db_instance.users.delete_one({'id': unidade_id})
+        
+        if result.deleted_count > 0:
+            logger.info(f"✅ Unidade deletada com sucesso: {unidade_id}")
+            return {
+                'success': True,
+                'message': 'Unidade deletada com sucesso'
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Unidade não encontrada")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar unidade: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar unidade: {str(e)}")
+
+
+@labelview_router.get("/usuarios")
+async def get_usuarios(
+    current_user = Depends(get_current_user_dependency)
+):
+    """
+    Listar todos os usuários Labelview (Unidade, Regional, Consultor)
+    Usado para diagnóstico e análise do sistema
+    """
+    from server import db as db_instance
+    
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        # Buscar todos os usuários Labelview
+        usuarios = await db_instance.users.find({
+            'user_type': {
+                '$in': ['labelview_unidade', 'labelview_regional', 'labelview_consultor']
+            }
+        }).to_list(length=5000)
+        
+        # Formatar resposta
+        usuarios_list = []
+        for usuario in usuarios:
+            usuario.pop('_id', None)
+            usuario.pop('password_hash', None)  # Não expor hash de senha
+            
+            # Retornar temporary_password apenas se ainda não trocou a senha
+            if not usuario.get('must_change_password', False):
+                usuario.pop('temporary_password', None)
+            
+            usuarios_list.append(usuario)
+        
+        return {
+            'success': True,
+            'usuarios': usuarios_list,
+            'total': len(usuarios_list)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching usuarios: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ============================================
+# REGIONAIS
+# ============================================
+
+@labelview_router.get("/filtros/consultores")
+async def get_filtros_consultores(
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Retorna filtros de consultores (usado pelo CRM)"""
+    from server import db as db_instance
+    try:
+        # Retornar lista vazia por enquanto (compatibilidade)
+        return {
+            'success': True,
+            'filtros': []
+        }
+    except Exception as e:
+        logger.error(f"Error fetching filtros consultores: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.get("/regionais")
+@labelview_router.get("/filtros/regionais")  # Alias para compatibilidade com frontend
+async def get_regionais(
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar regionais"""
+    from server import db as db_instance
+    try:
+        # Buscar regionais na coleção users
+        query = {'user_type': 'labelview_regional'}
+        
+        # Se não for master, filtrar apenas regionais da unidade
+        if not current_user.get('is_labelview_master'):
+            query['referred_by'] = current_user['id']
+        
+        regionais = await db_instance.users.find(query).to_list(length=1000)
+        
+        # Formatar resposta
+        regionais_list = []
+        for regional in regionais:
+            regional.pop('_id', None)
+            regional.pop('password_hash', None)
+            
+            # Retornar temporary_password apenas se ainda não trocou
+            if not regional.get('must_change_password', False):
+                regional.pop('temporary_password', None)
+            
+            regionais_list.append(regional)
+        
+        return {
+            'success': True,
+            'regionais': regionais_list,
+            'total': len(regionais_list)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching regionais: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/regionais")
+async def create_regional(
+    # Dados Básicos
+    nome: str = Form(...),
+    email_regional: Optional[str] = Form(None),
+    password_regional: Optional[str] = Form(None),
+    telefone: str = Form(...),
+    cpf: Optional[str] = Form(None),
+    
+    # Vínculo Hierárquico REMOVIDO: unidade_id vem automaticamente do current_user
+    
+    # Comissão
+    comissao_mensalidade_tipo: str = Form("percentual"),  # percentual ou valor
+    comissao_mensalidade_valor: float = Form(0.0),
+    
+    # Dados Pessoa Jurídica (opcional)
+    razao_social: Optional[str] = Form(None),
+    cnpj: Optional[str] = Form(None),
+    
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar nova regional"""
+    from server import db as db_instance
+    try:
+        logger.info(f"📋 Criando nova regional: {nome}")
+        
+        # Validar hierarquia: apenas Unidade pode criar Regional
+        if current_user.get('user_type') != 'labelview_unidade':
+            raise HTTPException(status_code=403, detail="Apenas Unidades podem criar Regionais")
+        
+        # unidade_id DEVE ser o ID da Unidade logada
+        unidade_id_real = current_user.get('id')
+        
+        logger.info(f"🏢 Regional será vinculado à Unidade: {unidade_id_real}")
+        
+        # Gerar ID único
+        regional_id = str(uuid4())
+        
+        # Gerar credenciais se não fornecidas
+        if not email_regional:
+            email_regional = f"regional.{regional_id[:8]}@labelview.agitomil.com"
+        
+        temporary_password = password_regional if password_regional else "SenhaProvisoria2024!"
+        password_hash = bcrypt.hash(temporary_password)
+        
+        logger.info(f"🔑 Credenciais geradas - Email: {email_regional}")
+        
+        # Criar usuário na coleção users
+        user_data = {
+            'id': regional_id,
+            'email': email_regional,
+            'password_hash': password_hash,
+            'temporary_password': temporary_password,
+            'full_name': nome,
+            'phone': telefone or '',
+            'user_type': 'labelview_regional',
+            'is_labelview_master': False,
+            'is_active': True,
+            'is_blocked': False,
+            'must_change_password': True,
+            'profile_complete': True,
+            'balance': 0.0,
+            'cashback_balance': 0.0,
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+            
+            # Dados específicos da Regional
+            'nome': nome,
+            'telefone': telefone or '',
+            'cpf': cpf or '',
+            'razao_social': razao_social or '',
+            'cnpj': cnpj or '',
+            
+            # Hierarquia Labelview
+            'unidade_id': unidade_id_real,  # ID da Unidade que está criando
+            
+            # Comissão
+            'comissao_mensalidade_tipo': comissao_mensalidade_tipo,
+            'comissao_mensalidade_valor': comissao_mensalidade_valor,
+            
+            # Referral Transmill - Regional criado pela Unidade
+            'referred_by': current_user['id'],  # Unidade que criou
+            'referral_code': f"REG_{regional_id[:8].upper()}",
+            'referral_code_used': current_user.get('referral_code', ''),  # Código de quem indicou
+        }
+        
+        # Inserir usuário
+        await db_instance.users.insert_one(user_data)
+        logger.info(f"✅ Regional criado com sucesso: {regional_id}")
+        
+        return {
+            'success': True,
+            'message': 'Regional criado com sucesso',
+            'regional_id': regional_id,
+            'credentials': {
+                'email': email_regional,
+                'password': temporary_password
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar regional: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao criar regional: {str(e)}")
+
+
+# ============================================
+# CONSULTORES
+# ============================================
+
+@labelview_router.get("/consultores")
+async def get_consultores(
+    unidade_id: Optional[str] = None,  # 🔧 NOVO: Filtro por unidade
+    regional_id: Optional[str] = None,  # 🔧 NOVO: Filtro por regional
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar consultores com filtros opcionais"""
+    from server import db as db_instance
+    try:
+        # Buscar consultores na coleção users
+        query = {'user_type': 'labelview_consultor'}
+        
+        # 🔧 Aplicar filtros opcionais (para Master)
+        if unidade_id:
+            query['unidade_id'] = unidade_id
+            logger.info(f"🔍 Filtrando consultores por unidade: {unidade_id}")
+        
+        if regional_id:
+            query['regional_id'] = regional_id
+            logger.info(f"🔍 Filtrando consultores por regional: {regional_id}")
+        
+        # Se não for master, filtrar consultores da hierarquia
+        if not current_user.get('is_labelview_master'):
+            user_type = current_user.get('user_type')
+            
+            if user_type == 'labelview_unidade':
+                # Unidade vê consultores vinculados a ela
+                # Usando $or para pegar tanto por unidade_id quanto por referred_by (compatibilidade)
+                query['$or'] = [
+                    {'unidade_id': current_user['id']},
+                    {'referred_by': current_user['id']}
+                ]
+            elif user_type == 'labelview_regional':
+                # Regional vê consultores vinculados a ela
+                query['$or'] = [
+                    {'regional_id': current_user['id']},
+                    {'referred_by': current_user['id']}
+                ]
+            else:
+                # Para outros tipos, filtrar por referred_by (caso genérico)
+                query['referred_by'] = current_user['id']
+        
+        logger.info(f"📋 Buscando consultores - Query: {query}")
+        consultores = await db_instance.users.find(query).to_list(length=1000)
+        logger.info(f"✅ Encontrados {len(consultores)} consultores")
+        
+        # Formatar resposta e enriquecer com dados de unidade e regional
+        consultores_list = []
+        for consultor in consultores:
+            consultor.pop('_id', None)
+            consultor.pop('password_hash', None)
+            
+            # Retornar temporary_password apenas se ainda não trocou
+            if not consultor.get('must_change_password', False):
+                consultor.pop('temporary_password', None)
+            
+            # Adicionar campo 'name' para o frontend (baseado no tipo)
+            if consultor.get('natureza') == 'cpf':
+                consultor['name'] = consultor.get('nome', consultor.get('full_name', '-'))
+            else:
+                consultor['name'] = consultor.get('nome_fantasia', consultor.get('razao_social', '-'))
+            
+            # Buscar nome da unidade
+            if consultor.get('unidade_id'):
+                unidade = await db_instance.users.find_one({'id': consultor['unidade_id']})
+                consultor['unidade_nome'] = unidade.get('nome_fantasia') if unidade else '-'
+            else:
+                consultor['unidade_nome'] = '-'
+            
+            # Buscar nome da regional
+            if consultor.get('regional_id'):
+                regional = await db_instance.users.find_one({'id': consultor['regional_id']})
+                consultor['regional_nome'] = regional.get('nome_fantasia') if regional else '-'
+            else:
+                consultor['regional_nome'] = '-'
+            
+            consultores_list.append(consultor)
+        
+        return {
+            'success': True,
+            'consultores': consultores_list,
+            'total': len(consultores_list)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching consultores: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/consultores")
+async def create_consultor(
+    natureza: str = Form("cpf"),
+    nome: Optional[str] = Form(None),
+    nome_fantasia: Optional[str] = Form(None),
+    razao_social: Optional[str] = Form(None),
+    email_consultor: Optional[str] = Form(None),
+    password_consultor: Optional[str] = Form(None),
+    telefone: Optional[str] = Form(None),
+    telefone_pf: Optional[str] = Form(None),
+    cpf: Optional[str] = Form(None),
+    rg: Optional[str] = Form(None),
+    cnpj: Optional[str] = Form(None),
+    cep: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    number: Optional[str] = Form(None),
+    complement: Optional[str] = Form(None),
+    neighborhood: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    state: Optional[str] = Form(None),
+    pix_key: Optional[str] = Form(None),
+    pix_key_type: Optional[str] = Form(None),
+    unidade_id: Optional[str] = Form(None),
+    regional_id: Optional[str] = Form(None),
+    comissao_mensalidade_tipo: str = Form("percentual"),
+    comissao_mensalidade_valor: float = Form(0.0),
+    # 🔧 CORREÇÃO: Adicionados campos de upload de imagens RG
+    rg_front: Optional[UploadFile] = File(None),
+    rg_back: Optional[UploadFile] = File(None),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar novo consultor"""
+    from server import db as db_instance
+    
+    try:
+        
+        # Log dos dados recebidos
+        logger.info(f"📥 Dados recebidos para criar consultor:")
+        logger.info(f"  - natureza: {natureza}")
+        logger.info(f"  - nome: {nome}")
+        logger.info(f"  - cpf: {cpf}")
+        logger.info(f"  - telefone_pf: {telefone_pf}")
+        logger.info(f"  - email_consultor: {email_consultor}")
+        logger.info(f"  - address: {address}")
+        logger.info(f"  - city: {city}")
+        logger.info(f"  - state: {state}")
+        
+        # Determinar nome e telefone final baseado na natureza
+        if natureza == 'cpf':
+            nome_final = nome
+            telefone_final = telefone_pf
+        else:  # cnpj
+            nome_final = nome_fantasia or razao_social
+            telefone_final = telefone
+        
+        logger.info(f"📋 Criando novo consultor ({natureza.upper()}): {nome_final}")
+        
+        # Validar hierarquia e determinar vínculos automaticamente
+        user_type = current_user.get('user_type')
+        
+        if user_type == 'labelview_unidade':
+            # Unidade criando Consultor
+            # Usar unidade_id do Form se fornecido, senão usa o ID do current_user
+            unidade_id_real = unidade_id if unidade_id else current_user.get('id')
+            # regional_id vem do Form (opcional - Unidade pode escolher vincular a uma Regional)
+            regional_id_real = regional_id  # Pode ser None
+            logger.info(f"🏢 Unidade {unidade_id_real} criando Consultor (Regional: {regional_id_real or 'Nenhuma'})")
+            
+        elif user_type == 'labelview_regional':
+            # Regional criando Consultor
+            unidade_id_real = current_user.get('unidade_id')  # Unidade da Regional
+            regional_id_real = current_user.get('id')  # Própria Regional
+            logger.info(f"🏢 Regional {regional_id_real} criando Consultor para Unidade {unidade_id_real}")
+            
+        else:
+            raise HTTPException(status_code=403, detail="Apenas Unidades e Regionais podem criar Consultores")
+        
+        # Validar campos obrigatórios
+        if not nome_final:
+            raise HTTPException(status_code=422, detail="Nome é obrigatório")
+        if not telefone_final:
+            raise HTTPException(status_code=422, detail="Telefone é obrigatório")
+        
+        # Gerar ID único
+        consultor_id = str(uuid4())
+        
+        # Gerar credenciais se não fornecidas
+        if not email_consultor:
+            email_consultor = f"consultor.{consultor_id[:8]}@labelview.agitomil.com"
+        
+        temporary_password = password_consultor if password_consultor else "SenhaProvisoria2024!"
+        password_hash = bcrypt.hash(temporary_password)
+        
+        logger.info(f"🔑 Credenciais geradas - Email: {email_consultor}")
+        
+        # 🔧 UPLOAD DE IMAGENS RG PARA CLOUDINARY
+        rg_front_url = None
+        rg_back_url = None
+        
+        if rg_front:
+            try:
+                logger.info(f"📸 Fazendo upload RG frente para Cloudinary...")
+                rg_front_url = await upload_file_to_cloudinary(
+                    rg_front,
+                    folder=f"labelview/consultores/{consultor_id}",
+                    filename=f"rg_front_{consultor_id}"
+                )
+                logger.info(f"✅ RG frente uploaded: {rg_front_url}")
+            except Exception as e:
+                logger.error(f"❌ Erro ao fazer upload RG frente: {e}")
+        
+        if rg_back:
+            try:
+                logger.info(f"📸 Fazendo upload RG verso para Cloudinary...")
+                rg_back_url = await upload_file_to_cloudinary(
+                    rg_back,
+                    folder=f"labelview/consultores/{consultor_id}",
+                    filename=f"rg_back_{consultor_id}"
+                )
+                logger.info(f"✅ RG verso uploaded: {rg_back_url}")
+            except Exception as e:
+                logger.error(f"❌ Erro ao fazer upload RG verso: {e}")
+        
+        # Log COMPLETO antes de salvar
+        logger.info(f"=" * 80)
+        logger.info(f"📝 CRIANDO CONSULTOR - DADOS COMPLETOS:")
+        logger.info(f"   ID: {consultor_id}")
+        logger.info(f"   Email: {email_consultor}")
+        logger.info(f"   Natureza: {natureza}")
+        logger.info(f"   Nome: {nome_final}")
+        logger.info(f"   CPF: {cpf}")
+        logger.info(f"   RG: {rg}")
+        logger.info(f"   Telefone: {telefone_final}")
+        logger.info(f"   CEP: {cep}")
+        logger.info(f"   Address: {address}")
+        logger.info(f"   Number: {number}")
+        logger.info(f"   Complement: {complement}")
+        logger.info(f"   Neighborhood: {neighborhood}")
+        logger.info(f"   City: {city}")
+        logger.info(f"   State: {state}")
+        logger.info(f"   PIX Key: {pix_key}")
+        logger.info(f"   PIX Type: {pix_key_type}")
+        logger.info(f"   Unidade ID: {unidade_id_real}")
+        logger.info(f"   Regional ID: {regional_id_real}")
+        logger.info(f"=" * 80)
+        
+        # Criar usuário na coleção users
+        user_data = {
+            'id': consultor_id,
+            'email': email_consultor,
+            'password_hash': password_hash,
+            'temporary_password': temporary_password,
+            'full_name': nome_final,
+            'phone': telefone_final or '',
+            'user_type': 'labelview_consultor',
+            'is_labelview_master': False,
+            'is_active': True,
+            'is_blocked': False,
+            'must_change_password': True,
+            'profile_complete': True,
+            'balance': 0.0,
+            'cashback_balance': 0.0,
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+            
+            # Dados específicos do Consultor
+            'nome': nome_final,
+            'telefone': telefone_final or '',
+            'natureza': natureza,
+            
+            # Dados PF
+            'cpf': cpf or '',
+            'rg': rg or '',
+            'rg_front_url': rg_front_url or '',
+            'rg_back_url': rg_back_url or '',
+            
+            # Dados PJ
+            'nome_fantasia': nome_fantasia or '',
+            'razao_social': razao_social or '',
+            'cnpj': cnpj or '',
+            
+            # Endereço
+            'cep': cep or '',
+            'address': address or '',
+            'street': address or '',  # Alias
+            'number': number or '',
+            'complement': complement or '',
+            'neighborhood': neighborhood or '',
+            'city': city or '',
+            'state': state or '',
+            
+            # PIX
+            'pix_key': pix_key or '',
+            'pix_key_type': pix_key_type or '',
+            
+            # Hierarquia Labelview
+            'unidade_id': unidade_id_real,  # Unidade a qual pertence
+            'regional_id': regional_id_real,  # Regional (se houver)
+            
+            # Comissão
+            'comissao_mensalidade_tipo': comissao_mensalidade_tipo,
+            'comissao_mensalidade_valor': comissao_mensalidade_valor,
+            
+            # Referral Transmill - Consultor criado pela Regional ou Unidade
+            'referred_by': current_user['id'],  # Quem criou (Regional ou Unidade)
+            'referral_code': f"CONS_{consultor_id[:8].upper()}",  # Código próprio do consultor
+            'referral_code_used': current_user.get('referral_code', ''),  # Código de quem indicou
+        }
+        
+        # Inserir no banco de dados com tratamento robusto
+        try:
+            insert_result = await db_instance.users.insert_one(user_data)
+            logger.info(f"✅ INSERT executado - ID MongoDB: {insert_result.inserted_id}")
+            logger.info(f"✅ Acknowledged: {insert_result.acknowledged}")
+        except Exception as insert_error:
+            logger.error(f"❌ ERRO CRÍTICO NO INSERT: {str(insert_error)}")
+            logger.error(f"❌ Tipo do erro: {type(insert_error)}")
+            raise HTTPException(status_code=500, detail=f"Erro ao salvar no banco: {str(insert_error)}")
+        
+        # VERIFICAÇÃO CRÍTICA: Buscar de volta do banco
+        consultor_salvo = await db_instance.users.find_one({'id': consultor_id})
+        if consultor_salvo:
+            logger.info(f"✅ VERIFICAÇÃO: Consultor encontrado no banco")
+            logger.info(f"   - Nome: {consultor_salvo.get('nome')}")
+            logger.info(f"   - CPF: {consultor_salvo.get('cpf')}")
+            logger.info(f"   - Telefone: {consultor_salvo.get('telefone')}")
+            logger.info(f"   - City: {consultor_salvo.get('city')}")
+            logger.info(f"   - State: {consultor_salvo.get('state')}")
+            logger.info(f"   - Email: {consultor_salvo.get('email')}")
+        else:
+            logger.error(f"❌❌❌ ERRO CRÍTICO: Consultor NÃO encontrado no banco após insert!")
+            logger.error(f"❌ INSERT disse sucesso mas consultor não está no banco!")
+            raise HTTPException(status_code=500, detail="Consultor não foi salvo no banco de dados")
+        
+        logger.info(f"✅ Consultor {consultor_id} criado com sucesso")
+        
+        return {
+            'success': True,
+            'message': 'Consultor criado com sucesso',
+            'consultor_id': consultor_id,
+            'credentials': {
+                'email': email_consultor,
+                'password': temporary_password
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar consultor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao criar consultor: {str(e)}")
+
+
+@labelview_router.patch("/consultores/{consultor_id}/block")
+async def toggle_block_consultor(
+    consultor_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Bloquear/Desbloquear consultor"""
+    from server import db as db_instance
+    
+    try:
+        # Buscar consultor
+        consultor = await db_instance.users.find_one({'id': consultor_id, 'user_type': 'labelview_consultor'})
+        if not consultor:
+            raise HTTPException(status_code=404, detail="Consultor não encontrado")
+        
+        # Alternar status de bloqueio
+        new_status = not consultor.get('is_blocked', False)
+        
+        await db_instance.users.update_one(
+            {'id': consultor_id},
+            {'$set': {'is_blocked': new_status, 'updated_at': datetime.utcnow().isoformat()}}
+        )
+        
+        logger.info(f"✅ Consultor {consultor_id} {'bloqueado' if new_status else 'desbloqueado'}")
+        
+        return {
+            'success': True,
+            'message': f"Consultor {'bloqueado' if new_status else 'desbloqueado'} com sucesso",
+            'is_blocked': new_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao alterar status do consultor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao alterar status: {str(e)}")
+
+
+@labelview_router.delete("/consultores/{consultor_id}")
+async def delete_consultor(
+    consultor_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Deletar consultor"""
+    from server import db as db_instance
+    
+    try:
+        # Buscar consultor
+        consultor = await db_instance.users.find_one({'id': consultor_id, 'user_type': 'labelview_consultor'})
+        if not consultor:
+            raise HTTPException(status_code=404, detail="Consultor não encontrado")
+        
+        # Deletar consultor
+        await db_instance.users.delete_one({'id': consultor_id})
+        
+        logger.info(f"✅ Consultor {consultor_id} deletado com sucesso")
+        
+        return {
+            'success': True,
+            'message': 'Consultor deletado com sucesso'
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar consultor: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar consultor: {str(e)}")
+
+
+# ============================================
+# CLIENTES LABELVIEW
+# ============================================
+
+@labelview_router.get("/clients-detailed")
+async def get_clients_detailed(
+    referred_by: Optional[str] = Query(None),
+    unidade_id: Optional[str] = Query(None),
+    regional_id: Optional[str] = Query(None),
+    consultor_id: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar clientes com filtros hierárquicos"""
+    try:
+        logger.info(f"📋 Buscando clientes - user: {current_user.get('user_type')}, filtros: referred_by={referred_by}, unidade_id={unidade_id}, regional_id={regional_id}, consultor_id={consultor_id}")
+        
+        # Construir query baseado no tipo de usuário e filtros
+        query = {'user_type': 'cliente'}
+        
+        # Consultor: só vê clientes próprios
+        if current_user.get('user_type') == 'labelview_consultor':
+            query['referred_by'] = current_user['id']
+        
+        # Regional: vê próprios ou filtra por consultor
+        elif current_user.get('user_type') == 'labelview_regional':
+            if referred_by:
+                query['referred_by'] = referred_by
+            elif consultor_id:
+                # Buscar clientes do consultor
+                query['referred_by'] = consultor_id
+            else:
+                # Clientes próprios do regional
+                query['referred_by'] = current_user['id']
+        
+        # Unidade: vê próprios, por regional ou por consultor
+        elif current_user.get('user_type') == 'labelview_unidade':
+            if referred_by:
+                query['referred_by'] = referred_by
+            elif regional_id:
+                # Buscar clientes criados por este regional
+                query['referred_by'] = regional_id
+            elif consultor_id:
+                # Buscar clientes criados por este consultor
+                query['referred_by'] = consultor_id
+            else:
+                # Clientes próprios da unidade
+                query['referred_by'] = current_user['id']
+        
+        # Master: filtra por unidade ou vê todos
+        elif current_user.get('is_labelview_master'):
+            if unidade_id:
+                # Buscar clientes da hierarquia desta unidade
+                # Isso inclui clientes criados pela unidade, regionais e consultores
+                unidade_users = await db_instance.users.find({
+                    '$or': [
+                        {'id': unidade_id},
+                        {'unidade_id': unidade_id}
+                    ]
+                }).to_list(length=10000)
+                
+                user_ids = [u['id'] for u in unidade_users]
+                query['referred_by'] = {'$in': user_ids}
+            # Se não especificar unidade, retorna todos os clientes
+        
+        # Buscar clientes
+        clientes = await db_instance.users.find(query).to_list(length=10000)
+        
+        # Enriquecer dados dos clientes
+        clientes_detalhados = []
+        for cliente in clientes:
+            cliente.pop('_id', None)
+            cliente.pop('password_hash', None)
+            
+            # Buscar quem indicou
+            if cliente.get('referred_by'):
+                referrer = await db_instance.users.find_one({'id': cliente['referred_by']})
+                if referrer:
+                    cliente['indicado_por'] = {
+                        'id': referrer.get('id'),
+                        'nome': referrer.get('full_name') or referrer.get('nome') or referrer.get('nome_fantasia'),
+                        'tipo': referrer.get('user_type')
+                    }
+            
+            clientes_detalhados.append(cliente)
+        
+        logger.info(f"✅ Encontrados {len(clientes_detalhados)} clientes")
+        
+        return {
+            'success': True,
+            'clients': clientes_detalhados,
+            'total': len(clientes_detalhados)
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar clientes: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# TIPOS DE VEÍCULO
+# ============================================
+
+@labelview_router.get("/tipos-veiculo")
+async def get_tipos_veiculo(
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar tipos de veículo disponíveis"""
+    from server import db as db_instance
+    try:
+        logger.info("📋 GET /tipos-veiculo iniciado")
+        
+        # Buscar tipos de veículo da coleção
+        tipos = await db_instance.labelview_tipos_veiculo.find({}).to_list(length=1000)
+        
+        logger.info(f"📦 {len(tipos)} tipos encontrados no banco de dados")
+        
+        # Se não houver tipos cadastrados, retornar tipos padrão
+        if not tipos:
+            tipos_padrao = [
+                {
+                    'id': 'carro',
+                    'nome': 'Carro',
+                    'tipo_fipe': 'carros',
+                    'icone': '🚗',
+                    'ativo': True
+                },
+                {
+                    'id': 'moto',
+                    'nome': 'Moto',
+                    'tipo_fipe': 'motos',
+                    'icone': '🏍️',
+                    'ativo': True
+                },
+                {
+                    'id': 'caminhao',
+                    'nome': 'Caminhão',
+                    'tipo_fipe': 'caminhoes',
+                    'icone': '🚚',
+                    'ativo': True
+                }
+            ]
+            tipos = tipos_padrao
+        
+        # Remover _id do MongoDB e mapear campos para o frontend
+        for tipo in tipos:
+            if '_id' in tipo:
+                tipo.pop('_id')
+            # Garantir compatibilidade: mapear 'ativo' para 'is_active' também
+            if 'ativo' in tipo and 'is_active' not in tipo:
+                tipo['is_active'] = tipo['ativo']
+            
+            # Log das imagens para cada tipo
+            imagens = tipo.get('imagens_vistoria', [])
+            logger.info(f"📸 Tipo '{tipo.get('nome')}' tem {len(imagens)} imagens no banco")
+        
+        return {
+            'success': True,
+            'tipos': tipos,
+            'total': len(tipos)
+        }
+    except Exception as e:
+        logger.error(f"❌ Error fetching tipos veiculo: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@labelview_router.post("/tipos-veiculo")
+async def create_tipo_veiculo(
+    dados: dict,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar novo tipo de veículo (apenas Master)"""
+    from server import db as db_instance
+    
+    # Verificar se é Master
+    if not current_user.get('is_labelview_master') and current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode criar tipos de veículo")
+    
+    try:
+        # ✅ IMPORTANTE: Adicionar campo tipo_fipe para busca FIPE
+        # Mapear categoria para tipo_fipe
+        categoria = dados.get('categoria', '').lower()
+        tipo_fipe = 'carros'  # Padrão
+        
+        if 'moto' in categoria or 'motocicleta' in categoria:
+            tipo_fipe = 'motos'
+        elif 'caminhão' in categoria or 'caminhao' in categoria or 'caminhonete' in categoria:
+            tipo_fipe = 'caminhoes'
+        
+        novo_tipo = {
+            'id': str(uuid4()),
+            'nome': dados.get('nome'),
+            'categoria': dados.get('categoria'),
+            'tipo_fipe': tipo_fipe,  # Para busca na tabela FIPE
+            'ativo': dados.get('ativo', True),
+            'valor_fipe_maximo': dados.get('valor_fipe_maximo', 120000),
+            'imagens_vistoria': dados.get('imagens_vistoria', []),
+            'created_at': datetime.utcnow(),
+            'created_by': current_user['id']
+        }
+        
+        await db_instance.labelview_tipos_veiculo.insert_one(novo_tipo)
+        novo_tipo.pop('_id', None)
+        
+        logger.info(f"✅ Tipo de veículo criado: {novo_tipo['nome']} (tipo_fipe: {tipo_fipe})")
+        
+        return {
+            'success': True,
+            'message': 'Tipo de veículo criado',
+            'tipo': novo_tipo
+        }
+    except Exception as e:
+        logger.error(f"Erro ao criar tipo de veículo: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# =====================================================
+# UPLOAD DE IMAGEM PARA TIPO DE VEÍCULO
+# =====================================================
+@labelview_router.post("/upload-imagem-tipo-veiculo")
+async def upload_imagem_tipo_veiculo(
+    imagem_base64: str = Form(...),
+    nome_campo: str = Form(...),
+    tipo_veiculo_id: str = Form(...),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """
+    Endpoint para fazer upload de imagem para tipo de veículo
+    Recebe imagem em base64 e faz upload para Cloudinary
+    """
+    # Verificar se é Master
+    if not current_user.get('is_labelview_master') and current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode fazer upload de imagens")
+    
+    try:
+        import base64
+        import io
+        
+        # Extrair dados base64 (remover prefixo data:image/...;base64,)
+        if ',' in imagem_base64:
+            imagem_base64 = imagem_base64.split(',')[1]
+        
+        # Decodificar base64
+        try:
+            image_bytes = base64.b64decode(imagem_base64)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Imagem base64 inválida")
+        
+        # Validar tamanho (máx 5MB)
+        file_size = len(image_bytes)
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo: 5MB")
+        
+        # Gerar nome de arquivo
+        import uuid
+        filename = f"{tipo_veiculo_id}_{nome_campo}_{uuid.uuid4().hex[:8]}.jpg"
+        
+        logger.info(f"📤 Fazendo upload de imagem tipo veículo: {nome_campo} ({file_size} bytes)")
+        
+        # Fazer upload para Cloudinary
+        image_url = await upload_file_to_cloudinary(
+            file_content=image_bytes,
+            filename=filename,
+            folder='tipos_veiculo'
+        )
+        
+        if not image_url:
+            raise HTTPException(status_code=500, detail="Erro ao fazer upload da imagem para Cloudinary")
+        
+        logger.info(f"✅ Upload concluído: {image_url}")
+        
+        return {
+            'success': True,
+            'url': image_url,
+            'filename': filename,
+            'size': file_size
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro no upload de imagem tipo veículo: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer upload: {str(e)}")
+
+
+@labelview_router.patch("/tipos-veiculo/{tipo_id}")
+async def update_tipo_veiculo(
+    tipo_id: str,
+    dados: dict,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Atualizar tipo de veículo (apenas Master)"""
+    from server import db as db_instance
+    
+    # Verificar se é Master
+    if not current_user.get('is_labelview_master') and current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode editar tipos de veículo")
+    
+    try:
+        # Log detalhado dos dados recebidos
+        logger.info(f"🔄 PATCH /tipos-veiculo/{tipo_id} iniciado")
+        logger.info(f"📦 Dados recebidos: {list(dados.keys())}")
+        
+        # ✅ Atualizar tipo_fipe baseado na categoria
+        categoria = dados.get('categoria', '').lower()
+        tipo_fipe = 'carros'  # Padrão
+        
+        if 'moto' in categoria or 'motocicleta' in categoria:
+            tipo_fipe = 'motos'
+        elif 'caminhão' in categoria or 'caminhao' in categoria or 'caminhonete' in categoria:
+            tipo_fipe = 'caminhoes'
+        
+        # Log detalhado das imagens
+        imagens_recebidas = dados.get('imagens_vistoria', [])
+        logger.info(f"📸 RECEBENDO {len(imagens_recebidas)} imagens para salvar no tipo {tipo_id}")
+        
+        if imagens_recebidas:
+            logger.info(f"📋 Primeiras imagens recebidas: {imagens_recebidas[:2] if len(imagens_recebidas) >= 2 else imagens_recebidas}")
+        else:
+            logger.warning(f"⚠️ NENHUMA IMAGEM RECEBIDA para o tipo {tipo_id}!")
+        
+        update_data = {
+            'nome': dados.get('nome'),
+            'categoria': dados.get('categoria'),
+            'tipo_fipe': tipo_fipe,
+            'ativo': dados.get('ativo'),
+            'valor_fipe_maximo': dados.get('valor_fipe_maximo', 120000),
+            'imagens_vistoria': imagens_recebidas,
+            'updated_at': datetime.utcnow()
+        }
+        
+        # Log antes do update
+        logger.info(f"💾 Salvando no MongoDB - total de imagens: {len(update_data['imagens_vistoria'])}")
+        
+        resultado = await db_instance.labelview_tipos_veiculo.update_one(
+            {'id': tipo_id},
+            {'$set': update_data}
+        )
+        
+        logger.info(f"📊 MongoDB resultado - matched: {resultado.matched_count}, modified: {resultado.modified_count}")
+        
+        if resultado.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Tipo de veículo não encontrado")
+        
+        # Verificar o que foi salvo
+        tipo_salvo = await db_instance.labelview_tipos_veiculo.find_one({'id': tipo_id})
+        if tipo_salvo:
+            imagens_salvas = tipo_salvo.get('imagens_vistoria', [])
+            logger.info(f"✅ Verificação: {len(imagens_salvas)} imagens CONFIRMADAS no banco de dados")
+        
+        logger.info(f"✅ Tipo de veículo atualizado com sucesso: {tipo_id}")
+        
+        return {
+            'success': True,
+            'message': 'Tipo de veículo atualizado',
+            'imagens_salvas': len(imagens_recebidas)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao atualizar tipo de veículo: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.delete("/tipos-veiculo/{tipo_id}")
+async def delete_tipo_veiculo(
+    tipo_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Deletar tipo de veículo (apenas Master)"""
+    from server import db as db_instance
+    
+    # Verificar se é Master
+    if not current_user.get('is_labelview_master') and current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode deletar tipos de veículo")
+    
+    try:
+        logger.info(f"🗑️ DELETE /tipos-veiculo/{tipo_id} iniciado")
+        
+        # Verificar se o tipo existe
+        tipo = await db_instance.labelview_tipos_veiculo.find_one({'id': tipo_id})
+        if not tipo:
+            raise HTTPException(status_code=404, detail="Tipo de veículo não encontrado")
+        
+        # Deletar o tipo
+        resultado = await db_instance.labelview_tipos_veiculo.delete_one({'id': tipo_id})
+        
+        if resultado.deleted_count == 0:
+            raise HTTPException(status_code=500, detail="Erro ao deletar tipo de veículo")
+        
+        logger.info(f"✅ Tipo de veículo deletado com sucesso: {tipo_id}")
+        
+        return {
+            'success': True,
+            'message': 'Tipo de veículo deletado com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar tipo de veículo: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/upload-foto-vistoria")
+async def upload_foto_vistoria(
+    imagem_base64: str = Form(...),
+    nome_campo: str = Form(...),
+    cotacao_temp_id: str = Form(...),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Upload de foto de vistoria para Cloudinary"""
+    from server import db as db_instance
+    try:
+        logger.info(f"📸 Upload de foto de vistoria - campo: {nome_campo}")
+        
+        # Decodificar base64 e fazer upload para Cloudinary
+        import base64
+        import re
+        
+        # Remover prefixo data:image/...;base64,
+        base64_data = re.sub('^data:image/.+;base64,', '', imagem_base64)
+        image_bytes = base64.b64decode(base64_data)
+        
+        # Upload para Cloudinary
+        filename = f"vistoria_{nome_campo}_{cotacao_temp_id}"
+        cloudinary_url = await upload_file_to_cloudinary(
+            file_content=image_bytes,
+            filename=filename,
+            folder="labelview/vistorias",
+            resource_type="image"
+        )
+        
+        if not cloudinary_url:
+            raise HTTPException(status_code=500, detail="Erro ao fazer upload para Cloudinary")
+        
+        logger.info(f"✅ Foto de vistoria enviada: {cloudinary_url}")
+        
+        return {
+            'success': True,
+            'url': cloudinary_url,
+            'campo': nome_campo
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao fazer upload de foto de vistoria: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer upload: {str(e)}")
+
+
+# ============================================
+# TIPOS DE PLANOS
+# ============================================
+
+@labelview_router.get("/planos")
+async def get_planos(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar tipos de planos (apenas para Unidades)"""
+    from server import db as db_instance
+    
+    # Verificar se é Unidade
+    if current_user.get('user_type') != 'labelview_unidade':
+        raise HTTPException(status_code=403, detail="Apenas Unidades podem acessar planos")
+    
+    try:
+        # Buscar planos apenas da unidade logada
+        planos = await db_instance.labelview_planos.find({
+            'unidade_id': current_user['id']
+        }).to_list(length=1000)
+        
+        # Remover _id do MongoDB
+        for plano in planos:
+            if '_id' in plano:
+                plano.pop('_id')
+        
+        return {
+            'success': True,
+            'planos': planos,
+            'total': len(planos)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching planos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@labelview_router.get("/planos/meus-planos")
+async def get_meus_planos(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Listar planos da unidade (para Unidades/Regionais/Consultores)"""
+    from server import db as db_instance
+    
+    try:
+        # Determinar unidade_id baseado no tipo de usuário
+        if current_user.get('user_type') == 'labelview_unidade':
+            unidade_id = current_user['id']
+        elif current_user.get('user_type') in ['labelview_regional', 'labelview_consultor']:
+            unidade_id = current_user.get('unidade_id')
+        elif current_user.get('is_labelview_master') or current_user.get('user_type') == 'labelview_master':
+            # Master vê todos os planos
+            unidade_id = None
+        else:
+            raise HTTPException(status_code=403, detail="Sem permissão para acessar planos")
+        
+        # Buscar planos da unidade
+        if unidade_id:
+            planos = await db_instance.labelview_planos.find({
+                'unidade_id': unidade_id
+            }).to_list(length=1000)
+        else:
+            # Master vê todos
+            planos = await db_instance.labelview_planos.find({}).to_list(length=1000)
+        
+        # Remover _id do MongoDB
+        for plano in planos:
+            if '_id' in plano:
+                plano.pop('_id')
+        
+        return {
+            'success': True,
+            'planos': planos,
+            'total': len(planos)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching meus planos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/planos/criar-automatico")
+async def criar_planos_automaticos(
+    request: Request,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar 12 planos automaticamente (apenas para Unidades) - baseado nas tabelas do Master com percentual de lucro
+    🔧 NOVO: Criar planos automaticamente com base em tipo de veículo e coberturas
+    Permite Unidade e Master criar
+    """
+    from server import db as db_instance
+    
+    # ✅ Apenas Unidades criam planos (Master cria tabelas)
+    user_type = current_user.get('user_type')
+    if user_type != 'labelview_unidade':
+        raise HTTPException(status_code=403, detail="Apenas Unidades podem criar planos")
+    
+    try:
+        body = await request.json()
+        tipo_veiculo = body.get('tipo_veiculo')
+        taxa_adesao = body.get('taxa_adesao', 0)
+        coberturas_principais = body.get('coberturas_principais', [])
+        adicionais = body.get('adicionais', [])
+        
+        logger.info(f"📝 Criando planos automáticos - Tipo: {tipo_veiculo}")
+        logger.info(f"   Coberturas principais: {len(coberturas_principais)}")
+        logger.info(f"   Adicionais: {len(adicionais)}")
+        
+        planos_criados = []
+        
+        # ✅ CORREÇÃO: Definir 12 faixas de FIPE de 10 em 10 mil (igual tabela do Master)
+        faixas_fipe = []
+        for i in range(12):
+            valor_min = i * 10000
+            valor_max = (i + 1) * 10000
+            faixas_fipe.append({
+                'nome': f'Faixa {i+1}',
+                'fipe_min': valor_min,
+                'fipe_max': valor_max
+            })
+        
+        # ✅ Importar função de busca na tabela do Master
+        from tabelas_valores import buscar_valor_na_tabela
+        
+        # ✅ CRIAR 12 PLANOS (1 por faixa FIPE)
+        # Cada plano tem apenas a COBERTURA PRINCIPAL (adicionais são opcionais para o cliente)
+        for faixa in faixas_fipe:
+            nome_plano = f"{tipo_veiculo} - {faixa['nome']}"
+            
+            # Calcular FIPE médio da faixa
+            fipe_medio = (faixa['fipe_min'] + faixa['fipe_max']) / 2
+            
+            # ✅ USAR APENAS A COBERTURA PRINCIPAL (normalmente Roubo/Furto)
+            # Adicionais são oferecidos ao CLIENTE na cotação
+            if not coberturas_principais or len(coberturas_principais) == 0:
+                logger.error("❌ Nenhuma cobertura principal definida!")
+                continue
+            
+            # Usar a primeira cobertura principal (geralmente Roubo/Furto)
+            cobertura_principal = coberturas_principais[0]
+            tipo_cobertura = cobertura_principal['tipo_cobertura']
+            percentual_lucro = float(cobertura_principal['percentual'])
+            
+            # Buscar valor na tabela do Master
+            resultado_busca = await buscar_valor_na_tabela(
+                db=db_instance,
+                tipo_cobertura=tipo_cobertura,
+                valor_fipe=fipe_medio,
+                tipo_veiculo_assistencia=tipo_veiculo
+            )
+            
+            if resultado_busca.get('success'):
+                valor_base_master = float(resultado_busca.get('valor_servico', 0))
+                # Aplicar percentual de lucro sobre o valor do Master
+                custo_mensal = valor_base_master * (1 + percentual_lucro / 100)
+                logger.info(f"      {tipo_cobertura}: R$ {valor_base_master:.2f} + {percentual_lucro}% = R$ {custo_mensal:.2f}")
+            else:
+                logger.warning(f"      ⚠️ {tipo_cobertura}: Tabela Master não encontrada - usando 0")
+                custo_mensal = 0
+            
+            # ✅ CRIAR PLANO com TODAS as coberturas
+            plano_id = str(uuid4())
+            plano_data = {
+                'id': plano_id,
+                'nome': nome_plano,
+                'tipo_veiculo': tipo_veiculo,
+                'taxa_adesao': taxa_adesao,
+                # ✅ CORREÇÃO: Nomes dos campos que o frontend espera
+                'valor_fipe_min': faixa['fipe_min'],
+                'valor_fipe_max': faixa['fipe_max'],
+                'fipe_min': faixa['fipe_min'],  # Manter compatibilidade
+                'fipe_max': faixa['fipe_max'],  # Manter compatibilidade
+                'custo_mensal': round(custo_mensal, 2),
+                'valor_total_mensal': round(custo_mensal, 2),  # ✅ Campo que o frontend usa
+                # ✅ Armazenar TODAS as coberturas com seus percentuais
+                'coberturas_principais': coberturas_principais,
+                'coberturas': coberturas_principais,  # Manter compatibilidade
+                'adicionais': adicionais,
+                'unidade_id': current_user['id'],
+                # ✅ CORREÇÃO: Campo 'ativo' que o frontend espera
+                'ativo': True,
+                'is_active': True,  # Manter compatibilidade
+                'is_blocked': False,
+                'created_at': datetime.utcnow(),
+                'updated_at': datetime.utcnow(),
+                'created_by': current_user["id"]
+            }
+            
+            await db_instance.labelview_planos.insert_one(plano_data)
+            planos_criados.append(nome_plano)
+            logger.info(f"   ✅ Criado: {nome_plano} (FIPE: R$ {faixa['fipe_min']/1000:.0f}k - R$ {faixa['fipe_max']/1000:.0f}k, Custo: R$ {custo_mensal:.2f}/mês)")
+        
+        logger.info(f"✅ Total de planos criados: {len(planos_criados)}")
+        
+        return {
+            'success': True,
+            'message': f'Planos criados para {tipo_veiculo}',
+            'total_planos_criados': len(planos_criados),
+            'planos': planos_criados
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error creating automatic plans: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/planos")
+async def create_plano(
+    nome: str,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Criar novo tipo de plano (apenas Unidades)"""
+    from server import db as db_instance
+    
+    # ✅ Apenas Unidades criam planos
+    if current_user.get('user_type') != 'labelview_unidade':
+        raise HTTPException(status_code=403, detail="Apenas Unidades podem criar planos")
+    
+    try:
+        # Verificar se já existe um plano com esse nome
+        existing = await db_instance.labelview_planos.find_one({'nome': nome})
+        if existing:
+            raise HTTPException(status_code=400, detail="Já existe um plano com esse nome")
+        
+        plano_data = {
+            'id': str(uuid4()),
+            'nome': nome,
+            'is_active': True,
+            'is_blocked': False,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+            'created_by': current_user["id"]
+        }
+        
+        await db_instance.labelview_planos.insert_one(plano_data)
+        
+        # Remover _id para retornar
+        plano_data.pop('_id', None)
+        
+        return {
+            'success': True,
+            'message': 'Plano criado com sucesso',
+            'plano': plano_data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating plano: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.put("/planos/{plano_id}")
+async def update_plano(
+    plano_id: str,
+    nome: str,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Atualizar tipo de plano (apenas Unidades)"""
+    from server import db as db_instance
+    
+    # ✅ Apenas Unidades editam planos
+    if current_user.get('user_type') != 'labelview_unidade':
+        raise HTTPException(status_code=403, detail="Apenas Unidades podem editar planos")
+    
+    try:
+        # Verificar se o plano existe
+        plano = await db_instance.labelview_planos.find_one({'id': plano_id})
+        if not plano:
+            raise HTTPException(status_code=404, detail="Plano não encontrado")
+        
+        # Verificar se outro plano já usa esse nome
+        existing = await db_instance.labelview_planos.find_one({'nome': nome, 'id': {'$ne': plano_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Já existe outro plano com esse nome")
+        
+        # Atualizar
+        result = await db_instance.labelview_planos.update_one(
+            {'id': plano_id},
+            {'$set': {
+                'nome': nome,
+                'updated_at': datetime.utcnow()
+            }}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Plano não encontrado")
+        
+        return {
+            'success': True,
+            'message': 'Plano atualizado com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating plano: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/planos/{plano_id}/block")
+async def toggle_block_plano(
+    plano_id: str,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Bloquear/desbloquear tipo de plano"""
+    from server import db as db_instance
+    await verify_labelview_master(current_user["id"])
+    
+    try:
+        plano = await db_instance.labelview_planos.find_one({'id': plano_id})
+        if not plano:
+            raise HTTPException(status_code=404, detail="Plano não encontrado")
+        
+        new_status = not plano.get('is_blocked', False)
+        
+        await db_instance.labelview_planos.update_one(
+            {'id': plano_id},
+            {'$set': {
+                'is_blocked': new_status,
+                'updated_at': datetime.utcnow()
+            }}
+        )
+        
+        return {
+            'success': True,
+            'message': f"Plano {'bloqueado' if new_status else 'desbloqueado'} com sucesso",
+            'is_blocked': new_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling block plano: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.delete("/planos/{plano_id}")
+async def delete_plano(
+    plano_id: str,
+    current_user = Depends(get_current_user_dependency)
+):
+    """Excluir plano - Unidade pode deletar seus próprios planos"""
+    from server import db as db_instance
+    
+    try:
+        # Buscar o plano primeiro para verificar permissão
+        plano = await db_instance.labelview_planos.find_one({'id': plano_id})
+        
+        if not plano:
+            raise HTTPException(status_code=404, detail="Plano não encontrado")
+        
+        # Verificar permissão
+        user_type = current_user.get('user_type')
+        if user_type == 'labelview_unidade':
+            # Unidade só pode deletar seus próprios planos
+            if plano.get('unidade_id') != current_user['id']:
+                raise HTTPException(status_code=403, detail="Sem permissão para deletar este plano")
+        elif user_type == 'labelview_master' or current_user.get('is_labelview_master'):
+            # Master pode deletar qualquer plano
+            pass
+        else:
+            raise HTTPException(status_code=403, detail="Sem permissão para deletar planos")
+        
+        result = await db_instance.labelview_planos.delete_one({'id': plano_id})
+        
+        return {
+            'success': True,
+            'message': 'Plano excluído com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting plano: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/planos/limpar-todos")
+async def limpar_todos_planos(
+    current_user = Depends(get_current_user_dependency)
+):
+    """Deletar TODOS os planos da unidade - Unidade pode limpar seus próprios planos"""
+    from server import db as db_instance
+    
+    try:
+        # Pegar unidade_id do usuário logado
+        unidade_id = current_user['id']
+        
+        # Deletar todos os planos da unidade
+        result = await db_instance.labelview_planos.delete_many({'unidade_id': unidade_id})
+        
+        return {
+            'success': True,
+            'message': f'{result.deleted_count} planos deletados com sucesso',
+            'deleted_count': result.deleted_count
+        }
+    except Exception as e:
+        logger.error(f"Error deleting all planos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# TIPOS DE FORNECEDOR
+# ============================================
+
+@labelview_router.get("/tipos-fornecedor")
+async def get_tipos_fornecedor(
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar tipos de fornecedor"""
+    from server import db as db_instance
+    
+    # Verificar se é usuário labelview
+    user_type = current_user.get('user_type')
+    if not user_type or not user_type.startswith('labelview_'):
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    try:
+        tipos = await db_instance.labelview_tipos_fornecedor.find({}).to_list(length=1000)
+        
+        # Remover _id do MongoDB
+        for tipo in tipos:
+            if '_id' in tipo:
+                tipo.pop('_id')
+        
+        return {
+            'success': True,
+            'tipos': tipos,
+            'total': len(tipos)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching tipos fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class TipoFornecedorCreate(BaseModel):
+    tipo_servico: str
+
+
+@labelview_router.post("/tipos-fornecedor")
+async def create_tipo_fornecedor(
+    tipo: TipoFornecedorCreate,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar novo tipo de fornecedor"""
+    from server import db as db_instance
+    
+    # Permitir Master e Unidade
+    user_type = current_user.get('user_type')
+    if user_type not in ['labelview_master', 'labelview_unidade']:
+        raise HTTPException(status_code=403, detail="Apenas Master e Unidade podem criar tipos de fornecedor")
+    
+    try:
+        # Verificar se já existe
+        existing = await db_instance.labelview_tipos_fornecedor.find_one({
+            'tipo_servico': tipo.tipo_servico
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Tipo de fornecedor já existe")
+        
+        tipo_id = str(uuid4())
+        tipo_doc = {
+            'id': tipo_id,
+            'tipo_servico': tipo.tipo_servico,
+            'is_blocked': False,
+            'created_by': current_user['id'],
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        await db_instance.labelview_tipos_fornecedor.insert_one(tipo_doc)
+        
+        tipo_doc.pop('_id', None)
+        
+        return {
+            'success': True,
+            'message': 'Tipo de fornecedor criado com sucesso',
+            'tipo': tipo_doc
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating tipo fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/tipos-fornecedor/{tipo_id}")
+async def update_tipo_fornecedor(
+    tipo_id: str,
+    tipo: TipoFornecedorCreate,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Atualizar tipo de fornecedor"""
+    from server import db as db_instance
+    
+    # Permitir Master e Unidade
+    user_type = current_user.get('user_type')
+    if user_type not in ['labelview_master', 'labelview_unidade']:
+        raise HTTPException(status_code=403, detail="Apenas Master e Unidade podem editar tipos de fornecedor")
+    
+    try:
+        # Verificar se existe
+        existing = await db_instance.labelview_tipos_fornecedor.find_one({'id': tipo_id})
+        if not existing:
+            raise HTTPException(status_code=404, detail="Tipo não encontrado")
+        
+        # Atualizar
+        await db_instance.labelview_tipos_fornecedor.update_one(
+            {'id': tipo_id},
+            {'$set': {
+                'tipo_servico': tipo.tipo_servico,
+                'updated_at': datetime.utcnow()
+            }}
+        )
+        
+        return {
+            'success': True,
+            'message': 'Tipo atualizado com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating tipo fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/tipos-fornecedor/{tipo_id}/block")
+async def toggle_block_tipo_fornecedor(
+    tipo_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Bloquear/desbloquear tipo de fornecedor"""
+    from server import db as db_instance
+    
+    # Apenas Master
+    user_type = current_user.get('user_type')
+    if user_type != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode bloquear tipos")
+    
+    try:
+        tipo = await db_instance.labelview_tipos_fornecedor.find_one({'id': tipo_id})
+        if not tipo:
+            raise HTTPException(status_code=404, detail="Tipo não encontrado")
+        
+        new_status = not tipo.get('is_blocked', False)
+        
+        await db_instance.labelview_tipos_fornecedor.update_one(
+            {'id': tipo_id},
+            {'$set': {
+                'is_blocked': new_status,
+                'updated_at': datetime.utcnow()
+            }}
+        )
+        
+        return {
+            'success': True,
+            'message': f"Tipo {'bloqueado' if new_status else 'desbloqueado'} com sucesso",
+            'is_blocked': new_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling block tipo fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.delete("/tipos-fornecedor/{tipo_id}")
+async def delete_tipo_fornecedor(
+    tipo_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Deletar tipo de fornecedor"""
+    from server import db as db_instance
+    
+    # 🔧 CORREÇÃO: Master e Unidade podem deletar tipos
+    user_type = current_user.get('user_type')
+    user_id = current_user.get('id')
+    
+    logger.info(f"🗑️ DELETE tipo fornecedor {tipo_id} - User: {user_id} ({user_type})")
+    
+    try:
+        # Buscar o tipo primeiro para verificar permissões
+        tipo = await db_instance.labelview_tipos_fornecedor.find_one({'id': tipo_id})
+        
+        if not tipo:
+            raise HTTPException(status_code=404, detail="Tipo não encontrado")
+        
+        # Master pode deletar qualquer tipo
+        # Unidade pode deletar apenas seus próprios tipos
+        if user_type == 'labelview_master':
+            logger.info(f"✅ Master pode deletar qualquer tipo")
+        elif user_type == 'labelview_unidade':
+            if tipo.get('created_by') != user_id and tipo.get('unidade_id') != user_id:
+                logger.warning(f"❌ Unidade tentando deletar tipo de outra unidade")
+                raise HTTPException(status_code=403, detail="Você só pode deletar seus próprios tipos")
+            logger.info(f"✅ Unidade deletando seu próprio tipo")
+        else:
+            logger.warning(f"❌ {user_type} não tem permissão para deletar tipos")
+            raise HTTPException(status_code=403, detail="Você não tem permissão para deletar tipos")
+        
+        # Deletar o tipo
+        result = await db_instance.labelview_tipos_fornecedor.delete_one({'id': tipo_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Tipo não encontrado")
+        
+        logger.info(f"✅ Tipo {tipo_id} deletado com sucesso")
+        
+        return {
+            'success': True,
+            'message': 'Tipo excluído com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error deleting tipo fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# FORNECEDORES
+# ============================================
+
+@labelview_router.get("/fornecedores")
+async def get_fornecedores(
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """
+    Listar fornecedores baseado no tipo de usuário
+    Master vê todos, Unidade vê seus fornecedores, Regional vê seus fornecedores
+    """
+    from server import db as db_instance
+    
+    user_type = current_user.get('user_type')
+    user_id = current_user.get('id')
+    
+    try:
+        # Filtrar baseado no tipo de usuário
+        query = {}
+        
+        if user_type == 'labelview_master':
+            # Master vê todos os fornecedores
+            query = {'user_type': 'labelview_fornecedor'}
+        elif user_type in ['labelview_unidade', 'labelview_regional']:
+            # Unidade e Regional veem apenas fornecedores que cadastraram
+            query = {
+                'user_type': 'labelview_fornecedor',
+                'fornecedor_de': user_id
+            }
+        else:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+        
+        fornecedores = await db_instance.users.find(query).to_list(length=1000)
+        
+        # Remover _id e password_hash
+        for fornecedor in fornecedores:
+            fornecedor.pop('_id', None)
+            fornecedor.pop('password_hash', None)
+        
+        return {
+            'success': True,
+            'fornecedores': fornecedores,
+            'total': len(fornecedores)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching fornecedores: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/fornecedores")
+async def create_fornecedor(
+    request: Request,
+    # Dados da Empresa (PJ)
+    nome_fantasia: str = Form(...),
+    razao_social: str = Form(...),
+    cnpj: str = Form(...),
+    telefone: str = Form(...),
+    email: str = Form(...),
+    
+    # Tipo de Serviço e Área de Atendimento
+    tipo_servico_id: str = Form(...),
+    area_atendimento: str = Form(...),  # 'nacional', 'estadual', 'cidade'
+    area_atendimento_estado: Optional[str] = Form(None),  # Se estadual ou cidade
+    area_atendimento_cidade: Optional[str] = Form(None),  # Se cidade
+    
+    # Responsável/Sócio Administrador
+    responsavel_nome: str = Form(...),
+    responsavel_cpf: str = Form(...),
+    responsavel_email: str = Form(...),
+    responsavel_telefone: str = Form(...),
+    
+    # Endereço
+    cep: str = Form(...),
+    street: str = Form(...),
+    number: str = Form(...),
+    neighborhood: str = Form(...),
+    city: str = Form(...),
+    state: str = Form(...),
+    complement: Optional[str] = Form(''),
+    
+    # PIX
+    pix_key: str = Form(...),
+    pix_key_type: str = Form(...),
+    
+    # Cores e Logo
+    cor_primaria: Optional[str] = Form('#1a59ad'),
+    cor_secundaria: Optional[str] = Form('#2fa31c'),
+    logo: Optional[UploadFile] = File(None),
+    
+    # Documentos
+    contrato_social: Optional[UploadFile] = File(None),
+    doc_cnpj: Optional[UploadFile] = File(None),
+    
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """
+    Criar novo fornecedor com conta Transmill
+    Fornecedor fica vinculado a quem cadastra (Master, Unidade ou Regional)
+    """
+    from server import db as db_instance
+    import secrets
+    import string
+    
+    # Permitir Master, Unidade e Regional
+    user_type = current_user.get('user_type')
+    if user_type not in ['labelview_master', 'labelview_unidade', 'labelview_regional']:
+        raise HTTPException(status_code=403, detail="Apenas Master, Unidade e Regional podem cadastrar fornecedores")
+    
+    try:
+        # Verificar se email já existe
+        existing_user = await db_instance.users.find_one({'email': email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email já cadastrado no sistema")
+        
+        # Gerar senha provisória
+        def generate_temp_password():
+            chars = string.ascii_letters + string.digits
+            return ''.join(secrets.choice(chars) for _ in range(12))
+        
+        temp_password = generate_temp_password()
+        password_hash = bcrypt.hash(temp_password)
+        
+        fornecedor_id = str(uuid4())
+        
+        # Upload de logo para Cloudinary
+        logo_url = None
+        if logo:
+            logo_content = await logo.read()
+            logo_url = await upload_file_to_cloudinary(
+                file_content=logo_content,
+                filename=f"logo_{fornecedor_id}_{logo.filename}",
+                folder=f"labelview/fornecedores/{fornecedor_id}",
+                resource_type="image"
+            )
+        
+        # Upload de documentos
+        contrato_social_url = None
+        if contrato_social:
+            cs_content = await contrato_social.read()
+            contrato_social_url = await upload_file_to_cloudinary(
+                file_content=cs_content,
+                filename=f"contrato_social_{fornecedor_id}_{contrato_social.filename}",
+                folder=f"labelview/fornecedores/{fornecedor_id}",
+                resource_type="raw"
+            )
+        
+        doc_cnpj_url = None
+        if doc_cnpj:
+            doc_content = await doc_cnpj.read()
+            doc_cnpj_url = await upload_file_to_cloudinary(
+                file_content=doc_content,
+                filename=f"doc_cnpj_{fornecedor_id}_{doc_cnpj.filename}",
+                folder=f"labelview/fornecedores/{fornecedor_id}",
+                resource_type="raw"
+            )
+        
+        # Determinar vínculo (fornecedor_de) e unidade_id
+        fornecedor_de = current_user['id']  # Vinculado a quem cadastrou
+        
+        # 🔧 CORREÇÃO: Determinar unidade_id para identidade visual
+        unidade_id = None
+        if user_type == 'labelview_unidade':
+            unidade_id = current_user['id']  # Se cadastrado por unidade, é ela mesma
+        elif user_type == 'labelview_regional':
+            # Regional tem unidade_id
+            unidade_id = current_user.get('unidade_id')
+        # Se Master cadastrou, fornecedor não terá unidade específica (usa default)
+        
+        # Criar usuário no Transmill
+        user_doc = {
+            'id': fornecedor_id,
+            'email': email,
+            'password_hash': password_hash,
+            'temporary_password': temp_password,
+            'full_name': nome_fantasia,
+            'phone': telefone,
+            'user_type': 'labelview_fornecedor',
+            'is_active': True,
+            'is_blocked': False,
+            'must_change_password': True,
+            'profile_complete': True,
+            'balance': 0.0,
+            'cashback_balance': 0.0,
+            
+            # Dados do fornecedor (PJ)
+            'nome_fantasia': nome_fantasia,
+            'razao_social': razao_social,
+            'cnpj': cnpj,
+            'telefone': telefone,
+            'logo_url': logo_url,
+            'cor_primaria': cor_primaria,
+            'cor_secundaria': cor_secundaria,
+            
+            # Tipo de Serviço e Área
+            'tipo_servico_id': tipo_servico_id,
+            'area_atendimento': area_atendimento,
+            'area_atendimento_estado': area_atendimento_estado,
+            'area_atendimento_cidade': area_atendimento_cidade,
+            
+            # Responsável
+            'responsavel_nome': responsavel_nome,
+            'responsavel_cpf': responsavel_cpf,
+            'responsavel_email': responsavel_email,
+            'responsavel_telefone': responsavel_telefone,
+            
+            # Endereço
+            'cep': cep,
+            'street': street,
+            'number': number,
+            'neighborhood': neighborhood,
+            'city': city,
+            'state': state,
+            'complement': complement,
+            
+            # PIX
+            'pix_key': pix_key,
+            'pix_key_type': pix_key_type,
+            
+            # Documentos
+            'contrato_social_url': contrato_social_url,
+            'doc_cnpj_url': doc_cnpj_url,
+            
+            # Vínculo
+            'fornecedor_de': fornecedor_de,  # ID de quem cadastrou
+            'fornecedor_de_tipo': user_type,  # Tipo de quem cadastrou
+            'unidade_id': unidade_id,  # ID da unidade para identidade visual
+            
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        await db_instance.users.insert_one(user_doc)
+        
+        logger.info(f"✅ Fornecedor criado: {nome_fantasia} (Email: {email})")
+        
+        return {
+            'success': True,
+            'message': 'Fornecedor criado com sucesso',
+            'fornecedor_id': fornecedor_id,
+            'credentials': {
+                'email': email,
+                'temporary_password': temp_password
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating fornecedor: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/fornecedores/{fornecedor_id}")
+async def update_fornecedor(
+    fornecedor_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Atualizar fornecedor"""
+    from server import db as db_instance
+    
+    user_type = current_user.get('user_type')
+    if user_type not in ['labelview_master', 'labelview_unidade', 'labelview_regional']:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    try:
+        # Verificar se o fornecedor existe
+        existing = await db_instance.users.find_one({
+            'id': fornecedor_id,
+            'user_type': 'labelview_fornecedor'
+        })
+        if not existing:
+            raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        
+        # TODO: Implementar update completo com form-data
+        return {
+            'success': True,
+            'message': 'Endpoint de atualização em desenvolvimento'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.patch("/fornecedores/{fornecedor_id}/block")
+async def toggle_block_fornecedor(
+    fornecedor_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Bloquear/desbloquear fornecedor"""
+    from server import db as db_instance
+    
+    # Apenas Master
+    if current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode bloquear fornecedores")
+    
+    try:
+        fornecedor = await db_instance.users.find_one({
+            'id': fornecedor_id,
+            'user_type': 'labelview_fornecedor'
+        })
+        if not fornecedor:
+            raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        
+        new_status = not fornecedor.get('is_blocked', False)
+        
+        await db_instance.users.update_one(
+            {'id': fornecedor_id},
+            {'$set': {
+                'is_blocked': new_status,
+                'updated_at': datetime.utcnow()
+            }}
+        )
+        
+        return {
+            'success': True,
+            'message': f"Fornecedor {'bloqueado' if new_status else 'desbloqueado'} com sucesso",
+            'is_blocked': new_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling block fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.delete("/fornecedores/{fornecedor_id}")
+async def delete_fornecedor(
+    fornecedor_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Excluir fornecedor"""
+    from server import db as db_instance
+    
+    # Apenas Master
+    if current_user.get('user_type') != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode deletar fornecedores")
+    
+    try:
+        result = await db_instance.users.delete_one({
+            'id': fornecedor_id,
+            'user_type': 'labelview_fornecedor'
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+        
+        return {
+            'success': True,
+            'message': 'Fornecedor excluído com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting fornecedor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ==================== TABELAS DE VALORES ====================
+# Endpoints para gerenciar tabelas de valores de serviços
+
+@labelview_router.post("/tabelas/importar-roubo-furto")
+async def importar_roubo_furto_direct(
+    request: Request,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Importar valores padrão de Roubo/Furto - DEVE VIR ANTES DA ROTA GENÉRICA"""
+    from server import db as db_instance
+    
+    # Verificar se é master
+    user_type = current_user.get('user_type')
+    if user_type != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode importar dados")
+    
+    try:
+        # Criar 12 faixas de R$ 10.000 cada
+        faixas = []
+        for i in range(12):
+            valor_min = i * 10000
+            valor_max = (i + 1) * 10000
+            faixas.append({"min": valor_min, "max": valor_max})
+        
+        # Valor padrão para Roubo/Furto
+        valor_servico = 50.00
+        tipo_cobertura = "Roubo/Furto"
+        
+        # Remover registros antigos
+        await db_instance.labelview_tabelas_valores.delete_many({
+            "tipo_cobertura": tipo_cobertura
+        })
+        
+        # Criar novos registros
+        registros_criados = 0
+        for faixa in faixas:
+            tabela_id = str(uuid4())
+            
+            tabela_doc = {
+                "id": tabela_id,
+                "tipo_cobertura": tipo_cobertura,
+                "valor_servico": valor_servico,
+                "valor_fipe_min": float(faixa["min"]),
+                "valor_fipe_max": float(faixa["max"]),
+                "descricao": f"Roubo/Furto - R$ {valor_servico:.2f} (Faixa FIPE: R$ {faixa['min']:,.2f} - R$ {faixa['max']:,.2f})",
+                "ativo": True,
+                "criado_por": current_user['id'],
+                "criado_em": datetime.utcnow(),
+                "atualizado_em": datetime.utcnow()
+            }
+            
+            await db_instance.labelview_tabelas_valores.insert_one(tabela_doc)
+            registros_criados += 1
+        
+        return {
+            'success': True,
+            'message': f'Roubo/Furto importado com sucesso! {registros_criados} registros criados.',
+            'registros_criados': registros_criados
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao importar Roubo/Furto: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.post("/tabelas/{tipo_cobertura}")
+async def criar_tabela_valor_endpoint(
+    tipo_cobertura: str,
+    valor_servico: float = Form(...),
+    valor_fipe_min: float = Form(...),
+    valor_fipe_max: float = Form(...),
+    descricao: str = Form(""),
+    tipo_veiculo_assistencia: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Criar nova entrada na tabela de valores"""
+    from server import db as db_instance
+    import sys
+    sys.path.append('/app/backend')
+    from tabelas_valores import criar_tabela_valor
+    
+    # Verificar se é master ou unidade
+    user_type = current_user.get('user_type')
+    if user_type not in ['labelview_master', 'labelview_unidade']:
+        raise HTTPException(status_code=403, detail="Apenas Master e Unidade podem criar tabelas de valores")
+    
+    dados = {
+        "valor_servico": valor_servico,
+        "valor_fipe_min": valor_fipe_min,
+        "valor_fipe_max": valor_fipe_max,
+        "descricao": descricao,
+        "tipo_veiculo_assistencia": tipo_veiculo_assistencia
+    }
+    
+    resultado = await criar_tabela_valor(
+        db=db_instance,
+        tipo_cobertura=tipo_cobertura,
+        dados=dados,
+        criado_por=current_user['id']
+    )
+    
+    if not resultado.get('success'):
+        raise HTTPException(status_code=400, detail=resultado.get('message'))
+    
+    return resultado
+
+
+@labelview_router.get("/tabelas/{tipo_cobertura:path}")
+async def listar_tabelas_endpoint(
+    tipo_cobertura: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Listar todas as tabelas de um tipo específico - aceita / no nome"""
+    from server import db as db_instance
+    import sys
+    sys.path.append('/app/backend')
+    from tabelas_valores import listar_tabelas_por_tipo
+    
+    logger.info(f"📋 Listando tabelas do tipo: '{tipo_cobertura}'")
+    
+    # Converter underscore para slash se necessário (compatibilidade frontend)
+    if "_" in tipo_cobertura and "/" not in tipo_cobertura:
+        # Roubo_Furto -> Roubo/Furto
+        tipo_cobertura = tipo_cobertura.replace("_", "/")
+        logger.info(f"📋 Convertido para: '{tipo_cobertura}'")
+    
+    # Verificar se é usuário labelview
+    user_type = current_user.get('user_type')
+    if not user_type or not user_type.startswith('labelview_'):
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    resultado = await listar_tabelas_por_tipo(db=db_instance, tipo_cobertura=tipo_cobertura)
+    
+    logger.info(f"📋 Resultado: success={resultado.get('success')}, total={resultado.get('total', 0)}")
+    
+    if not resultado.get('success'):
+        raise HTTPException(status_code=400, detail=resultado.get('message'))
+    
+    return resultado
+
+
+@labelview_router.get("/tabelas-valores/buscar")
+async def buscar_valor_tabela_endpoint(
+    tipo_cobertura: str = Query(...),
+    valor_fipe: float = Query(...),
+    tipo_veiculo_assistencia: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Buscar valor de serviço baseado no valor FIPE do veículo"""
+    from server import db as db_instance
+    import sys
+    sys.path.append('/app/backend')
+    from tabelas_valores import buscar_valor_na_tabela
+    
+    # Verificar se é usuário labelview
+    user_type = current_user.get('user_type')
+    if not user_type or not user_type.startswith('labelview_'):
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    resultado = await buscar_valor_na_tabela(
+        db=db_instance,
+        tipo_cobertura=tipo_cobertura,
+        valor_fipe=valor_fipe,
+        tipo_veiculo_assistencia=tipo_veiculo_assistencia
+    )
+    
+    if not resultado.get('success'):
+        raise HTTPException(status_code=404, detail=resultado.get('message'))
+    
+    return resultado
+
+
+@labelview_router.delete("/tabelas/{tabela_id}")
+async def deletar_tabela_endpoint(
+    tabela_id: str,
+    current_user: dict = Depends(get_current_user_dependency)
+):
+    """Deletar entrada da tabela de valores"""
+    from server import db as db_instance
+    
+    # Verificar se é master
+    user_type = current_user.get('user_type')
+    if user_type != 'labelview_master':
+        raise HTTPException(status_code=403, detail="Apenas Master pode deletar tabelas de valores")
+    
+    try:
+        result = await db_instance.labelview_tabelas_valores.delete_one({'id': tabela_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Tabela não encontrada")
+        
+        return {
+            'success': True,
+            'message': 'Tabela excluída com sucesso'
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting tabela: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint de importação movido para cima (antes da rota genérica)
+
+
+@labelview_router.get("/filtros/unidades")
+async def get_filtros_unidades(current_user: dict = Depends(get_current_user_dependency)):
+    """Listar unidades para filtros"""
+    from server import db as db_instance
+    
+    try:
+        unidades = await db_instance.users.find(
+            {'user_type': 'labelview_unidade'},
+            {'id': 1, 'nome_fantasia': 1, 'email': 1}
+        ).to_list(length=None)
+        
+        # Formatar resposta
+        result = []
+        for u in unidades:
+            result.append({
+                'id': u.get('id'),
+                'nome': u.get('nome_fantasia', 'Sem nome'),
+                'email': u.get('email')
+            })
+        
+        return {
+            'success': True,
+            'unidades': result
+        }
+    except Exception as e:
+        logger.error(f"Erro ao listar unidades para filtros: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@labelview_router.get("/notifications/unread-count")
+async def get_unread_notifications_count(current_user: dict = Depends(get_current_user_dependency)):
+    """Retornar contagem de notificações não lidas"""
+    try:
+        from server import db as db_instance
+        # Por enquanto retorna 0 (funcionalidade de notificações será implementada depois)
+        return {
+            'success': True,
+            'unread_count': 0
+        }
+    except Exception as e:
+        logger.error(f"Erro ao buscar notificações: {str(e)}")
+        return {
+            'success': True,
+            'unread_count': 0
+        }
+

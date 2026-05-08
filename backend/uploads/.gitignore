@@ -1,0 +1,4 @@
+# Ignorar todos os arquivos de upload, mas manter a estrutura de diretórios
+*
+!.gitignore
+!*/

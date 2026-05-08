@@ -1,0 +1,1 @@
+PDF do Regulamento PSM - Por favor, faça upload do arquivo 'regulamento-psm-labelview.pdf' para /app/frontend/public/
