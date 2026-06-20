@@ -12,7 +12,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
 class QRCodeFlowTester:
-    def __init__(self, base_url: str = "https://api-decompose-1.preview.emergentagent.com/api"):
+    def __init__(self, base_url: str = "https://slim-super-app.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.tokens = {}

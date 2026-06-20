@@ -9,7 +9,7 @@ import time
 
 class PreviewTester:
     def __init__(self):
-        self.preview_url = "https://api-decompose-1.preview.emergentagent.com/api"
+        self.preview_url = "https://slim-super-app.preview.emergentagent.com/api"
         self.session = requests.Session()
         
     def log_test(self, test_name: str, success: bool, details: str = ""):

@@ -10584,7 +10584,7 @@ class AgitoCoinTester:
         print("- Verificar se os campos de nome (unidade_nome, regional_nome) estão sendo populados")
         print("- Validar que cada nível vê apenas o que deve ver")
         print("")
-        print("URL BASE: https://api-decompose-1.preview.emergentagent.com")
+        print("URL BASE: https://slim-super-app.preview.emergentagent.com")
         print("=" * 80)
         
         # Definir contas de teste
@@ -23983,7 +23983,7 @@ def main():
         print("=" * 80)
         print("PROBLEMA IDENTIFICADO:")
         print("- URL https://login-reset.emergent.host/ funciona (contas demo OK)")
-        print("- URL https://api-decompose-1.preview.emergentagent.com/ não funciona (sem contas demo)")
+        print("- URL https://slim-super-app.preview.emergentagent.com/ não funciona (sem contas demo)")
         print("- São ambientes diferentes com bancos diferentes")
         print("")
         print("CONTAS DEMO NECESSÁRIAS:")
@@ -23994,7 +23994,7 @@ def main():
         
         # Test both environments
         working_url = "https://login-reset.emergent.host/api"
-        preview_url = "https://api-decompose-1.preview.emergentagent.com/api"
+        preview_url = "https://slim-super-app.preview.emergentagent.com/api"
         
         working_tester = AgitoCoinTester(working_url)
         preview_tester = AgitoCoinTester(preview_url)
@@ -27269,7 +27269,7 @@ def main():
                                  f"✅ Código do lojista: {referral_code} (diferente do esperado V7TM9YJF)")
                 
                 # Verificar se referral_link contém URL do preview
-                preview_url = "https://api-decompose-1.preview.emergentagent.com"
+                preview_url = "https://slim-super-app.preview.emergentagent.com"
                 if preview_url in referral_link:
                     self.log_test("Lojista Referral Link URL", True, 
                                  f"✅ referral_link contém URL do preview correta")
@@ -27414,7 +27414,7 @@ def main():
         
         # Dados esperados conforme revisão
         expected_lojista_code = "V7TM9YJF"
-        expected_preview_url = "https://api-decompose-1.preview.emergentagent.com"
+        expected_preview_url = "https://slim-super-app.preview.emergentagent.com"
         
         if hasattr(self, 'lojista_referral_code'):
             if self.lojista_referral_code == expected_lojista_code:
@@ -28571,7 +28571,7 @@ def main():
         """TESTE ESPECÍFICO: Verificar e listar credenciais de teste disponíveis"""
         print("\n🎯 VERIFICAÇÃO DE CREDENCIAIS DE TESTE AGITOCASH")
         print("OBJETIVO: Listar credenciais funcionais para cliente e lojista")
-        print("URL DE TESTE: https://api-decompose-1.preview.emergentagent.com/")
+        print("URL DE TESTE: https://slim-super-app.preview.emergentagent.com/")
         print("=" * 80)
         
         # Credenciais conhecidas para teste
@@ -28761,7 +28761,7 @@ def main():
         # Resumo para o usuário
         print(f"\n🎯 RESUMO PARA O USUÁRIO:")
         print("-" * 40)
-        print(f"URL do Sistema: https://api-decompose-1.preview.emergentagent.com/")
+        print(f"URL do Sistema: https://slim-super-app.preview.emergentagent.com/")
         print(f"Total de credenciais testadas: {len(test_credentials)}")
         print(f"Credenciais funcionais: {len(working_credentials)}")
         print(f"Credenciais com problemas: {len(failed_credentials)}")
@@ -28822,7 +28822,7 @@ def main():
         """INVESTIGAÇÃO ESPECÍFICA: Problema com login de lojista/empresa"""
         print("\n🚨 INVESTIGAÇÃO URGENTE: PROBLEMA LOGIN LOJISTA/EMPRESA")
         print("PROBLEMA REPORTADO: Login de empresa não funcionando no preview")
-        print("URL: https://api-decompose-1.preview.emergentagent.com/")
+        print("URL: https://slim-super-app.preview.emergentagent.com/")
         print("=" * 80)
         
         # TESTE 1: Testar credencial específica lojista@demo.com/demo123
@@ -32327,7 +32327,7 @@ def main():
         print("\n🚨 TESTE FINAL: VALIDAR CORREÇÃO DOS LINKS DE INDICAÇÃO")
         print("=" * 80)
         print("OBJETIVO: Verificar se referral_link contém URL correta do preview")
-        print("URL ESPERADA: https://api-decompose-1.preview.emergentagent.com")
+        print("URL ESPERADA: https://slim-super-app.preview.emergentagent.com")
         print("PROBLEMA: Confirmar que não há mais referências a localhost:3000")
         print("=" * 80)
         
@@ -32362,7 +32362,7 @@ def main():
         self.log_test("Referral Info Access", True, "✅ GET /api/referral/my-info acessível")
         
         # Test 3: Verificar URL correta do preview no referral_link
-        expected_preview_url = "https://api-decompose-1.preview.emergentagent.com"
+        expected_preview_url = "https://slim-super-app.preview.emergentagent.com"
         referral_link = referral_data.get("referral_link", "")
         
         if expected_preview_url in referral_link:
@@ -32865,7 +32865,7 @@ def main():
         print("\n🚨 TESTE URGENTE: VALIDAÇÃO CÓDIGO DE INDICAÇÃO V7TM9YJF")
         print("=" * 80)
         print("PROBLEMA REPORTADO: Usuário clica em 'copiar link' na conta do lojista no app preview")
-        print("ERRO: https://api-decompose-1.preview.emergentagent.com/register?ref=V7TM9YJF")
+        print("ERRO: https://slim-super-app.preview.emergentagent.com/register?ref=V7TM9YJF")
         print("TESTES NECESSÁRIOS:")
         print("1. GET /api/referral/validate/V7TM9YJF - Confirmar que código V7TM9YJF é válido")
         print("2. Verificar se página /register está acessível no frontend")
@@ -33001,7 +33001,7 @@ def main():
         # Testar se o frontend está acessível
         try:
             import requests
-            frontend_url = "https://api-decompose-1.preview.emergentagent.com"
+            frontend_url = "https://slim-super-app.preview.emergentagent.com"
             
             # Test main page
             main_response = requests.get(frontend_url, timeout=10)
@@ -33030,7 +33030,7 @@ def main():
         # Test 5: Validar formato do link de indicação
         print("\n--- TESTE 5: VALIDAR FORMATO DO LINK DE INDICAÇÃO ---")
         
-        expected_url_pattern = "https://api-decompose-1.preview.emergentagent.com/register?ref=V7TM9YJF"
+        expected_url_pattern = "https://slim-super-app.preview.emergentagent.com/register?ref=V7TM9YJF"
         
         if login_response.status_code == 200 and my_code_response.status_code == 200:
             actual_link = my_code_data.get("referral_link", "")
@@ -44057,7 +44057,7 @@ if __name__ == "__main__":
         """🎯 TESTE COMPLETO DO SISTEMA DE TABELA DE VALORES LABELVIEW"""
         print("\n🎯 TESTE COMPLETO DO SISTEMA DE TABELA DE VALORES LABELVIEW")
         print("=" * 80)
-        print("URL BASE: https://api-decompose-1.preview.emergentagent.com")
+        print("URL BASE: https://slim-super-app.preview.emergentagent.com")
         print("")
         print("CREDENCIAIS:")
         print("- Master Labelview: protecao@agitomil.com / demo123")

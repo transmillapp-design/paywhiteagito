@@ -310,7 +310,7 @@ MONGO_URL=mongodb://...
 DB_NAME=mobilidade
 
 # URL do Transmill para validação de tokens e transações
-TRANSMILL_API_URL=https://api-decompose-1.preview.emergentagent.com
+TRANSMILL_API_URL=https://slim-super-app.preview.emergentagent.com
 TRANSMILL_API_KEY=chave-secreta-compartilhada
 
 # WebSocket para notificações em tempo real
@@ -322,7 +322,7 @@ WEBSOCKET_ENABLED=true
 ```env
 # Chave para validar requisições do servidor de mobilidade
 MOBILITY_API_KEY=chave-secreta-compartilhada
-MOBILITY_API_URL=https://api-decompose-1.preview.emergentagent.com
+MOBILITY_API_URL=https://slim-super-app.preview.emergentagent.com
 ```
 
 ---

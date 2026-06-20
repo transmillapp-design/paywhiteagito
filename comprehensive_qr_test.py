@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 class ComprehensiveQRTest:
     def __init__(self):
-        self.base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+        self.base_url = "https://slim-super-app.preview.emergentagent.com/api"
         self.session = requests.Session()
         self.results = []
         

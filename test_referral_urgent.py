@@ -67,7 +67,7 @@ class UrgentReferralTester:
         print("\n🚨 TESTE URGENTE: VALIDAÇÃO CÓDIGO DE INDICAÇÃO V7TM9YJF")
         print("=" * 80)
         print("PROBLEMA REPORTADO: Usuário clica em 'copiar link' na conta do lojista no app preview")
-        print("ERRO: https://api-decompose-1.preview.emergentagent.com/register?ref=V7TM9YJF")
+        print("ERRO: https://slim-super-app.preview.emergentagent.com/register?ref=V7TM9YJF")
         print("TESTES NECESSÁRIOS:")
         print("1. GET /api/referral/validate/V7TM9YJF - Confirmar que código V7TM9YJF é válido")
         print("2. Verificar se página /register está acessível no frontend")
@@ -202,7 +202,7 @@ class UrgentReferralTester:
         
         # Testar se o frontend está acessível
         try:
-            frontend_url = "https://api-decompose-1.preview.emergentagent.com"
+            frontend_url = "https://slim-super-app.preview.emergentagent.com"
             
             # Test main page
             main_response = requests.get(frontend_url, timeout=10)
@@ -231,7 +231,7 @@ class UrgentReferralTester:
         # Test 5: Validar formato do link de indicação
         print("\n--- TESTE 5: VALIDAR FORMATO DO LINK DE INDICAÇÃO ---")
         
-        expected_url_pattern = "https://api-decompose-1.preview.emergentagent.com/register?ref=V7TM9YJF"
+        expected_url_pattern = "https://slim-super-app.preview.emergentagent.com/register?ref=V7TM9YJF"
         
         if login_response.status_code == 200 and my_code_response.status_code == 200:
             actual_link = my_code_data.get("referral_link", "")

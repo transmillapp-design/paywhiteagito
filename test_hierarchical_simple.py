@@ -3,7 +3,7 @@ import requests
 import json
 
 def test_hierarchical_management():
-    base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+    base_url = "https://slim-super-app.preview.emergentagent.com/api"
     
     print("🚨 TESTE URGENTE: FUNCIONALIDADES DE BLOQUEIO E EXCLUSÃO DE USUÁRIOS HIERÁRQUICOS")
     print("=" * 100)

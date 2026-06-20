@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 class DemoAccountsInvestigator:
     def __init__(self):
         self.working_url = "https://login-reset.emergent.host/api"
-        self.preview_url = "https://api-decompose-1.preview.emergentagent.com/api"
+        self.preview_url = "https://slim-super-app.preview.emergentagent.com/api"
         self.session = requests.Session()
         self.test_results = []
         

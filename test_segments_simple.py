@@ -17,7 +17,7 @@ def test_business_segments_fix():
     print("")
     
     # Get base URL from frontend .env
-    base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+    base_url = "https://slim-super-app.preview.emergentagent.com/api"
     
     # Test 1: Login with master account
     print("--- TESTE 1: Login Master Account ---")

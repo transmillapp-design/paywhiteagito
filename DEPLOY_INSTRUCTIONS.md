@@ -9,12 +9,12 @@ O link de indicação não funciona na URL https://agitomil.com.br porque a vari
 
 **Localização:**
 - Arquivo: `/app/backend/.env`
-- Linha 14: `FRONTEND_URL=https://api-decompose-1.preview.emergentagent.com`
+- Linha 14: `FRONTEND_URL=https://slim-super-app.preview.emergentagent.com`
 
 **Correção Necessária:**
 ```bash
 # NO ARQUIVO backend/.env, ALTERAR DE:
-FRONTEND_URL=https://api-decompose-1.preview.emergentagent.com
+FRONTEND_URL=https://slim-super-app.preview.emergentagent.com
 
 # PARA:
 FRONTEND_URL=https://agitomil.com.br
@@ -79,7 +79,7 @@ REACT_APP_BACKEND_URL=https://agitomil.com.br
 2. Vá para a aba "Indicar"
 3. Clique em "Compartilhar no WhatsApp"
 4. **VERIFIQUE:** O link deve ser `https://agitomil.com.br/register?ref=CODIGO`
-5. **NÃO DEVE SER:** `https://api-decompose-1.preview.emergentagent.com/register?ref=CODIGO`
+5. **NÃO DEVE SER:** `https://slim-super-app.preview.emergentagent.com/register?ref=CODIGO`
 
 ## 🐛 Troubleshooting
 

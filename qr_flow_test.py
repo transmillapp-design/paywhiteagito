@@ -9,7 +9,7 @@ import base64
 
 def test_complete_qr_flow():
     """Test the complete QR Code flow as described in the review request"""
-    base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+    base_url = "https://slim-super-app.preview.emergentagent.com/api"
     
     print("🎯 TESTE COMPLETO DO FLUXO QR CODE COM VALOR")
     print("=" * 60)

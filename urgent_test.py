@@ -12,7 +12,7 @@ from typing import Dict, Any
 class UrgentPreviewTester:
     def __init__(self):
         # Use the corrected preview URL
-        self.base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+        self.base_url = "https://slim-super-app.preview.emergentagent.com/api"
         self.session = requests.Session()
         self.test_results = []
         
@@ -54,10 +54,10 @@ class UrgentPreviewTester:
         print("\n🚨 TESTE URGENTE DAS CONTAS DEMO NA URL CORRETA DO PREVIEW")
         print("=" * 80)
         print("CORREÇÃO APLICADA:")
-        print("- URL corrigida no frontend/.env: https://api-decompose-1.preview.emergentagent.com")
+        print("- URL corrigida no frontend/.env: https://slim-super-app.preview.emergentagent.com")
         print("- Endpoint /api/health adicionado ao backend")
         print("\nTESTE CRÍTICO:")
-        print("1. **Verificar URL correta**: https://api-decompose-1.preview.emergentagent.com")
+        print("1. **Verificar URL correta**: https://slim-super-app.preview.emergentagent.com")
         print("2. **Testar endpoint health**: GET /api/health")
         print("3. **Testar todas as 3 contas demo**:")
         print("   - Cliente: cliente@demo.com / demo123")
@@ -86,7 +86,7 @@ class UrgentPreviewTester:
         print("\n🔸 TESTE 2: VERIFICAR URL CORRETA")
         print("-" * 60)
         
-        expected_url = "https://api-decompose-1.preview.emergentagent.com"
+        expected_url = "https://slim-super-app.preview.emergentagent.com"
         actual_base_url = self.base_url.replace("/api", "")
         
         if actual_base_url == expected_url:

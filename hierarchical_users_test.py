@@ -8,7 +8,7 @@ import json
 import time
 
 class HierarchicalUsersTest:
-    def __init__(self, base_url: str = "https://api-decompose-1.preview.emergentagent.com/api"):
+    def __init__(self, base_url: str = "https://slim-super-app.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.test_results = []
@@ -53,7 +53,7 @@ class HierarchicalUsersTest:
     def test_hierarchical_users_production_creation(self):
         """URGENT TEST: Create hierarchical users specifically in production environment"""
         print("\n🚨 CORREÇÃO URGENTE: CRIAR USUÁRIOS HIERÁRQUICOS NO AMBIENTE DE PRODUÇÃO")
-        print("BASE_URL OBRIGATÓRIA: https://api-decompose-1.preview.emergentagent.com/api")
+        print("BASE_URL OBRIGATÓRIA: https://slim-super-app.preview.emergentagent.com/api")
         print("=" * 80)
         
         # Step 1: Login as master in production

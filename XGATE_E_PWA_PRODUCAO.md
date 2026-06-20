@@ -25,7 +25,7 @@ APP_URL=https://agitomil.com.br
 **Por quê?**
 - O XGate precisa enviar webhooks/callbacks quando uma transação PIX é confirmada
 - A URL atual está hardcoded com fallback para preview
-- Linha 192 do `xgate_service.py`: `callback_url: f"{os.environ.get('APP_URL', 'https://api-decompose-1.preview.emergentagent.com')}/api/xgate/webhook"`
+- Linha 192 do `xgate_service.py`: `callback_url: f"{os.environ.get('APP_URL', 'https://slim-super-app.preview.emergentagent.com')}/api/xgate/webhook"`
 
 **Impacto:**
 - ❌ Sem esta URL: Xgate envia notificações para ambiente errado

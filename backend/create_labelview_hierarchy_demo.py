@@ -222,7 +222,7 @@ async def criar_hierarquia_demo():
         print("\n🌐 URL DE ACESSO:")
         print("   https://agitomil.com.br/labelview/login")
         print("   ou")
-        print("   https://api-decompose-1.preview.emergentagent.com/labelview/login")
+        print("   https://slim-super-app.preview.emergentagent.com/labelview/login")
         
         print("\n💡 FUNCIONALIDADES POR TIPO:")
         print("   Master: Todas as funcionalidades + Tabela de Valores")

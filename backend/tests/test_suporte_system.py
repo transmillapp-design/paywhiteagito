@@ -9,7 +9,7 @@ import os
 import uuid
 
 # Get BASE_URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://api-decompose-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://slim-super-app.preview.emergentagent.com')
 
 # Test credentials
 FRANCHISE_USER = {

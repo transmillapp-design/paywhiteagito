@@ -11,7 +11,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://api-decompose-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://slim-super-app.preview.emergentagent.com')
 
 # Test credentials from review request
 MASTER_CREDENTIALS = {

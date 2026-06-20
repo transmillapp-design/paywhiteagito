@@ -478,7 +478,7 @@ class LabelviewHierarchyTester:
 
 if __name__ == "__main__":
     print("🚀 INICIANDO TESTE DE HIERARQUIA LABELVIEW")
-    print(f"🌐 URL Base: https://api-decompose-1.preview.emergentagent.com/api")
+    print(f"🌐 URL Base: https://slim-super-app.preview.emergentagent.com/api")
     print("=" * 80)
     
     tester = LabelviewHierarchyTester()

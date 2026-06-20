@@ -22,7 +22,7 @@ Isso substituirá o valor do arquivo `.env` automaticamente.
 
 **Antes:**
 ```
-FRONTEND_URL=https://api-decompose-1.preview.emergentagent.com
+FRONTEND_URL=https://slim-super-app.preview.emergentagent.com
 ```
 
 **Depois:**
@@ -69,7 +69,7 @@ curl -X GET "https://agitomil.com.br/api/referral/my-code" \
 **❌ Resposta Incorreta (indica que FRONTEND_URL está errada):**
 ```json
 {
-  "referral_link": "https://api-decompose-1.preview.emergentagent.com/register?ref=Z9AAVSIM"
+  "referral_link": "https://slim-super-app.preview.emergentagent.com/register?ref=Z9AAVSIM"
 }
 ```
 

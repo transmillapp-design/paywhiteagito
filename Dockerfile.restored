@@ -33,7 +33,7 @@ RUN npm install -g serve
 COPY frontend/ .
 
 # Set build environment variables
-ARG BACKEND_URL=https://api-decompose-1.preview.emergentagent.com
+ARG BACKEND_URL=https://slim-super-app.preview.emergentagent.com
 ENV REACT_APP_BACKEND_URL=${BACKEND_URL}/api
 ENV GENERATE_SOURCEMAP=false
 ENV NODE_ENV=production

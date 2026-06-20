@@ -7,7 +7,7 @@
 **Preview (Emergent):**
 - Auto-detectado via `REACT_APP_BACKEND_URL`
 - Qualquer URL com `emergentagent.com` ou `emergent.host`
-- Exemplo: `https://api-decompose-1.preview.emergentagent.com`
+- Exemplo: `https://slim-super-app.preview.emergentagent.com`
 
 **Produção:**
 - `https://agitomil.com.br`
@@ -53,7 +53,7 @@ if 'emergentagent.com' in backend_url or 'emergent.host' in backend_url:
 
 **Frontend:** `/app/frontend/.env`
 ```
-REACT_APP_BACKEND_URL=https://api-decompose-1.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://slim-super-app.preview.emergentagent.com
 GENERATE_SOURCEMAP=false
 ```
 
@@ -94,7 +94,7 @@ GENERATE_SOURCEMAP=false
 ### Preview:
 ```bash
 # Acessar
-https://api-decompose-1.preview.emergentagent.com
+https://slim-super-app.preview.emergentagent.com
 
 # Login
 Cliente: cliente@demo.com / demo123

@@ -6,7 +6,7 @@ Script de verificação final das contas demo no preview
 import requests
 import json
 
-PREVIEW_URL = "https://api-decompose-1.preview.emergentagent.com"
+PREVIEW_URL = "https://slim-super-app.preview.emergentagent.com"
 
 def test_demo_accounts():
     """Testa as contas demo no preview"""

@@ -13,7 +13,7 @@ def test_pix_deposit_investigation():
     print("🚨 INVESTIGAÇÃO URGENTE - PROBLEMA NO SISTEMA DE DEPÓSITO PIX")
     print("=" * 80)
     
-    base_url = "https://api-decompose-1.preview.emergentagent.com/api"
+    base_url = "https://slim-super-app.preview.emergentagent.com/api"
     
     # Test 1: Login with demo client
     print("\n--- TESTE 1: Login Cliente Demo ---")

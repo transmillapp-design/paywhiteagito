@@ -6,13 +6,13 @@
 
 1. **Backend - FRONTEND_URL está INCORRETA**
    - Arquivo: `/app/backend/.env` (linha 14)
-   - Valor Atual: `https://api-decompose-1.preview.emergentagent.com`
+   - Valor Atual: `https://slim-super-app.preview.emergentagent.com`
    - ❌ **PROBLEMA:** Links de indicação usarão URL de preview
    - ✅ **DEVE SER:** `https://agitomil.com.br`
 
 2. **Frontend - REACT_APP_BACKEND_URL está INCORRETA**
    - Arquivo: `/app/frontend/.env` (linha 1)
-   - Valor Atual: `https://api-decompose-1.preview.emergentagent.com`
+   - Valor Atual: `https://slim-super-app.preview.emergentagent.com`
    - ❌ **PROBLEMA:** Frontend não conseguirá se comunicar com backend de produção
    - ✅ **DEVE SER:** `https://agitomil.com.br`
 
@@ -49,7 +49,7 @@ FRONTEND_URL=https://agitomil.com.br
 ✅ MONGO_URL=mongodb://localhost:27017 (OK - local MongoDB)
 ✅ DB_NAME=agitocoin (OK)
 ✅ JWT_SECRET=agitocoin_secret_key_2024 (OK)
-❌ FRONTEND_URL=https://api-decompose-1.preview.emergentagent.com (PRECISA MUDAR)
+❌ FRONTEND_URL=https://slim-super-app.preview.emergentagent.com (PRECISA MUDAR)
 ✅ XGATE_API_URL=https://api.xgateglobal.com (OK)
 ✅ XGATE_ENVIRONMENT=production (OK)
 ⚠️  EMAIL_USER/PASS/FROM vazios (se usar recuperação de senha, configure)
@@ -57,7 +57,7 @@ FRONTEND_URL=https://agitomil.com.br
 
 ### Frontend (/app/frontend/.env)
 ```
-❌ REACT_APP_BACKEND_URL=https://api-decompose-1.preview.emergentagent.com (PRECISA MUDAR)
+❌ REACT_APP_BACKEND_URL=https://slim-super-app.preview.emergentagent.com (PRECISA MUDAR)
 ✅ GENERATE_SOURCEMAP=false (OK - otimização)
 ```
 

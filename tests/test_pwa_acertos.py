@@ -12,7 +12,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://api-decompose-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://slim-super-app.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 PWA_CLIENT_EMAIL = "cliente.teste@demo.com"
