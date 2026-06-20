@@ -22,6 +22,24 @@
 - ❌ CRM Kanban de Proteção
 - ❌ Exportação PDF/Excel de Labelview
 
+## Logins independentes + Rebranding Azul + Fase 2 (NOVO - 2026-06)
+**Logins independentes (3 acessos separados):**
+- **Master Admin** → `/master/login` (`MasterLogin.js`), tema **azul Transmill**, só conta master, redireciona p/ `/master`.
+- **Admin do White Label** → `/franquia/:slug/admin/login` (`FranquiaAdminLogin.js`), branding do white label, p/ gestor da unidade → `/franquia/:slug/admin`.
+- **Usuários do White Label** → `/franquia/:slug/login` (`FranquiaLogin.js`), branding do white label, clientes/lojistas/prestadores.
+
+**Rebranding Transmill: verde → azul** — todas as ocorrências de `#293618`/`#3d4f24` (cor primária verde) substituídas por azul `#1a59ad`/`#14478a` em 15+ componentes; `Login.js` e wrapper do `App.js` agora azuis.
+
+**Rename "Franquia" → "White Label" (somente textos visíveis):** Login, MasterDashboard, FranquiasManager, AdminFranquiasPanel, FranquiaIntegracoesPanel. **URLs/rotas API/coleções do banco permanecem `franquia` (intencional).**
+
+**Fase 2 — XGate/Cloudinary por white label em runtime:**
+- `XGateService.__init__(email,password,api_url)` e `USDTService.__init__(xgate_*)` aceitam credenciais; fallback `.env`.
+- `routes/usdt.py`: `_usdt_service(current_user)` resolve credenciais XGate do `franquia_slug` do usuário (9 call sites). 
+- `cloudinary_service.upload_file_to_cloudinary` aceita creds por chamada; `integracoes.cloudinary_kwargs_for_slug`; upload de logo de white label religado.
+- **.env = conta real do white label "transmill"** (fallback correto p/ a unidade principal).
+- **Testado:** iteration_13.json — backend 15/15; logins (master azul, wl-admin, wl-user, not-found) 100%; Fase 2 resolve por WL com fallback `.env` OK.
+- Bug crítico corrigido (testing agent): `App.js checkAuth` desempacotava envelope `{success,user}` errado, quebrando o redirect do master login.
+
 ## Status de Saúde do Sistema
 - **Backend:** ✅ Funcionando (~8765 linhas, 98 endpoints em server.py + routers modulares)
 - **Frontend:** ✅ Funcionando (build OK)

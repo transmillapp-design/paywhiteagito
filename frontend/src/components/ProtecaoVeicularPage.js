@@ -905,7 +905,7 @@ Você pode acessar os detalhes da contratação na área "Minhas Proteções".
             <Button
               onClick={() => buscarClientePorCPF(clienteData.cpf)}
               disabled={!clienteData.cpf || loading}
-              className="bg-[#1a59ad] hover:bg-[#258a15] text-white px-6"
+              className="bg-[#1a59ad] hover:bg-[#1a59ad] text-white px-6"
             >
               {loading ? 'Buscando...' : 'Buscar'}
             </Button>

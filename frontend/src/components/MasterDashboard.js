@@ -1214,7 +1214,7 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
             user.user_type === 'labelview_consultor') && (
             <button
               onClick={() => navigate('/labelview/dashboard')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-[#2fa31c] text-white hover:bg-[#258a15] transition-colors mb-2"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-[#2fa31c] text-white hover:bg-[#1a59ad] transition-colors mb-2"
             >
               <Shield size={20} />
               <span className="text-sm">Painel Labelview</span>

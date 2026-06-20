@@ -341,7 +341,7 @@ export const GoogleMap = ({
   // Loading state
   if (!googleMapsLoaded) {
     return (
-      <div className={`${height} ${className} flex items-center justify-center ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-100'} rounded-lg`}>
+      <div className={`${height} ${className} flex items-center justify-center ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-100'} rounded-lg`}>
         <div className="text-center">
           <Loader2 className={`animate-spin mx-auto mb-2 ${isDarkMode ? 'text-[#CEAE31]' : 'text-[#005B9C]'}`} size={32} />
           <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Carregando mapa...</p>
@@ -489,11 +489,11 @@ export const GooglePlacesAutocomplete = ({
   };
 
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
-    input: 'bg-[#293618] border-[#CEAE31] text-white placeholder:text-gray-400',
+    bg: 'bg-[#1a59ad]',
+    input: 'bg-[#1a59ad] border-[#CEAE31] text-white placeholder:text-gray-400',
     icon: 'text-[#CEAE31]',
     label: 'text-[#CEAE31]',
-    button: 'bg-[#CEAE31] text-[#293618]',
+    button: 'bg-[#CEAE31] text-[#1a59ad]',
   } : {
     bg: 'bg-white',
     input: 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-500',

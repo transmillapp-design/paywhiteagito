@@ -88,11 +88,11 @@ const MobilityHome = ({ embedded = false, franquiaContext = null }) => {
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
+    bg: 'bg-[#1a59ad]',
     card: 'bg-[#6B6A4B]',
     text: 'text-white',
     textSecondary: 'text-[#CEAE31]',
-    primary: 'bg-[#CEAE31] text-[#293618]',
+    primary: 'bg-[#CEAE31] text-[#1a59ad]',
     secondary: 'bg-transparent border-2 border-[#CEAE31] text-[#CEAE31]',
     border: 'border-[#CEAE31]'
   } : {
@@ -152,7 +152,7 @@ const MobilityHome = ({ embedded = false, franquiaContext = null }) => {
       {/* Mapa de fundo */}
       <div className="relative">
         <CurrentLocationMap isDarkMode={isDarkMode} height="h-40" />
-        <div className={`absolute inset-0 bg-gradient-to-b ${isDarkMode ? 'from-transparent to-[#293618]' : 'from-transparent to-[#F5F5F5]'}`}></div>
+        <div className={`absolute inset-0 bg-gradient-to-b ${isDarkMode ? 'from-transparent to-[#1a59ad]' : 'from-transparent to-[#F5F5F5]'}`}></div>
       </div>
 
       {/* Conteúdo Principal */}
@@ -174,7 +174,7 @@ const MobilityHome = ({ embedded = false, franquiaContext = null }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'}`}>
-                    <MapPin size={20} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                    <MapPin size={20} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                   </div>
                   <div>
                     <p className={`font-semibold ${colors.text}`}>Corrida em andamento</p>
@@ -209,7 +209,7 @@ const MobilityHome = ({ embedded = false, franquiaContext = null }) => {
             className={`w-full h-20 ${colors.primary} rounded-2xl shadow-lg hover:opacity-90 transition-all`}
           >
             <div className="flex items-center space-x-4">
-              <div className={`p-3 rounded-full ${isDarkMode ? 'bg-[#293618]/30' : 'bg-white/20'}`}>
+              <div className={`p-3 rounded-full ${isDarkMode ? 'bg-[#1a59ad]/30' : 'bg-white/20'}`}>
                 <User size={28} />
               </div>
               <div className="text-left">

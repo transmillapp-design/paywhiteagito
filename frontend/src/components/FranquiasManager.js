@@ -257,7 +257,7 @@ const FranquiasManager = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <Building2 className="h-7 w-7 text-[#1a59ad]" />
-            Gestão de Franquias
+            Gestão de White Labels
           </h1>
           <p className="text-gray-500 mt-1">
             Gerencie as franquias do sistema White Label

@@ -26,11 +26,11 @@ const IndicarPage = () => {
   }
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#293618]' : 'bg-[#EEEEEE]'}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-[#EEEEEE]'}`}>
       {/* Header Limpo */}
       <header className={`border-b sticky top-0 z-50 ${
         isDarkMode 
-          ? 'bg-[#293618] border-[#CEAE31]' 
+          ? 'bg-[#1a59ad] border-[#CEAE31]' 
           : 'bg-white border-[#005B9C]'
       }`}>
         <div className="max-w-md mx-auto px-4 py-4">

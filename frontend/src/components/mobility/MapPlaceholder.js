@@ -26,7 +26,7 @@ const MapPlaceholder = ({
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: '#293618',
+    bg: '#1a59ad',
     road: '#4a5240',
     roadLight: '#5a6250',
     building: '#3d4a2d',
@@ -188,7 +188,7 @@ const MapPlaceholder = ({
               <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-green-500 rotate-45"></div>
             </div>
             {origin.address && (
-              <div className={`mt-1 px-2 py-1 rounded text-xs whitespace-nowrap ${isDarkMode ? 'bg-[#293618] text-white' : 'bg-white text-gray-800'} shadow-md`}>
+              <div className={`mt-1 px-2 py-1 rounded text-xs whitespace-nowrap ${isDarkMode ? 'bg-[#1a59ad] text-white' : 'bg-white text-gray-800'} shadow-md`}>
                 {origin.address.substring(0, 20)}...
               </div>
             )}
@@ -208,7 +208,7 @@ const MapPlaceholder = ({
               <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-red-500 rotate-45"></div>
             </div>
             {destination.address && (
-              <div className={`mt-1 px-2 py-1 rounded text-xs whitespace-nowrap ${isDarkMode ? 'bg-[#293618] text-white' : 'bg-white text-gray-800'} shadow-md`}>
+              <div className={`mt-1 px-2 py-1 rounded text-xs whitespace-nowrap ${isDarkMode ? 'bg-[#1a59ad] text-white' : 'bg-white text-gray-800'} shadow-md`}>
                 {destination.address.substring(0, 20)}...
               </div>
             )}
@@ -222,7 +222,7 @@ const MapPlaceholder = ({
             style={{ left: `${driverPosition.x}%`, top: `${driverPosition.y}%` }}
           >
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'}`}>
-              <Car size={22} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+              <Car size={22} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
             </div>
             {/* Pulse effect */}
             <div className={`absolute inset-0 w-10 h-10 rounded-full animate-ping opacity-30 ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'}`}></div>
@@ -230,10 +230,10 @@ const MapPlaceholder = ({
         )}
 
         {/* Labels de ruas (decorativo) */}
-        <div className={`absolute bottom-2 left-2 text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-[#293618]/80 text-[#CEAE31]' : 'bg-white/80 text-gray-600'}`}>
+        <div className={`absolute bottom-2 left-2 text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-[#1a59ad]/80 text-[#CEAE31]' : 'bg-white/80 text-gray-600'}`}>
           Av. Transmill
         </div>
-        <div className={`absolute top-2 right-2 text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-[#293618]/80 text-[#CEAE31]' : 'bg-white/80 text-gray-600'}`}>
+        <div className={`absolute top-2 right-2 text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-[#1a59ad]/80 text-[#CEAE31]' : 'bg-white/80 text-gray-600'}`}>
           R. Mobilidade
         </div>
 
@@ -303,7 +303,7 @@ export const TrackingMap = ({ origin, destination, driverLocation, status, isDar
       {/* Status overlay */}
       {status && (
         <div className={`absolute top-2 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full shadow-lg ${
-          isDarkMode ? 'bg-[#293618] text-[#CEAE31]' : 'bg-white text-[#005B9C]'
+          isDarkMode ? 'bg-[#1a59ad] text-[#CEAE31]' : 'bg-white text-[#005B9C]'
         }`}>
           <div className="flex items-center space-x-2">
             {status === 'driver_arriving' && (

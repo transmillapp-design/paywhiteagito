@@ -287,16 +287,16 @@ const PassengerFlow = () => {
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
+    bg: 'bg-[#1a59ad]',
     card: 'bg-[#6B6A4B]',
     text: 'text-white',
     textSecondary: 'text-[#CEAE31]',
     textMuted: 'text-gray-300',
-    primary: 'bg-[#CEAE31] text-[#293618]',
+    primary: 'bg-[#CEAE31] text-[#1a59ad]',
     secondary: 'bg-transparent border-2 border-[#CEAE31] text-[#CEAE31]',
     danger: 'bg-red-500 text-white',
     border: 'border-[#CEAE31]',
-    input: 'bg-[#293618] border-[#CEAE31] text-white'
+    input: 'bg-[#1a59ad] border-[#CEAE31] text-white'
   } : {
     bg: 'bg-[#F5F5F5]',
     card: 'bg-white',
@@ -383,7 +383,7 @@ const PassengerFlow = () => {
 
             {/* Distância Estimada */}
             {origin.lat && destination.lat && (
-              <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'}`}>
+              <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'}`}>
                 <div className="flex items-center justify-between">
                   <span className={colors.textMuted}>Distância estimada</span>
                   <span className={`font-bold ${colors.text}`}>
@@ -468,7 +468,7 @@ const PassengerFlow = () => {
                       {driver.profile_image ? (
                         <img src={driver.profile_image} alt="" className="w-14 h-14 rounded-full object-cover" />
                       ) : (
-                        <User size={28} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                        <User size={28} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                       )}
                     </div>
                     <div>
@@ -536,10 +536,10 @@ const PassengerFlow = () => {
               {currentRide?.driver_name} está analisando sua solicitação
             </p>
 
-            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'} mb-6`}>
+            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'} mb-6`}>
               <div className="flex items-center justify-center space-x-4">
                 <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center`}>
-                  <User size={24} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                  <User size={24} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                 </div>
                 <div className="text-left">
                   <p className={`font-bold ${colors.text}`}>{currentRide?.driver_name}</p>
@@ -612,7 +612,7 @@ const PassengerFlow = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className={`w-14 h-14 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center`}>
-                      <User size={28} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                      <User size={28} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                     </div>
                     <div>
                       <p className={`font-bold ${colors.text}`}>{currentRide?.driver_name}</p>
@@ -656,7 +656,7 @@ const PassengerFlow = () => {
             </div>
 
             {/* Valor */}
-            <div className={`mt-4 p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'}`}>
+            <div className={`mt-4 p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'}`}>
               <div className="flex items-center justify-between">
                 <span className={colors.textMuted}>Valor da corrida</span>
                 <span className={`text-2xl font-bold ${colors.textSecondary}`}>
@@ -723,7 +723,7 @@ const PassengerFlow = () => {
               </div>
             </div>
 
-            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'} mb-6`}>
+            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'} mb-6`}>
               <div className="flex items-center justify-between">
                 <span className={`text-lg ${colors.text}`}>Total a pagar</span>
                 <span className={`text-3xl font-bold ${colors.textSecondary}`}>
@@ -781,7 +781,7 @@ const PassengerFlow = () => {
         <Card className={`${colors.card} border ${colors.border}`}>
           <CardContent className="p-6 text-center">
             <div className={`w-20 h-20 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center mx-auto mb-4`}>
-              <User size={40} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+              <User size={40} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
             </div>
 
             <h2 className={`text-xl font-bold ${colors.text} mb-1`}>

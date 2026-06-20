@@ -123,14 +123,14 @@ const AddressInput = ({
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
-    input: 'bg-[#293618] border-[#CEAE31] text-white placeholder:text-gray-400',
+    bg: 'bg-[#1a59ad]',
+    input: 'bg-[#1a59ad] border-[#CEAE31] text-white placeholder:text-gray-400',
     dropdown: 'bg-[#6B6A4B] border-[#CEAE31]',
     item: 'hover:bg-[#CEAE31]/20 text-white',
     icon: 'text-[#CEAE31]',
     textMuted: 'text-gray-300',
-    category: 'bg-[#293618] text-[#CEAE31]',
-    categoryActive: 'bg-[#CEAE31] text-[#293618]'
+    category: 'bg-[#1a59ad] text-[#CEAE31]',
+    categoryActive: 'bg-[#CEAE31] text-[#1a59ad]'
   } : {
     bg: 'bg-white',
     input: 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-500',
@@ -220,7 +220,7 @@ const AddressInput = ({
                 className={`w-full px-4 py-3 flex items-center space-x-3 ${colors.item} border-b border-gray-200/20`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'}`}>
-                  <Navigation size={16} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                  <Navigation size={16} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                 </div>
                 <div className="text-left">
                   <p className="font-medium">Usar localização atual</p>

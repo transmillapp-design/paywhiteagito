@@ -307,7 +307,7 @@ const DriverFlow = () => {
         margin: 2,
         color: {
           dark: isDarkMode ? '#CEAE31' : '#005B9C',
-          light: isDarkMode ? '#293618' : '#FFFFFF'
+          light: isDarkMode ? '#1a59ad' : '#FFFFFF'
         }
       });
       setQrCodeUrl(url);
@@ -346,12 +346,12 @@ const DriverFlow = () => {
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
+    bg: 'bg-[#1a59ad]',
     card: 'bg-[#6B6A4B]',
     text: 'text-white',
     textSecondary: 'text-[#CEAE31]',
     textMuted: 'text-gray-300',
-    primary: 'bg-[#CEAE31] text-[#293618]',
+    primary: 'bg-[#CEAE31] text-[#1a59ad]',
     secondary: 'bg-transparent border-2 border-[#CEAE31] text-[#CEAE31]',
     success: 'bg-green-500 text-white',
     danger: 'bg-red-500 text-white',
@@ -408,7 +408,7 @@ const DriverFlow = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-full ${isOnline ? 'bg-green-500' : isDarkMode ? 'bg-[#293618]' : 'bg-gray-200'}`}>
+                <div className={`p-3 rounded-full ${isOnline ? 'bg-green-500' : isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-200'}`}>
                   <Power size={28} className={isOnline ? 'text-white' : colors.textMuted} />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ const DriverFlow = () => {
             {/* Info do Cliente */}
             <div className="flex items-center space-x-4 mb-6">
               <div className={`w-16 h-16 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center`}>
-                <User size={32} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                <User size={32} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
               </div>
               <div>
                 <p className={`text-xl font-bold ${colors.text}`}>{currentRide?.client_name}</p>
@@ -567,7 +567,7 @@ const DriverFlow = () => {
             </div>
 
             {/* Info da Corrida */}
-            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'} mb-6`}>
+            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'} mb-6`}>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className={`text-lg font-bold ${colors.text}`}>{currentRide?.distance_km?.toFixed(1)}</p>
@@ -653,7 +653,7 @@ const DriverFlow = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center`}>
-                    <User size={24} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                    <User size={24} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                   </div>
                   <div>
                     <p className={`font-bold ${colors.text}`}>{currentRide?.client_name}</p>
@@ -739,7 +739,7 @@ const DriverFlow = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center`}>
-                    <User size={24} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+                    <User size={24} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
                   </div>
                   <div>
                     <p className={`font-bold ${colors.text}`}>{currentRide?.client_name}</p>
@@ -791,7 +791,7 @@ const DriverFlow = () => {
         />
         {/* Overlay de em andamento */}
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-          <div className={`px-4 py-2 rounded-full shadow-lg ${isDarkMode ? 'bg-[#293618] text-[#CEAE31]' : 'bg-white text-[#005B9C]'}`}>
+          <div className={`px-4 py-2 rounded-full shadow-lg ${isDarkMode ? 'bg-[#1a59ad] text-[#CEAE31]' : 'bg-white text-[#005B9C]'}`}>
             <div className="flex items-center space-x-2">
               <Navigation size={16} className="animate-pulse" />
               <span className="text-sm font-medium">Corrida em andamento</span>
@@ -816,7 +816,7 @@ const DriverFlow = () => {
           </div>
 
           {/* Info */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'} mb-6`}>
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'} mb-6`}>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
                 <p className={`text-2xl font-bold ${colors.text}`}>{currentRide?.distance_km?.toFixed(1)} km</p>
@@ -862,7 +862,7 @@ const DriverFlow = () => {
         <Card className={`${colors.card} border ${colors.border}`}>
           <CardContent className="p-6 text-center">
             {/* QR Code */}
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-[#293618]' : 'bg-white'} inline-block mb-6`}>
+            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-white'} inline-block mb-6`}>
               {qrCodeUrl ? (
                 <img src={qrCodeUrl} alt="QR Code para pagamento" className="w-56 h-56" />
               ) : (
@@ -880,7 +880,7 @@ const DriverFlow = () => {
             </p>
 
             {/* Valor */}
-            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#293618]' : 'bg-gray-50'}`}>
+            <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-gray-50'}`}>
               <p className={`text-sm ${colors.textMuted}`}>Valor da corrida</p>
               <p className={`text-4xl font-bold ${colors.textSecondary}`}>
                 R$ {currentRide?.pricing?.total?.toFixed(2)}
@@ -912,7 +912,7 @@ const DriverFlow = () => {
           <CardContent className="p-6 text-center">
             {/* Avatar */}
             <div className={`w-20 h-20 rounded-full ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'} flex items-center justify-center mx-auto mb-4`}>
-              <User size={40} className={isDarkMode ? 'text-[#293618]' : 'text-white'} />
+              <User size={40} className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} />
             </div>
 
             <h2 className={`text-xl font-bold ${colors.text} mb-1`}>
@@ -942,7 +942,7 @@ const DriverFlow = () => {
               onChange={(e) => setComment(e.target.value)}
               placeholder="Deixe um comentário (opcional)"
               rows={3}
-              className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-[#293618] border-[#CEAE31] text-white' : 'bg-white border-gray-300'} resize-none mb-6`}
+              className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-[#1a59ad] border-[#CEAE31] text-white' : 'bg-white border-gray-300'} resize-none mb-6`}
             />
 
             {/* Ganho */}

@@ -217,7 +217,7 @@ const SuporteMasterPanel = ({ API }) => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card 
-          className={`cursor-pointer transition-all ${filtroStatus === '' ? 'ring-2 ring-[#293618]' : ''}`}
+          className={`cursor-pointer transition-all ${filtroStatus === '' ? 'ring-2 ring-[#1a59ad]' : ''}`}
           onClick={() => setFiltroStatus('')}
         >
           <CardContent className="pt-4 text-center">
@@ -227,7 +227,7 @@ const SuporteMasterPanel = ({ API }) => {
           </CardContent>
         </Card>
         <Card 
-          className={`cursor-pointer transition-all ${filtroStatus === 'aberto' ? 'ring-2 ring-[#293618]' : ''}`}
+          className={`cursor-pointer transition-all ${filtroStatus === 'aberto' ? 'ring-2 ring-[#1a59ad]' : ''}`}
           onClick={() => setFiltroStatus('aberto')}
         >
           <CardContent className="pt-4 text-center">
@@ -237,7 +237,7 @@ const SuporteMasterPanel = ({ API }) => {
           </CardContent>
         </Card>
         <Card 
-          className={`cursor-pointer transition-all ${filtroStatus === 'em_andamento' ? 'ring-2 ring-[#293618]' : ''}`}
+          className={`cursor-pointer transition-all ${filtroStatus === 'em_andamento' ? 'ring-2 ring-[#1a59ad]' : ''}`}
           onClick={() => setFiltroStatus('em_andamento')}
         >
           <CardContent className="pt-4 text-center">
@@ -247,7 +247,7 @@ const SuporteMasterPanel = ({ API }) => {
           </CardContent>
         </Card>
         <Card 
-          className={`cursor-pointer transition-all ${filtroStatus === 'resolvido' ? 'ring-2 ring-[#293618]' : ''}`}
+          className={`cursor-pointer transition-all ${filtroStatus === 'resolvido' ? 'ring-2 ring-[#1a59ad]' : ''}`}
           onClick={() => setFiltroStatus('resolvido')}
         >
           <CardContent className="pt-4 text-center">
@@ -363,7 +363,7 @@ const SuporteMasterPanel = ({ API }) => {
                 <div 
                   className={`max-w-[80%] rounded-lg p-3 ${
                     msg.autor_tipo === 'master' 
-                      ? 'bg-[#293618] text-white' 
+                      ? 'bg-[#1a59ad] text-white' 
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
@@ -397,7 +397,7 @@ const SuporteMasterPanel = ({ API }) => {
               <Button 
                 onClick={enviarMensagem} 
                 disabled={enviandoMensagem || !novaMensagem.trim()}
-                className="bg-[#293618] self-end"
+                className="bg-[#1a59ad] self-end"
               >
                 {enviandoMensagem ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -566,7 +566,7 @@ const AdminFranquiasPanel = () => {
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [notificacoesEnviadas, setNotificacoesEnviadas] = useState([]);
   
-  // Estados para Taxas Personalizadas por Franquia
+  // Estados para Taxas Personalizadas por White Label
   const [showTaxaPersonalizada, setShowTaxaPersonalizada] = useState(false);
   const [taxasPersonalizadas, setTaxasPersonalizadas] = useState([]);
   const [taxaFranquiaForm, setTaxaFranquiaForm] = useState({
@@ -1245,7 +1245,7 @@ const AdminFranquiasPanel = () => {
       );
       
       if (response.data.success) {
-        toast.success('Franquia atualizada com sucesso!');
+        toast.success('White Label atualizado com sucesso!');
         setShowEditFranquia(false);
         setEditingFranquia(null);
         carregarDados();
@@ -1401,7 +1401,7 @@ const AdminFranquiasPanel = () => {
       return;
     }
     if (tipoEnvio === 'franquias' && franquiasSelecionadas.length === 0) {
-      toast.error('Selecione pelo menos uma franquia');
+      toast.error('Selecione pelo menos um white label');
       return;
     }
 
@@ -1490,7 +1490,7 @@ const AdminFranquiasPanel = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#293618] to-[#3d4f24] text-white p-6">
+      <div className="bg-gradient-to-r from-[#1a59ad] to-[#14478a] text-white p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
@@ -1498,7 +1498,7 @@ const AdminFranquiasPanel = () => {
                 <Building2 className="h-8 w-8" />
                 Painel Admin - Transmill Plataforma
               </h1>
-              <p className="text-white/80 mt-1">Gestão centralizada de todas as franquias</p>
+              <p className="text-white/80 mt-1">Gestão centralizada de todos os white labels</p>
             </div>
             <Button 
               variant="outline" 
@@ -1519,49 +1519,49 @@ const AdminFranquiasPanel = () => {
             <TabsList className="h-14 bg-transparent rounded-none border-0 p-0">
               <TabsTrigger 
                 value="dashboard" 
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Dashboard
               </TabsTrigger>
               <TabsTrigger 
                 value="franquias"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <Building2 className="h-4 w-4 mr-2" />
                 Franquias
               </TabsTrigger>
               <TabsTrigger 
                 value="financeiro"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <Wallet className="h-4 w-4 mr-2" />
                 Financeiro
               </TabsTrigger>
               <TabsTrigger 
                 value="taxas"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <DollarSign className="h-4 w-4 mr-2" />
                 Taxas
               </TabsTrigger>
               <TabsTrigger 
                 value="notificacoes"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <Bell className="h-4 w-4 mr-2" />
                 Notificações
               </TabsTrigger>
               <TabsTrigger 
                 value="suporte"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <Shield className="h-4 w-4 mr-2" />
                 Suporte
               </TabsTrigger>
               <TabsTrigger 
                 value="configuracoes"
-                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#293618] data-[state=active]:bg-transparent"
+                className="h-14 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1a59ad] data-[state=active]:bg-transparent"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Configurações
@@ -1575,7 +1575,7 @@ const AdminFranquiasPanel = () => {
       <div className="max-w-7xl mx-auto p-6">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-[#293618] border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-8 w-8 border-4 border-[#1a59ad] border-t-transparent rounded-full"></div>
           </div>
         ) : (
           <>
@@ -1588,7 +1588,7 @@ const AdminFranquiasPanel = () => {
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-gray-500">Franquias Ativas</p>
+                          <p className="text-sm text-gray-500">White Labels Ativos</p>
                           <p className="text-3xl font-bold text-gray-800">{stats.franquiasAtivas}</p>
                           <p className="text-xs text-gray-400 mt-1">de {stats.totalFranquias} total</p>
                         </div>
@@ -1622,7 +1622,7 @@ const AdminFranquiasPanel = () => {
                         <div>
                           <p className="text-sm text-gray-500">Total Clientes</p>
                           <p className="text-3xl font-bold text-gray-800">{stats.totalClientes || 0}</p>
-                          <p className="text-xs text-gray-400 mt-1">em todas franquias</p>
+                          <p className="text-xs text-gray-400 mt-1">em todos os white labels</p>
                         </div>
                         <div className="p-3 bg-purple-100 rounded-lg">
                           <Users className="h-6 w-6 text-purple-600" />
@@ -1655,7 +1655,7 @@ const AdminFranquiasPanel = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Franquias por Status</CardTitle>
+                      <CardTitle className="text-lg">White Labels por Status</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
@@ -1742,7 +1742,7 @@ const AdminFranquiasPanel = () => {
                   <div className="relative flex-1 max-w-md w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input 
-                      placeholder="Buscar franquias por nome, estado ou cidade..."
+                      placeholder="Buscar white labels por nome, estado ou cidade..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -1752,12 +1752,12 @@ const AdminFranquiasPanel = () => {
                     <Button 
                       variant="outline" 
                       onClick={gerarLinkCadastro}
-                      className="border-[#293618] text-[#293618] hover:bg-[#293618] hover:text-white"
+                      className="border-[#1a59ad] text-[#1a59ad] hover:bg-[#1a59ad] hover:text-white"
                     >
                       <Link className="h-4 w-4 mr-2" />
                       Gerar Link de Cadastro
                     </Button>
-                    <Button className="bg-[#293618]" onClick={() => setShowNovaFranquia(true)}>
+                    <Button className="bg-[#1a59ad]" onClick={() => setShowNovaFranquia(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nova Franquia
                     </Button>
@@ -1781,7 +1781,7 @@ const AdminFranquiasPanel = () => {
                       <Card>
                         <CardContent className="py-12 text-center">
                           <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-gray-500">Nenhuma franquia encontrada</p>
+                          <p className="text-gray-500">Nenhum white label encontrado</p>
                         </CardContent>
                       </Card>
                     );
@@ -1790,7 +1790,7 @@ const AdminFranquiasPanel = () => {
                   return estados.map((estado) => (
                     <div key={estado} className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5 text-[#293618]" />
+                        <MapPin className="h-5 w-5 text-[#1a59ad]" />
                         <h3 className="text-lg font-semibold text-gray-800">{estado}</h3>
                         <Badge variant="outline">{franquiasPorEstado[estado].length} franquia(s)</Badge>
                       </div>
@@ -1840,7 +1840,7 @@ const AdminFranquiasPanel = () => {
 
                                   {/* URL de Acesso */}
                                   <div className="flex-1 lg:max-w-md">
-                                    <Label className="text-xs text-gray-500 mb-1 block">URL de Acesso da Franquia:</Label>
+                                    <Label className="text-xs text-gray-500 mb-1 block">URL de Acesso do White Label:</Label>
                                     <div className="flex items-center gap-2">
                                       <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm font-mono text-gray-700 truncate border">
                                         {urlAcesso}
@@ -2003,7 +2003,7 @@ const AdminFranquiasPanel = () => {
 
                 {/* Botões de Ação - BRL e USDT */}
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button onClick={() => setShowNovaMovimentacao(true)} className="bg-[#293618]">
+                  <Button onClick={() => setShowNovaMovimentacao(true)} className="bg-[#1a59ad]">
                     <Plus className="h-4 w-4 mr-2" />
                     Nova Movimentação BRL
                   </Button>
@@ -2046,16 +2046,16 @@ const AdminFranquiasPanel = () => {
                   </CardContent>
                 </Card>
 
-                {/* Saldos por Franquia */}
+                {/* Saldos por White Label */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Saldos por Franquia</CardTitle>
-                    <CardDescription>Carteira digital de cada franquia no bolsão</CardDescription>
+                    <CardTitle>Saldos por White Label</CardTitle>
+                    <CardDescription>Carteira digital de cada white label no bolsão</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {franquiasSaldos.length === 0 ? (
-                        <p className="text-center text-gray-500 py-4">Nenhuma franquia cadastrada</p>
+                        <p className="text-center text-gray-500 py-4">Nenhum white label cadastrado</p>
                       ) : (
                         franquiasSaldos.map((franquia) => (
                           <div key={franquia.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -2138,10 +2138,10 @@ const AdminFranquiasPanel = () => {
                     <div className="flex justify-between items-center">
                       <div>
                         <CardTitle>Configuração de Taxas</CardTitle>
-                        <CardDescription>Defina as taxas padrão para as franquias</CardDescription>
+                        <CardDescription>Defina as taxas padrão para os white labels</CardDescription>
                       </div>
                       {!editandoTaxas ? (
-                        <Button onClick={() => setEditandoTaxas(true)} className="bg-[#293618]">
+                        <Button onClick={() => setEditandoTaxas(true)} className="bg-[#1a59ad]">
                           <Edit className="h-4 w-4 mr-2" />
                           Editar Taxas
                         </Button>
@@ -2220,7 +2220,7 @@ const AdminFranquiasPanel = () => {
                         <h3 className="font-semibold">Repasses</h3>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span>Repasse Franquia</span>
+                            <span>Repasse White Label</span>
                             {editandoTaxas ? (
                               <div className="flex items-center gap-2">
                                 <Input
@@ -2264,10 +2264,10 @@ const AdminFranquiasPanel = () => {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <div>
-                        <CardTitle>Taxas Personalizadas por Franquia</CardTitle>
-                        <CardDescription>Franquias com taxas diferentes do padrão</CardDescription>
+                        <CardTitle>Taxas Personalizadas por White Label</CardTitle>
+                        <CardDescription>White Labels com taxas diferentes do padrão</CardDescription>
                       </div>
-                      <Button onClick={() => setShowTaxaPersonalizada(true)} className="bg-[#293618]">
+                      <Button onClick={() => setShowTaxaPersonalizada(true)} className="bg-[#1a59ad]">
                         <Plus className="h-4 w-4 mr-2" />
                         Adicionar Taxa
                       </Button>
@@ -2345,7 +2345,7 @@ const AdminFranquiasPanel = () => {
                     <div className="flex gap-4 mb-6 flex-wrap">
                       <Button
                         variant={tipoEnvio === 'individual' ? 'default' : 'outline'}
-                        className={tipoEnvio === 'individual' ? 'bg-[#293618]' : ''}
+                        className={tipoEnvio === 'individual' ? 'bg-[#1a59ad]' : ''}
                         onClick={() => setTipoEnvio('individual')}
                       >
                         <Users className="h-4 w-4 mr-2" />
@@ -2353,7 +2353,7 @@ const AdminFranquiasPanel = () => {
                       </Button>
                       <Button
                         variant={tipoEnvio === 'franquias' ? 'default' : 'outline'}
-                        className={tipoEnvio === 'franquias' ? 'bg-[#293618]' : ''}
+                        className={tipoEnvio === 'franquias' ? 'bg-[#1a59ad]' : ''}
                         onClick={() => setTipoEnvio('franquias')}
                       >
                         <Building2 className="h-4 w-4 mr-2" />
@@ -2361,7 +2361,7 @@ const AdminFranquiasPanel = () => {
                       </Button>
                       <Button
                         variant={tipoEnvio === 'broadcast' ? 'default' : 'outline'}
-                        className={tipoEnvio === 'broadcast' ? 'bg-[#293618]' : ''}
+                        className={tipoEnvio === 'broadcast' ? 'bg-[#1a59ad]' : ''}
                         onClick={() => setTipoEnvio('broadcast')}
                       >
                         <Send className="h-4 w-4 mr-2" />
@@ -2392,7 +2392,7 @@ const AdminFranquiasPanel = () => {
                               onClick={() => aplicarTemplate(template)}
                               className={`p-3 rounded-lg border-2 text-center transition-all hover:scale-105 ${
                                 templateSelecionado === template.id
-                                  ? 'border-[#293618] bg-[#293618]/10 ring-2 ring-[#293618]/20'
+                                  ? 'border-[#1a59ad] bg-[#1a59ad]/10 ring-2 ring-[#1a59ad]/20'
                                   : `${template.cor} border-transparent hover:border-gray-300`
                               }`}
                             >
@@ -2431,7 +2431,7 @@ const AdminFranquiasPanel = () => {
                                     setFranquiasSelecionadas(franquiasSelecionadas.filter(id => id !== franquia.id));
                                   }
                                 }}
-                                className="rounded text-[#293618]"
+                                className="rounded text-[#1a59ad]"
                               />
                               <span className="text-sm truncate">{franquia.nome}</span>
                             </label>
@@ -2443,7 +2443,7 @@ const AdminFranquiasPanel = () => {
                           </p>
                         )}
                         {franquias.length === 0 && (
-                          <p className="text-sm text-gray-500 text-center py-4">Nenhuma franquia cadastrada</p>
+                          <p className="text-sm text-gray-500 text-center py-4">Nenhum white label cadastrado</p>
                         )}
                       </div>
                     )}
@@ -2463,7 +2463,7 @@ const AdminFranquiasPanel = () => {
                           <Button 
                             onClick={searchUserByDocument}
                             disabled={searchingUser}
-                            className="bg-[#293618]"
+                            className="bg-[#1a59ad]"
                           >
                             {searchingUser ? (
                               <RefreshCw className="h-4 w-4 animate-spin" />
@@ -2521,7 +2521,7 @@ const AdminFranquiasPanel = () => {
                       <div className="space-y-2">
                         <Label>Mensagem *</Label>
                         <textarea
-                          className="w-full min-h-[100px] p-3 border rounded-lg resize-none focus:ring-2 focus:ring-[#293618] focus:border-transparent"
+                          className="w-full min-h-[100px] p-3 border rounded-lg resize-none focus:ring-2 focus:ring-[#1a59ad] focus:border-transparent"
                           placeholder="Digite a mensagem da notificação..."
                           value={notificacao.message}
                           onChange={(e) => setNotificacao({...notificacao, message: e.target.value})}
@@ -2604,7 +2604,7 @@ const AdminFranquiasPanel = () => {
 
                       {/* Botão Enviar */}
                       <Button
-                        className="w-full bg-[#293618] hover:bg-[#3d4f24]"
+                        className="w-full bg-[#1a59ad] hover:bg-[#14478a]"
                         onClick={enviarNotificacao}
                         disabled={notificacaoLoading || !notificacao.title || !notificacao.message || (tipoEnvio === 'individual' && !foundUser)}
                       >
@@ -2637,14 +2637,14 @@ const AdminFranquiasPanel = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>Configurações Globais</CardTitle>
-                    <CardDescription>Configurações que afetam todas as franquias</CardDescription>
+                    <CardDescription>Configurações que afetam todos os white labels</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium">Modo de Manutenção</p>
-                          <p className="text-sm text-gray-500">Desativa acesso de franquias</p>
+                          <p className="text-sm text-gray-500">Desativa acesso de white labels</p>
                         </div>
                         <Badge variant="secondary">Desativado</Badge>
                       </div>
@@ -2875,7 +2875,7 @@ const AdminFranquiasPanel = () => {
                     Cancelar
                   </Button>
                   <Button 
-                    className="flex-1 bg-[#293618]"
+                    className="flex-1 bg-[#1a59ad]"
                     onClick={salvarTaxaPersonalizada}
                     disabled={salvandoTaxaPersonalizada || !taxaFranquiaForm.franquia_id}
                   >
@@ -3137,7 +3137,7 @@ const AdminFranquiasPanel = () => {
                 <Button variant="outline" className="flex-1" onClick={() => setShowEditFranquia(false)}>
                   Cancelar
                 </Button>
-                <Button className="flex-1 bg-[#293618]" onClick={salvarFranquia}>
+                <Button className="flex-1 bg-[#1a59ad]" onClick={salvarFranquia}>
                   <Save className="h-4 w-4 mr-2" />
                   Salvar Alterações
                 </Button>
@@ -3167,7 +3167,7 @@ const AdminFranquiasPanel = () => {
               {/* Seção 1: Dados da Empresa */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 text-[#293618]" />
+                  <FileCheck className="h-5 w-5 text-[#1a59ad]" />
                   Dados da Empresa
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -3233,7 +3233,7 @@ const AdminFranquiasPanel = () => {
               {/* Seção 2: Endereço */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-[#293618]" />
+                  <MapPin className="h-5 w-5 text-[#1a59ad]" />
                   Endereço
                 </h3>
                 <div className="grid grid-cols-4 gap-4">
@@ -3287,7 +3287,7 @@ const AdminFranquiasPanel = () => {
               {/* Seção 3: Responsável */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[#293618]" />
+                  <Users className="h-5 w-5 text-[#1a59ad]" />
                   Responsável pela Franquia
                 </h3>
                 <div className="grid grid-cols-3 gap-4">
@@ -3342,7 +3342,7 @@ const AdminFranquiasPanel = () => {
               {/* Seção 4: Identidade Visual */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Image className="h-5 w-5 text-[#293618]" />
+                  <Image className="h-5 w-5 text-[#1a59ad]" />
                   Identidade Visual
                 </h3>
                 
@@ -3480,7 +3480,7 @@ const AdminFranquiasPanel = () => {
               {/* Seção 5: Documentos */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-[#293618]" />
+                  <FileText className="h-5 w-5 text-[#1a59ad]" />
                   Documentos
                 </h3>
                 <p className="text-sm text-gray-500">
@@ -3595,7 +3595,7 @@ const AdminFranquiasPanel = () => {
                   Cancelar
                 </Button>
                 <Button 
-                  className="flex-1 bg-[#293618]" 
+                  className="flex-1 bg-[#1a59ad]" 
                   onClick={criarNovaFranquia}
                   disabled={salvandoNovaFranquia || !novaFranquia.nome || !novaFranquia.slug || !novaFranquia.estado}
                 >
@@ -3667,7 +3667,7 @@ const AdminFranquiasPanel = () => {
                   Fechar
                 </Button>
                 <Button 
-                  className="flex-1 bg-[#293618]"
+                  className="flex-1 bg-[#1a59ad]"
                   onClick={() => {
                     const text = `Olá! Segue o link para cadastro de franquia Transmill:\n\n${linkCadastro}`;
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;

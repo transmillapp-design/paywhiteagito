@@ -237,7 +237,7 @@ const CadastroFranquiaPage = () => {
   // Tela de sucesso
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#293618] to-[#1a2410] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#1a59ad] to-[#1a2410] flex items-center justify-center p-4">
         <Card className="w-full max-w-lg text-center">
           <CardContent className="pt-8 pb-8">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -254,19 +254,19 @@ const CadastroFranquiaPage = () => {
               <p className="font-medium text-gray-700 mb-2">Próximos passos:</p>
               <ul className="space-y-2 text-gray-600">
                 <li className="flex items-start gap-2">
-                  <span className="bg-[#293618] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">1</span>
+                  <span className="bg-[#1a59ad] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">1</span>
                   Análise da documentação enviada
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="bg-[#293618] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">2</span>
+                  <span className="bg-[#1a59ad] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">2</span>
                   Contato para esclarecimentos
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="bg-[#293618] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">3</span>
+                  <span className="bg-[#1a59ad] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">3</span>
                   Assinatura do contrato de franquia
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="bg-[#293618] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">4</span>
+                  <span className="bg-[#1a59ad] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 mt-0.5">4</span>
                   Ativação do sistema
                 </li>
               </ul>
@@ -280,7 +280,7 @@ const CadastroFranquiaPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <div className="bg-[#293618] text-white py-8 px-4">
+      <div className="bg-[#1a59ad] text-white py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <Shield className="h-10 w-10" />
@@ -305,7 +305,7 @@ const CadastroFranquiaPage = () => {
                   onClick={() => setStep(s.num)}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step === s.num ? 'bg-white text-[#293618]' : 
+                    step === s.num ? 'bg-white text-[#1a59ad]' : 
                     step > s.num ? 'bg-green-500 text-white' : 'bg-white/20 text-white'
                   }`}>
                     {step > s.num ? <CheckCircle className="h-4 w-4" /> : s.num}
@@ -327,7 +327,7 @@ const CadastroFranquiaPage = () => {
             {step === 1 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Building className="h-5 w-5 text-[#293618]" />
+                  <Building className="h-5 w-5 text-[#1a59ad]" />
                   <h2 className="text-lg font-semibold">Dados da Empresa</h2>
                 </div>
                 
@@ -395,7 +395,7 @@ const CadastroFranquiaPage = () => {
             {step === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="h-5 w-5 text-[#293618]" />
+                  <MapPin className="h-5 w-5 text-[#1a59ad]" />
                   <h2 className="text-lg font-semibold">Endereço da Sede</h2>
                 </div>
                 
@@ -467,7 +467,7 @@ const CadastroFranquiaPage = () => {
             {step === 3 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Users className="h-5 w-5 text-[#293618]" />
+                  <Users className="h-5 w-5 text-[#1a59ad]" />
                   <h2 className="text-lg font-semibold">Responsável pela Franquia</h2>
                 </div>
                 
@@ -535,7 +535,7 @@ const CadastroFranquiaPage = () => {
             {step === 4 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-[#293618]" />
+                  <FileText className="h-5 w-5 text-[#1a59ad]" />
                   <h2 className="text-lg font-semibold">Documentos</h2>
                 </div>
                 
@@ -602,7 +602,7 @@ const CadastroFranquiaPage = () => {
             {step === 5 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Image className="h-5 w-5 text-[#293618]" />
+                  <Image className="h-5 w-5 text-[#1a59ad]" />
                   <h2 className="text-lg font-semibold">Identidade Visual</h2>
                 </div>
                 
@@ -737,7 +737,7 @@ const CadastroFranquiaPage = () => {
               
               {step < 5 ? (
                 <Button 
-                  className="bg-[#293618]"
+                  className="bg-[#1a59ad]"
                   onClick={() => setStep(s => Math.min(5, s + 1))}
                 >
                   Próximo
@@ -745,7 +745,7 @@ const CadastroFranquiaPage = () => {
                 </Button>
               ) : (
                 <Button 
-                  className="bg-[#293618]"
+                  className="bg-[#1a59ad]"
                   onClick={handleSubmit}
                   disabled={loading}
                 >

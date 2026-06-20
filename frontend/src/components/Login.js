@@ -120,7 +120,7 @@ const Login = () => {
             className="text-base"
             style={{ color: theme.textLight }}
           >
-            Plataforma de Gestão de Franquias
+            Plataforma de Gestão de White Labels
           </CardDescription>
         </CardHeader>
 

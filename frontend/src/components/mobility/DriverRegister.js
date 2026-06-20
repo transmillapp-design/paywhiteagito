@@ -175,15 +175,15 @@ const DriverRegister = () => {
 
   // Cores do tema
   const colors = isDarkMode ? {
-    bg: 'bg-[#293618]',
+    bg: 'bg-[#1a59ad]',
     card: 'bg-[#6B6A4B]',
     text: 'text-white',
     textSecondary: 'text-[#CEAE31]',
     textMuted: 'text-gray-300',
-    primary: 'bg-[#CEAE31] text-[#293618]',
+    primary: 'bg-[#CEAE31] text-[#1a59ad]',
     secondary: 'bg-transparent border-2 border-[#CEAE31] text-[#CEAE31]',
     border: 'border-[#CEAE31]',
-    input: 'bg-[#293618] border-[#CEAE31] text-white placeholder:text-gray-400'
+    input: 'bg-[#1a59ad] border-[#CEAE31] text-white placeholder:text-gray-400'
   } : {
     bg: 'bg-[#F5F5F5]',
     card: 'bg-white',

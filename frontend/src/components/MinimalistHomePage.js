@@ -407,13 +407,13 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
   };
 
   return (
-    <div className={`min-h-[100dvh] h-[100dvh] flex flex-col`} style={{ backgroundColor: isDarkMode ? '#293618' : (franquiaContext ? corSecundaria : '#EEEEEE') }}>
+    <div className={`min-h-[100dvh] h-[100dvh] flex flex-col`} style={{ backgroundColor: isDarkMode ? '#1a59ad' : (franquiaContext ? corSecundaria : '#EEEEEE') }}>
       {/* Header - Sticky no topo com safe area */}
       <header 
         className={`sticky top-0 z-40 shadow-sm border-b flex-shrink-0`}
         style={{ 
           paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
-          backgroundColor: isDarkMode ? '#293618' : 'white',
+          backgroundColor: isDarkMode ? '#1a59ad' : 'white',
           borderColor: isDarkMode ? '#CEAE31' : corPrimaria
         }}
       >
@@ -694,7 +694,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
 
       {/* Conteúdo Principal - Área Scrollável */}
       <main className="flex-1 overflow-y-auto">
-        <div className={`max-w-md mx-auto px-4 py-6 space-y-6 ${isDarkMode ? 'bg-[#293618]' : 'bg-[#EEEEEE]'}`}>
+        <div className={`max-w-md mx-auto px-4 py-6 space-y-6 ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-[#EEEEEE]'}`}>
         {/* Banner Area - Com suporte para modo claro e escuro */}
         <Card className={`border-2 overflow-hidden relative ${
           isDarkMode 
@@ -742,7 +742,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
               </div>
               <Badge className={`${
                 isDarkMode 
-                  ? 'bg-[#CEAE31] text-[#293618] border-[#CEAE31]' 
+                  ? 'bg-[#CEAE31] text-[#1a59ad] border-[#CEAE31]' 
                   : 'bg-[#005B9C] text-white border-[#005B9C]'
               }`}>
                 {user?.user_type === 'cliente' ? 'Cliente' : 
@@ -768,25 +768,25 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className={`border rounded-lg p-3 ${
                 isDarkMode 
-                  ? 'bg-[#CEAE31] border-[#293618]' 
+                  ? 'bg-[#CEAE31] border-[#1a59ad]' 
                   : 'bg-white border-[#005B9C]'
               }`}>
-                <p className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-[#293618]' : 'text-[#005B9C]'}`}>
+                <p className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-[#1a59ad]' : 'text-[#005B9C]'}`}>
                   Saldo disponível
                 </p>
-                <p className={`text-xl font-bold ${isDarkMode ? 'text-[#293618]' : 'text-[#333333]'}`}>
+                <p className={`text-xl font-bold ${isDarkMode ? 'text-[#1a59ad]' : 'text-[#333333]'}`}>
                   {showBalance ? formatCurrency(balance.brl) : '••••••'}
                 </p>
               </div>
               <div className={`border rounded-lg p-3 ${
                 isDarkMode 
-                  ? 'bg-[#CEAE31] border-[#293618]' 
+                  ? 'bg-[#CEAE31] border-[#1a59ad]' 
                   : 'bg-white border-[#005B9C]'
               }`}>
-                <p className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-[#293618]' : 'text-[#005B9C]'}`}>
+                <p className={`text-xs uppercase tracking-wide ${isDarkMode ? 'text-[#1a59ad]' : 'text-[#005B9C]'}`}>
                   Ganhos acumulados
                 </p>
-                <p className={`text-xl font-bold ${isDarkMode ? 'text-[#293618]' : 'text-[#333333]'}`}>
+                <p className={`text-xl font-bold ${isDarkMode ? 'text-[#1a59ad]' : 'text-[#333333]'}`}>
                   {showBalance ? balance.usdt.toFixed(6) : '••••••'}
                 </p>
               </div>
@@ -817,7 +817,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
                   onChange={handleSearchChange}
                   className={`pl-10 pr-12 py-3 text-base border ${
                     isDarkMode 
-                      ? 'bg-[#293618] border-[#CEAE31] text-white placeholder-[#9CA38F]' 
+                      ? 'bg-[#1a59ad] border-[#CEAE31] text-white placeholder-[#9CA38F]' 
                       : 'bg-white border-[#CCCCCC] text-[#333333] placeholder-[#666666]'
                   }`}
                   onFocus={() => setShowSuggestions(searchQuery.length > 0 && filteredServices.length === 0)}
@@ -828,7 +828,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
                   size="sm" 
                   className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${
                     isDarkMode 
-                      ? 'bg-[#CEAE31] hover:bg-[#E5C34A] text-[#293618]' 
+                      ? 'bg-[#CEAE31] hover:bg-[#E5C34A] text-[#1a59ad]' 
                       : 'bg-[#005B9C] hover:bg-[#0077CC] text-white'
                   }`}
                 >
@@ -853,7 +853,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
                         onClick={suggestion.action}
                         className={`w-full text-left px-4 py-2 text-sm border-b last:border-b-0 ${
                           isDarkMode 
-                            ? 'hover:bg-[#CEAE31] text-white border-[#CEAE31] hover:text-[#293618]' 
+                            ? 'hover:bg-[#CEAE31] text-white border-[#CEAE31] hover:text-[#1a59ad]' 
                             : 'hover:bg-[#F5F5F5] text-[#333333] border-[#CCCCCC]'
                         }`}
                       >
@@ -873,12 +873,12 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
             <CardContent className="p-4">
               <div className="flex items-start space-x-3 mb-3">
                 <div className={`rounded-full p-2 ${isDarkMode ? 'bg-[#CEAE31]' : 'bg-[#005B9C]'}`}>
-                  <Bot className={isDarkMode ? 'text-[#293618]' : 'text-white'} size={20} />
+                  <Bot className={isDarkMode ? 'text-[#1a59ad]' : 'text-white'} size={20} />
                 </div>
                 <div className="flex-1">
                   <h3 className={`font-semibold mb-1 flex items-center ${isDarkMode ? 'text-white' : 'text-[#333333]'}`}>
                     Assistente Transmill
-                    <Badge className={`ml-2 text-xs ${isDarkMode ? 'bg-[#CEAE31] text-[#293618]' : 'bg-[#005B9C] text-white'}`}>IA</Badge>
+                    <Badge className={`ml-2 text-xs ${isDarkMode ? 'bg-[#CEAE31] text-[#1a59ad]' : 'bg-[#005B9C] text-white'}`}>IA</Badge>
                   </h3>
                   <p className={`text-sm whitespace-pre-wrap leading-relaxed ${isDarkMode ? 'text-white/80' : 'text-[#666666]'}`}>
                     {chatbotResponse.response}
@@ -890,7 +890,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
               {chatbotResponse.action && chatbotResponse.action.type === 'navigate' && chatbotResponse.action.target && (
                 <div className="mt-4">
                   <Button
-                    className={`w-full ${isDarkMode ? 'bg-[#CEAE31] hover:bg-[#E5C34A] text-[#293618]' : 'bg-[#005B9C] hover:bg-[#0077CC] text-white'}`}
+                    className={`w-full ${isDarkMode ? 'bg-[#CEAE31] hover:bg-[#E5C34A] text-[#1a59ad]' : 'bg-[#005B9C] hover:bg-[#0077CC] text-white'}`}
                     onClick={() => {
                       const target = chatbotResponse.action.target;
                       
@@ -924,7 +924,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
               <Button
                 variant="outline"
                 size="sm"
-                className={`w-full mt-2 ${isDarkMode ? 'border-[#CEAE31] text-white hover:bg-[#CEAE31] hover:text-[#293618]' : 'border-[#005B9C] text-[#005B9C] hover:bg-[#005B9C] hover:text-white'}`}
+                className={`w-full mt-2 ${isDarkMode ? 'border-[#CEAE31] text-white hover:bg-[#CEAE31] hover:text-[#1a59ad]' : 'border-[#005B9C] text-[#005B9C] hover:bg-[#005B9C] hover:text-white'}`}
                 onClick={() => {
                   setSearchQuery('');
                   setShowChatbotResponse(false);
@@ -958,7 +958,7 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
                       }}
                     >
                       <CardContent className="p-3 text-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 ${isDarkMode ? 'bg-[#293618]' : 'bg-white'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 ${isDarkMode ? 'bg-[#1a59ad]' : 'bg-white'}`}>
                           <IconComponent className={isDarkMode ? 'text-[#CEAE31]' : 'text-[#005B9C]'} size={20} />
                         </div>
                         <h3 className="font-semibold text-white text-xs mb-1">{service.title}</h3>
@@ -1009,10 +1009,10 @@ const MinimalistHomePage = ({ franquiaContext = null }) => {
                 >
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg border-2 ${
                     isDarkMode 
-                      ? 'bg-[#CEAE31] border-[#293618]' 
+                      ? 'bg-[#CEAE31] border-[#1a59ad]' 
                       : 'bg-[#EEEEEE] border-[#005B9C]'
                   }`}>
-                    <IconComponent className={isDarkMode ? 'text-[#293618]' : 'text-[#005B9C]'} size={28} />
+                    <IconComponent className={isDarkMode ? 'text-[#1a59ad]' : 'text-[#005B9C]'} size={28} />
                   </div>
                   <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-[#333333]'}`}>
                     {service.title}
