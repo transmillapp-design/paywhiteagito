@@ -23,10 +23,22 @@
 - ❌ Exportação PDF/Excel de Labelview
 
 ## Status de Saúde do Sistema
-- **Backend:** ✅ Funcionando (8764 linhas, 98 endpoints em server.py + routers modulares)
+- **Backend:** ✅ Funcionando (~8765 linhas, 98 endpoints em server.py + routers modulares)
 - **Frontend:** ✅ Funcionando (build OK)
 - **Database:** ✅ Conectado
 - **Service Worker:** v7 - Network-first para HTML
+
+## Credenciais de API por Franquia (NOVO - 2026-06)
+Cada franquia cadastra suas próprias APIs no painel admin (`/franquia/:slug/admin` → aba "Integrações / APIs"). Nada hardcoded.
+- **Backend:** `routes/integracoes.py` (GET/PUT `/api/franquias/{slug}/integracoes`, GET público `/api/public/franquias/{slug}/maps-config`); `utils/crypto_utils.py` (Fernet AES, chave em `CREDENTIALS_ENCRYPTION_KEY` no `.env`).
+- **Campos:** XGate (email, senha, api_url), Google Maps (api_key), Cloudinary (cloud_name, api_key, api_secret), BaaS (provider_name + api_key).
+- **Segurança:** segredos criptografados no Mongo (`franquia_integracoes`), exibidos mascarados (últimos 4 dígitos), re-cadastro apenas. Autorização: master OU franqueado da própria franquia (403 cross-slug).
+- **Google Maps:** chave hardcoded REMOVIDA do `index.html`; carregamento dinâmico por franquia via `utils/googleMaps.js` (fallback p/ env do app padrão).
+- **Testado:** iteration_12.json — backend 15/15, frontend 100% (4 cards XGate/Maps/Cloudinary/BaaS, máscara, master selector).
+- **⚠️ FASE 2 PENDENTE:** os serviços XGate/Cloudinary do backend ainda usam credenciais GLOBAIS do `.env` em runtime. As credenciais por franquia já são ARMAZENADAS e recuperáveis (`get_integration_credentials(slug, nome)`), mas falta RELIGAR os serviços para usá-las por franquia.
+
+## Removido (2026-06)
+- ❌ FIPE / Brasil API (`routes/fipe.py` deletado, vars `FIPEAPI_*` removidas do `.env`) — junto com Proteção Veicular.
 
 ## Refatoração server.py (P0 - em andamento)
 **Batch 4 (2026-06):** Migrados 37 endpoints de server.py para 5 routers modulares novos, usando camada de auth compartilhada `routes/deps.py` (get_current_user/get_current_master_user/verify_token wrapping auth_utils):
