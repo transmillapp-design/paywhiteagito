@@ -1,7 +1,7 @@
 # PRD - Sistema Transmill Super App
 
 ## Versão Atual
-**v2.39.0** (2026-06-20) - ✅ **VERSÃO LIMPA PARA GITHUB**
+**v2.39.0** (2026-06-20) - ✅ **VERSÃO LIMPA + REDESIGN ESTILO 99**
 
 ## Verticais Ativas
 - ✅ **Mobilidade** - Corridas P2P, motoristas, passageiros
@@ -55,6 +55,16 @@
 │   └── mobility_models.py
 └── utils/
 ```
+
+## Layout Frontend (estilo 99 app)
+- **Header:** Cor primária white-label + "Olá, {nome}!" + Pix + Notificação + Menu
+- **Mapa:** Google Maps (~40% da tela)
+- **Search bar:** "Para onde vamos?" (redireciona para seleção de corrida)
+- **Banner:** Carrossel promocional rotativo
+- **Lojas:** Horizontal scroll com cards de lojas recomendadas
+- **Bottom Nav:** Flutuante, pill-shaped (rounded-full), com shadow
+  - Mobilidade (Car) | Lojas (Utensils) | Serviços (Package) | Carteira ($)
+- **White-Label:** Cores e logo dinâmicos por empresa contratante
 
 ## Credenciais de Teste
 - **Master Admin:** marcelotransmillapp@gmail.com / !Ma04202011@
