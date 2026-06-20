@@ -23,10 +23,21 @@
 - ❌ Exportação PDF/Excel de Labelview
 
 ## Status de Saúde do Sistema
-- **Backend:** ✅ Funcionando (10394 linhas, 129 endpoints)
+- **Backend:** ✅ Funcionando (8764 linhas, 98 endpoints em server.py + routers modulares)
 - **Frontend:** ✅ Funcionando (build OK)
 - **Database:** ✅ Conectado
 - **Service Worker:** v7 - Network-first para HTML
+
+## Refatoração server.py (P0 - em andamento)
+**Batch 4 (2026-06):** Migrados 37 endpoints de server.py para 5 routers modulares novos, usando camada de auth compartilhada `routes/deps.py` (get_current_user/get_current_master_user/verify_token wrapping auth_utils):
+- `routes/fipe.py` (4) - Brasil API / FIPE
+- `routes/usdt.py` (9) - USDT wallet + master/usdt approvals
+- `routes/provider_schedule.py` (8) - disponibilidade prestador + agendamentos
+- `routes/orders.py` (7) - pedidos + catálogo
+- `routes/payment_methods.py` (2) - preferências de pagamento
+- server.py: 10394 → 8764 linhas; 135 → 98 endpoints. Testado: 30/30 OK (iteration_11.json).
+- Bug corrigido: `/api/master/all-transactions` (serialização ObjectId, _id projetado fora).
+**Restam ~98 endpoints** em server.py para migrar (grupos com helpers compartilhados: admin/franquias, master CRUD, prestador/services, auth) — exigem extração de helpers para módulo compartilhado.
 
 ## Arquitetura Backend
 

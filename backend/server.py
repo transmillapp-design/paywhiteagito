@@ -3140,8 +3140,8 @@ async def get_master_all_transactions(
         if transaction_type:
             filter_query["transaction_type"] = transaction_type
         
-        # Buscar todas as transações
-        transactions = await db.transactions.find(filter_query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+        # Buscar todas as transações (excluir _id para evitar erro de serialização ObjectId)
+        transactions = await db.transactions.find(filter_query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
         
         # Contar total
         total = await db.transactions.count_documents(filter_query)
