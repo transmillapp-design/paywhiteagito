@@ -1,0 +1,57 @@
+{
+  "summary": "Backend-only regression test for P0 monolith decomposition. Validated 5 newly-created modular routers (fipe.py, usdt.py, provider_schedule.py, orders.py, payment_methods.py) plus regression of non-migrated endpoints. 29/30 tests PASS (96.7%). Single failure is a PRE-EXISTING bug in /api/master/all-transactions (still in server.py, NOT migrated) — MongoDB ObjectId JSON serialization. All 5 migrated routers work correctly with shared deps.py auth layer. Auth tokens, role-based 403s, and FIPE/USDT/orders/payment-methods/provider endpoints all respond as designed. No duplicate-route shadowing detected on /api/usdt/rate (returns real numeric rate 5.85, not mock 5.45).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/master/all-transactions",
+        "issue": "500 Internal Server Error - ValueError: ObjectId is not iterable / jsonable_encoder fails. Backend log shows MongoDB _id leaking into response. Endpoint is still in server.py (line 3122, NOT migrated). Pre-existing bug, unrelated to this refactor.",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_routes_migration_p0.py",
+    "/app/test_reports/pytest/iteration_11_results.xml"
+  ],
+  "action_items": [
+    "(Optional / pre-existing) Fix /api/master/all-transactions ObjectId serialization in server.py line ~3122 — exclude _id or use jsonable_encoder with custom_encoder for ObjectId.",
+    "Consider migrating /api/master/all-transactions into routes/master.py during the next decomposition batch and fixing _id in the same change."
+  ],
+  "critical_code_review_comments": [
+    "All 5 new routers correctly use shared deps.get_current_user / get_current_master_user — no duplicate auth logic.",
+    "/api/usdt/rate returns real rate (5.85) from USDTService, confirming no duplicate-route shadowing with the previous mock 5.45 value.",
+    "Role gating works: non-master gets 403 on /api/master/usdt/pending-approvals; client gets 403 on PATCH /api/user/payment-methods (lojista/service_provider only).",
+    "server.py is still 8734 lines / 98 endpoints — recommend continuing decomposition in batches (wallet/transactions, master CRUD, admin) and prioritising the all-transactions endpoint which has a serialization bug.",
+    "FIPE endpoints respond 200 even when external BrasilAPI is unavailable (gracefully returns success:false) — good resilience.",
+    "Provider availability returns 403 for clients (expected) instead of misleading 500 — auth wiring through deps.py is correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_routes_migration_p0.py (created — 30 pytest tests covering auth, 5 migrated routers, and 8 regression endpoints)"
+  ],
+  "success_rate": {
+    "backend": "96.7% (29/30 passed)",
+    "frontend": "not tested (backend-only per request)"
+  },
+  "test_credentials": {
+    "master_user": {"email": "marcelotransmillapp@gmail.com", "password": "!Ma04202011@"},
+    "franchise_client": {"email": "transmillapp@gmail.com", "password": "demo123"},
+    "base_url_env": "REACT_APP_BACKEND_URL (frontend/.env)"
+  },
+  "seed_data_creation": "None — used existing master & franchise demo accounts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Refactor regression suite lives at /app/backend/tests/test_routes_migration_p0.py and loads REACT_APP_BACKEND_URL from /app/frontend/.env automatically. Run with: pytest /app/backend/tests/test_routes_migration_p0.py -v. Known persistent failure: TestRegression::test_master_all_transactions (pre-existing ObjectId serialization bug in server.py line ~3122) — keep this test as a watchdog until main agent fixes/migrates that endpoint. The 5 migrated routers (fipe, usdt, provider_schedule, orders, payment_methods) are confirmed working end-to-end.",
+  "rca_of_the_issue": {
+    "endpoint": "GET /api/master/all-transactions",
+    "symptom": "HTTP 500 Internal Server Error",
+    "root_cause": "ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')] raised by fastapi.encoders.jsonable_encoder. The handler returns raw Mongo documents containing _id (bson.ObjectId) which FastAPI cannot serialize.",
+    "reproduction": "1) POST /api/auth/login as master → grab access_token. 2) GET /api/master/all-transactions with Bearer token → returns 500.",
+    "mitigation": "In server.py around line 3122, either (a) project away _id in the find() query (.find(query, {'_id': 0})), or (b) iterate results and `doc.pop('_id', None)` before returning, or (c) convert _id to str(doc['_id']). Also recommend migrating this endpoint into routes/master.py in the next batch."
+  }
+}
