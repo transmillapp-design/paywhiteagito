@@ -2,10 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../App';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import NotificationBell from '../components/NotificationBell';
 import { usePWA } from '../hooks/usePWA';
 import { GoogleMap, useGoogleMaps } from '../components/mobility/GoogleMapsIntegration';
@@ -13,9 +9,9 @@ import {
   Search, Car, Store, Wrench, DollarSign,
   ArrowRight, User, Menu, Sun, Moon, LogOut, MapPin, Clock,
   Wallet, Eye, EyeOff, CreditCard, Download, LayoutDashboard,
-  MessageCircle, ShoppingBag, Users, Calendar, Star, Navigation,
-  Loader2, ChevronRight, Phone, Utensils, Briefcase, ArrowLeft,
-  Bell, Settings, Home
+  MessageCircle, ShoppingBag, Users, Star, Navigation,
+  Loader2, ChevronRight, Phone, Utensils, Briefcase,
+  Bell, Settings, Home, Package
 } from 'lucide-react';
 
 const TAB_MOBILITY = 'mobility';
@@ -37,303 +33,136 @@ const HomePage = ({ franquiaContext = null }) => {
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
 
-  const corPrimaria = franquiaContext?.cor_primaria || '#005B9C';
-  const corSecundaria = franquiaContext?.cor_secundaria || '#EEEEEE';
-  const nomeFranquia = franquiaContext?.nome || 'Transmill';
-  const logoFranquia = franquiaContext?.logo_url;
+  const accent = franquiaContext?.cor_primaria || '#005B9C';
+  const accentSecondary = franquiaContext?.cor_secundaria || '#EEEEEE';
+  const brandName = franquiaContext?.nome || 'Transmill';
+  const logoUrl = franquiaContext?.logo_url;
 
   const displayName = (user?.nome_fantasia || user?.company_name || user?.full_name || user?.email?.split('@')[0] || 'Usuário').split(' ')[0];
+
+  const pageBg = isDarkMode ? '#0a0e1a' : '#f5f5f5';
+  const cardBg = isDarkMode ? '#1a1f35' : '#ffffff';
+  const textPrimary = isDarkMode ? '#f0f0f0' : '#1a1a1a';
+  const textSecondary = isDarkMode ? '#8a8a9a' : '#666666';
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
-  const toggleTheme = () => {
-    const next = !isDarkMode;
-    setIsDarkMode(next);
-    localStorage.setItem('transmill-theme', next ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', next);
-  };
-
-  // Colors helper
-  const bg = isDarkMode ? '#1a1a2e' : '#f5f5f5';
-  const cardBg = isDarkMode ? '#16213e' : '#ffffff';
-  const textPrimary = isDarkMode ? '#e0e0e0' : '#1a1a1a';
-  const textSecondary = isDarkMode ? '#a0a0a0' : '#666666';
-  const accent = corPrimaria;
-  const accentLight = isDarkMode ? 'rgba(0,91,156,0.2)' : 'rgba(0,91,156,0.08)';
-
   return (
-    <div className="min-h-[100dvh] h-[100dvh] flex flex-col" style={{ backgroundColor: bg }}>
-      {/* Header */}
+    <div className="flex flex-col h-screen" style={{ backgroundColor: pageBg }} data-testid="homepage">
+      {/* ====== HEADER (estilo 99) ====== */}
       <header
-        className="flex-shrink-0 z-40"
-        style={{
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
-          backgroundColor: isDarkMode ? '#16213e' : '#ffffff',
-          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`
-        }}
+        className="flex-shrink-0 px-4 pt-3 pb-2 flex items-center justify-between z-30"
+        style={{ backgroundColor: accent }}
+        data-testid="app-header"
       >
-        <div className="max-w-lg mx-auto px-4 py-2.5 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-10 h-10 rounded-full overflow-hidden border-2 flex items-center justify-center flex-shrink-0"
-              style={{ borderColor: accent }}
-              data-testid="user-avatar-btn"
-            >
-              {user?.profile_image ? (
-                <img src={user.profile_image} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: accent }}>
-                  <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
-                </div>
-              )}
-            </button>
-            <div>
-              <p className="text-xs" style={{ color: textSecondary }}>Olá,</p>
-              <p className="text-sm font-semibold leading-tight" style={{ color: textPrimary }}>{displayName}</p>
+        <div className="flex items-center gap-3">
+          {logoUrl ? (
+            <img src={logoUrl} alt={brandName} className="w-9 h-9 rounded-full object-cover border-2 border-white/30" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+              <User size={18} className="text-white" />
             </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            {isInstallable && (
-              <Button variant="ghost" size="sm" onClick={installPWA} className="p-2" data-testid="install-pwa-btn">
-                <Download size={18} style={{ color: accent }} />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={toggleTheme} className="p-2" data-testid="theme-toggle-btn">
-              {isDarkMode ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} style={{ color: accent }} />}
-            </Button>
-            <div className="relative">
-              <Button variant="ghost" size="sm" className="p-2" onClick={() => setShowProfileMenu(!showProfileMenu)} data-testid="menu-btn">
-                <Menu size={20} style={{ color: textPrimary }} />
-              </Button>
-              {showProfileMenu && <ProfileMenu user={user} isDarkMode={isDarkMode} navigate={navigate} franquiaContext={franquiaContext} onClose={() => setShowProfileMenu(false)} accent={accent} />}
-            </div>
-          </div>
+          )}
+          <span className="text-white font-semibold text-base" data-testid="user-greeting">
+            Olá, {displayName}!
+          </span>
+        </div>
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={() => navigate('/wallet')}
+            className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/20 text-white"
+            data-testid="header-pix-btn"
+          >
+            Pix
+          </button>
+          <NotificationBell token={token} API={API} isDarkMode={false} accent="#ffffff" />
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-white/15"
+            data-testid="profile-menu-btn"
+          >
+            <Menu size={16} className="text-white" />
+          </button>
+          {showProfileMenu && (
+            <ProfileMenu user={user} isDarkMode={isDarkMode} navigate={navigate} franquiaContext={franquiaContext} onClose={() => setShowProfileMenu(false)} accent={accent} />
+          )}
         </div>
       </header>
 
-      {/* Main Content - Scrollable */}
-      <main className="flex-1 overflow-y-auto">
-        {activeTab === TAB_MOBILITY && <MobilityTab isDarkMode={isDarkMode} accent={accent} navigate={navigate} API={API} headers={headers} user={user} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} bg={bg} />}
-        {activeTab === TAB_MARKETPLACE && <MarketplaceTab isDarkMode={isDarkMode} accent={accent} navigate={navigate} API={API} headers={headers} user={user} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} bg={bg} />}
-        {activeTab === TAB_SERVICES && <ServicesTab isDarkMode={isDarkMode} accent={accent} navigate={navigate} API={API} headers={headers} user={user} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} bg={bg} />}
-        {activeTab === TAB_FINANCE && <FinanceTab isDarkMode={isDarkMode} accent={accent} navigate={navigate} API={API} headers={headers} user={user} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} bg={bg} />}
+      {/* ====== CONTENT SCROLL ====== */}
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: '90px' }}>
+        {activeTab === TAB_MOBILITY && (
+          <MobilityTab
+            accent={accent} isDarkMode={isDarkMode} cardBg={cardBg}
+            textPrimary={textPrimary} textSecondary={textSecondary}
+            navigate={navigate} user={user} API={API} headers={headers}
+            brandName={brandName}
+          />
+        )}
+        {activeTab === TAB_MARKETPLACE && (
+          <MarketplaceTab
+            accent={accent} isDarkMode={isDarkMode} cardBg={cardBg}
+            textPrimary={textPrimary} textSecondary={textSecondary}
+            navigate={navigate} API={API} headers={headers}
+          />
+        )}
+        {activeTab === TAB_SERVICES && (
+          <ServicesTab
+            accent={accent} isDarkMode={isDarkMode} cardBg={cardBg}
+            textPrimary={textPrimary} textSecondary={textSecondary}
+            navigate={navigate}
+          />
+        )}
+        {activeTab === TAB_FINANCE && (
+          <FinanceTab
+            accent={accent} isDarkMode={isDarkMode} cardBg={cardBg}
+            textPrimary={textPrimary} textSecondary={textSecondary}
+            navigate={navigate} user={user} API={API} headers={headers}
+          />
+        )}
       </main>
 
-      {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isDarkMode={isDarkMode} accent={accent} textPrimary={textPrimary} />
+      {/* ====== FLOATING BOTTOM NAV (estilo 99) ====== */}
+      <BottomNav
+        activeTab={activeTab} setActiveTab={setActiveTab}
+        isDarkMode={isDarkMode} accent={accent} textPrimary={textPrimary}
+      />
     </div>
   );
 };
 
-/* ============ MOBILITY TAB ============ */
-const MobilityTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, textPrimary, textSecondary, bg }) => {
-  const [driverMode, setDriverMode] = useState(false);
+/* ============ MOBILITY TAB (estilo 99) ============ */
+const MobilityTab = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate, user, API, headers, brandName }) => {
+  const { isLoaded } = useGoogleMaps();
+  const [isDriverMode, setIsDriverMode] = useState(false);
+
+  // Driver state
+  const [driverProfile, setDriverProfile] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const googleMapsLoaded = useGoogleMaps();
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setUserLocation({ lat: -22.9068, lng: -43.1729 }),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else {
-      setUserLocation({ lat: -22.9068, lng: -43.1729 });
-    }
+    const checkDriver = async () => {
+      try {
+        const res = await axios.get(`${API}/api/mobility/driver/profile`, { headers });
+        if (res.data?.exists) {
+          setDriverProfile(res.data.profile);
+          setIsOnline(res.data.profile?.is_online || false);
+        }
+      } catch (e) { /* not a driver */ }
+    };
+    checkDriver();
   }, []);
-
-  /* ---------- DRIVER MODE ---------- */
-  if (driverMode) {
-    return (
-      <div className="max-w-lg mx-auto">
-        {/* Map */}
-        <div className="relative" style={{ height: '45vh', minHeight: '280px' }}>
-          {googleMapsLoaded && userLocation ? (
-            <GoogleMap origin={userLocation} center={userLocation} zoom={15} height="h-full" className="w-full" isDarkMode={isDarkMode} />
-          ) : (
-            <MiniMap isDarkMode={isDarkMode} accent={accent} />
-          )}
-          {/* Toggle */}
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex rounded-full overflow-hidden shadow-lg z-10" style={{ backgroundColor: cardBg }}>
-            <button onClick={() => setDriverMode(false)} className="px-5 py-2 text-xs font-semibold transition-all" style={{ backgroundColor: 'transparent', color: textSecondary }} data-testid="passenger-mode-btn">
-              <User size={14} className="inline mr-1.5 -mt-0.5" />Passageiro
-            </button>
-            <button className="px-5 py-2 text-xs font-semibold transition-all" style={{ backgroundColor: accent, color: '#fff' }} data-testid="driver-mode-btn">
-              <Car size={14} className="inline mr-1.5 -mt-0.5" />Motorista
-            </button>
-          </div>
-        </div>
-
-        {/* Online / Offline Button */}
-        <div className="px-4 -mt-6 relative z-10 space-y-3 pb-6">
-          <button
-            onClick={() => setIsOnline(prev => !prev)}
-            className="w-full py-4 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.97]"
-            style={{
-              background: isOnline
-                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
-                : `linear-gradient(135deg, ${accent} 0%, #003060 100%)`,
-              color: '#fff',
-            }}
-            data-testid="driver-online-btn"
-          >
-            {isOnline ? 'ONLINE — Recebendo corridas' : 'FICAR ONLINE'}
-          </button>
-
-          {/* Driver Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Hoje', value: 'R$ 0,00', sub: '0 corridas' },
-              { label: 'Avaliação', value: '5.0', sub: 'Nota média' },
-              { label: 'Aceitação', value: '100%', sub: 'Taxa' },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-xl py-3 px-2 text-center" style={{ backgroundColor: cardBg }}>
-                <p className="text-xs font-bold" style={{ color: textPrimary }}>{stat.value}</p>
-                <p className="text-[10px]" style={{ color: textSecondary }}>{stat.label}</p>
-                <p className="text-[9px] mt-0.5" style={{ color: textSecondary }}>{stat.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Driver Quick Actions */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: Wallet, label: 'Ganhos', action: () => navigate('/extrato'), testId: 'driver-earnings' },
-              { icon: Star, label: 'Avaliações', action: () => navigate('/profile'), testId: 'driver-ratings' },
-              { icon: Settings, label: 'Configurações', action: () => navigate('/profile'), testId: 'driver-settings' },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={item.action}
-                className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all active:scale-95"
-                style={{ backgroundColor: cardBg }}
-                data-testid={item.testId}
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
-                  <item.icon size={18} style={{ color: accent }} />
-                </div>
-                <span className="text-[10px] font-medium" style={{ color: textPrimary }}>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- PASSENGER MODE ---------- */
-  return (
-    <div className="max-w-lg mx-auto">
-      {/* Map Area */}
-      <div className="relative" style={{ height: '40vh', minHeight: '260px' }}>
-        {googleMapsLoaded && userLocation ? (
-          <GoogleMap origin={userLocation} center={userLocation} zoom={15} height="h-full" className="w-full" isDarkMode={isDarkMode} />
-        ) : (
-          <MiniMap isDarkMode={isDarkMode} accent={accent} />
-        )}
-        {/* Passenger/Driver Toggle */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex rounded-full overflow-hidden shadow-lg z-10" style={{ backgroundColor: cardBg }}>
-          <button className="px-5 py-2 text-xs font-semibold transition-all" style={{ backgroundColor: accent, color: '#fff' }} data-testid="passenger-mode-btn">
-            <User size={14} className="inline mr-1.5 -mt-0.5" />Passageiro
-          </button>
-          <button onClick={() => setDriverMode(true)} className="px-5 py-2 text-xs font-semibold transition-all" style={{ backgroundColor: 'transparent', color: textSecondary }} data-testid="driver-mode-btn">
-            <Car size={14} className="inline mr-1.5 -mt-0.5" />Motorista
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="px-4 -mt-6 relative z-10 space-y-3 pb-6">
-        <div className="rounded-2xl shadow-lg overflow-hidden" style={{ backgroundColor: cardBg }}>
-          <button
-            onClick={() => navigate('/mobility/passenger')}
-            className="w-full flex items-center gap-3 p-4 text-left"
-            data-testid="destination-search-btn"
-          >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: accent }}>
-              <Search size={18} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium" style={{ color: textPrimary }}>Para onde vamos?</p>
-              <p className="text-xs" style={{ color: textSecondary }}>Busque um destino ou endereço</p>
-            </div>
-            <ChevronRight size={20} style={{ color: textSecondary }} />
-          </button>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { icon: Car, label: 'Corrida', action: () => navigate('/mobility/passenger'), testId: 'quick-ride-btn' },
-            { icon: ShoppingBag, label: 'Lojas', action: () => setActiveTab('stores'), testId: 'quick-stores-btn' },
-            { icon: Wrench, label: 'Serviços', action: () => setActiveTab('services'), testId: 'quick-services-btn' },
-            { icon: Wallet, label: 'Carteira', action: () => setActiveTab('finance'), testId: 'quick-wallet-btn' },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={item.action}
-              className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all active:scale-95"
-              style={{ backgroundColor: cardBg }}
-              data-testid={item.testId}
-            >
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
-                <item.icon size={18} style={{ color: accent }} />
-              </div>
-              <span className="text-[10px] font-medium" style={{ color: textPrimary }}>{item.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Promotional Rotating Banner */}
-        <PromoBanner accent={accent} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} navigate={navigate} isDarkMode={isDarkMode} />
-
-        {/* Quick Access */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: cardBg }}>
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>Acesso rápido</h3>
-          </div>
-          <div className="space-y-2">
-            {[
-              { icon: Clock, label: 'Última corrida', desc: 'Repita sua última viagem', action: () => navigate('/mobility/passenger') },
-              { icon: Calendar, label: 'Meus pedidos', desc: 'Acompanhar pedidos', action: () => navigate('/meus-pedidos') },
-            ].map((item, i) => (
-              <button key={i} onClick={item.action} className="w-full flex items-center gap-3 p-2.5 rounded-xl transition-all hover:opacity-80 active:scale-[0.98]" data-testid={`quick-access-${i}`}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${accent}12` }}>
-                  <item.icon size={16} style={{ color: accent }} />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-xs font-medium" style={{ color: textPrimary }}>{item.label}</p>
-                  <p className="text-[10px]" style={{ color: textSecondary }}>{item.desc}</p>
-                </div>
-                <ChevronRight size={16} style={{ color: textSecondary }} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ============ PROMO ROTATING BANNER ============ */
-const PromoBanner = ({ accent, cardBg, textPrimary, textSecondary, navigate, isDarkMode }) => {
-  const [current, setCurrent] = useState(0);
 
   const promos = [
     {
-      title: 'Mobilidade Transmill',
-      desc: 'Peça uma corrida P2P com motoristas parceiros da sua região',
-      cta: 'Pedir corrida',
-      action: () => navigate('/mobility/passenger'),
+      title: `${brandName} Pay`,
+      desc: 'Ganhe cashback em todas as corridas e compras na plataforma',
+      cta: 'Saiba mais',
+      action: () => navigate('/wallet'),
       gradient: `linear-gradient(135deg, ${accent} 0%, ${isDarkMode ? '#001a3a' : '#003060'} 100%)`,
-      icon: Car,
+      icon: Wallet,
     },
     {
       title: 'Lojas Parceiras',
@@ -343,300 +172,295 @@ const PromoBanner = ({ accent, cardBg, textPrimary, textSecondary, navigate, isD
       gradient: 'linear-gradient(135deg, #00897B 0%, #004D40 100%)',
       icon: ShoppingBag,
     },
-    {
-      title: 'Carteira Digital',
-      desc: 'Gerencie seu saldo, faça depósitos e transferências facilmente',
-      cta: 'Acessar carteira',
-      action: () => navigate('/wallet'),
-      gradient: 'linear-gradient(135deg, #0062B8 0%, #003D72 100%)',
-      icon: Wallet,
-    },
   ];
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent(prev => (prev + 1) % promos.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [promos.length]);
-
-  const promo = promos[current];
-  const PromoIcon = promo.icon;
+  if (isDriverMode) {
+    return <DriverModeView accent={accent} isDarkMode={isDarkMode} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} navigate={navigate} user={user} API={API} headers={headers} driverProfile={driverProfile} isOnline={isOnline} setIsOnline={setIsOnline} setIsDriverMode={setIsDriverMode} isLoaded={isLoaded} />;
+  }
 
   return (
-    <div data-testid="promo-banner">
-      <button
-        onClick={promo.action}
-        className="w-full rounded-2xl p-4 text-left relative overflow-hidden transition-all active:scale-[0.98]"
-        style={{ background: promo.gradient, minHeight: '100px' }}
-      >
-        {/* Decorative circles */}
-        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-15" style={{ backgroundColor: '#fff' }} />
-        <div className="absolute -bottom-4 -right-12 w-28 h-28 rounded-full opacity-10" style={{ backgroundColor: '#fff' }} />
-
-        <div className="relative z-10 flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <PromoIcon size={22} className="text-white" />
+    <div data-testid="mobility-tab">
+      {/* MAP (estilo 99 - ocupa ~40% da tela) */}
+      <div className="w-full relative" style={{ height: '240px' }}>
+        {isLoaded ? (
+          <GoogleMap
+            center={{ lat: -22.9068, lng: -43.1729 }}
+            zoom={14}
+            style={{ width: '100%', height: '100%' }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: isDarkMode ? '#1a2235' : '#e8f0fe' }}>
+            <Loader2 className="animate-spin" size={28} style={{ color: accent }} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white leading-tight">{promo.title}</p>
-            <p className="text-[11px] text-white/75 mt-0.5 leading-snug">{promo.desc}</p>
-            <span className="inline-block mt-2 px-3 py-1 rounded-full text-[10px] font-semibold bg-white/20 text-white">
-              {promo.cta}
-            </span>
+        )}
+      </div>
+
+      {/* SEARCH BAR "Para onde vamos?" (estilo 99) */}
+      <div className="px-4 -mt-5 relative z-10">
+        <button
+          onClick={() => navigate('/mobility/passenger')}
+          className="w-full rounded-2xl shadow-lg px-4 py-3.5 flex items-center gap-3 active:scale-[0.98] transition-transform"
+          style={{ backgroundColor: cardBg }}
+          data-testid="search-destination-btn"
+        >
+          <Search size={20} style={{ color: textSecondary }} />
+          <span className="font-semibold text-base" style={{ color: textPrimary }}>
+            Para onde vamos?
+          </span>
+        </button>
+
+        {/* Recent location */}
+        <div className="flex items-center gap-3 mt-3 px-1">
+          <Clock size={16} style={{ color: textSecondary }} />
+          <span className="text-sm" style={{ color: textSecondary }}>
+            {user?.last_address || 'Escolha seu destino'}
+          </span>
+        </div>
+      </div>
+
+      {/* BANNER PROMOCIONAL (estilo 99) */}
+      <div className="px-4 mt-4">
+        <BannerCarousel promos={promos} accent={accent} isDarkMode={isDarkMode} cardBg={cardBg} textPrimary={textPrimary} />
+      </div>
+
+      {/* LOJAS RECOMENDADAS (estilo 99) */}
+      <StoresPreview accent={accent} isDarkMode={isDarkMode} cardBg={cardBg} textPrimary={textPrimary} textSecondary={textSecondary} navigate={navigate} API={API} headers={headers} />
+
+      {/* Toggle Motorista (pequeno link) */}
+      {driverProfile && (
+        <div className="px-4 mt-4 mb-4">
+          <button
+            onClick={() => setIsDriverMode(true)}
+            className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: `${accent}12`, color: accent, border: `1px solid ${accent}30` }}
+            data-testid="switch-to-driver-btn"
+          >
+            <Car size={16} />
+            Alternar para modo Motorista
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ============ DRIVER MODE ============ */
+const DriverModeView = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate, user, API, headers, driverProfile, isOnline, setIsOnline, setIsDriverMode, isLoaded }) => {
+  const toggleOnline = async () => {
+    try {
+      await axios.put(`${API}/api/mobility/driver/availability?is_online=${!isOnline}`, {}, { headers });
+      setIsOnline(!isOnline);
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <div data-testid="driver-mode">
+      {/* Map fullwidth */}
+      <div className="w-full relative" style={{ height: '300px' }}>
+        {isLoaded ? (
+          <GoogleMap center={{ lat: -22.9068, lng: -43.1729 }} zoom={14} style={{ width: '100%', height: '100%' }} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: isDarkMode ? '#1a2235' : '#e8f0fe' }}>
+            <Loader2 className="animate-spin" size={28} style={{ color: accent }} />
+          </div>
+        )}
+        {/* Status badge overlay */}
+        <div className="absolute top-3 left-3 flex items-center gap-2">
+          <div className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${isOnline ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+            {isOnline ? '● Online' : '○ Offline'}
           </div>
         </div>
-      </button>
-      {/* Dots indicator */}
-      <div className="flex justify-center gap-1.5 mt-2">
-        {promos.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className="w-1.5 h-1.5 rounded-full transition-all"
-            style={{
-              backgroundColor: i === current ? accent : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'),
-              width: i === current ? '12px' : '6px',
-            }}
-            data-testid={`promo-dot-${i}`}
-          />
-        ))}
+      </div>
+
+      <div className="px-4 -mt-5 relative z-10 space-y-3">
+        {/* Online toggle */}
+        <button
+          onClick={toggleOnline}
+          className="w-full rounded-2xl shadow-lg py-4 font-bold text-white text-center active:scale-[0.98] transition-all"
+          style={{ backgroundColor: isOnline ? '#16a34a' : accent }}
+          data-testid="toggle-online-btn"
+        >
+          {isOnline ? 'Você está Online - Aceitando corridas' : 'Ficar Online'}
+        </button>
+
+        {/* Quick stats */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Ganhos hoje', value: 'R$ 0,00', icon: DollarSign },
+            { label: 'Avaliação', value: driverProfile?.rating?.toFixed(1) || '5.0', icon: Star },
+            { label: 'Corridas', value: driverProfile?.total_rides || '0', icon: Navigation },
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: cardBg }}>
+              <s.icon size={16} className="mx-auto mb-1" style={{ color: accent }} />
+              <p className="text-sm font-bold" style={{ color: textPrimary }}>{s.value}</p>
+              <p className="text-[10px]" style={{ color: textSecondary }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Back to passenger */}
+        <button
+          onClick={() => setIsDriverMode(false)}
+          className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+          style={{ backgroundColor: `${accent}12`, color: accent }}
+          data-testid="switch-to-passenger-btn"
+        >
+          <User size={16} />
+          Voltar para modo Passageiro
+        </button>
       </div>
     </div>
   );
 };
 
-/* ============ MINI MAP COMPONENT ============ */
-const MiniMap = ({ isDarkMode, accent }) => {
-  const [cars, setCars] = useState([]);
+/* ============ STORES PREVIEW (horizontal scroll estilo 99) ============ */
+const StoresPreview = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate, API, headers }) => {
+  const [stores, setStores] = useState([]);
 
   useEffect(() => {
-    // Generate random car positions
-    const initial = Array.from({ length: 6 }, (_, i) => ({
-      id: i,
-      x: 15 + Math.random() * 70,
-      y: 15 + Math.random() * 70,
-      rotation: Math.random() * 360,
-    }));
-    setCars(initial);
-
-    const interval = setInterval(() => {
-      setCars(prev => prev.map(c => ({
-        ...c,
-        x: Math.max(5, Math.min(95, c.x + (Math.random() - 0.5) * 3)),
-        y: Math.max(5, Math.min(95, c.y + (Math.random() - 0.5) * 3)),
-        rotation: c.rotation + (Math.random() - 0.5) * 30,
-      })));
-    }, 2000);
-
-    return () => clearInterval(interval);
+    const fetchStores = async () => {
+      try {
+        const res = await axios.get(`${API}/api/stores?limit=10`, { headers });
+        setStores(res.data?.stores || []);
+      } catch (e) { /* no stores */ }
+    };
+    fetchStores();
   }, []);
 
-  const roadColor = isDarkMode ? '#2a2a4a' : '#e0e0e0';
-  const bgColor = isDarkMode ? '#0f0f23' : '#eef2f5';
-  const buildingColor = isDarkMode ? '#1a1a3e' : '#d8dde3';
-  const parkColor = isDarkMode ? '#1a2e1a' : '#c8e6c9';
-
   return (
-    <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: bgColor }}>
-      {/* Grid streets */}
-      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-        {/* Horizontal roads */}
-        {[20, 40, 60, 80].map(y => (
-          <rect key={`h${y}`} x="0" y={`${y}%`} width="100%" height="2" fill={roadColor} opacity="0.6" />
-        ))}
-        {/* Vertical roads */}
-        {[25, 50, 75].map(x => (
-          <rect key={`v${x}`} x={`${x}%`} y="0" width="2" height="100%" fill={roadColor} opacity="0.6" />
-        ))}
-        {/* Buildings */}
-        {[
-          { x: 5, y: 5, w: 15, h: 12 }, { x: 30, y: 8, w: 12, h: 10 },
-          { x: 55, y: 3, w: 18, h: 14 }, { x: 80, y: 5, w: 14, h: 11 },
-          { x: 8, y: 45, w: 13, h: 10 }, { x: 55, y: 45, w: 16, h: 12 },
-          { x: 28, y: 65, w: 18, h: 10 }, { x: 78, y: 68, w: 15, h: 9 },
-          { x: 5, y: 82, w: 16, h: 12 }, { x: 60, y: 82, w: 12, h: 11 },
-        ].map((b, i) => (
-          <rect key={`b${i}`} x={`${b.x}%`} y={`${b.y}%`} width={`${b.w}%`} height={`${b.h}%`} rx="4" fill={buildingColor} opacity="0.5" />
-        ))}
-        {/* Park */}
-        <rect x="30%" y="22%" width="16%" height="14%" rx="8" fill={parkColor} opacity="0.4" />
-      </svg>
+    <div className="mt-5 mb-2">
+      <div className="flex items-center justify-between px-4 mb-3">
+        <h3 className="font-bold text-sm" style={{ color: textPrimary }}>
+          Lojas recomendadas na região
+        </h3>
+        <button onClick={() => navigate('/stores')} className="text-xs font-medium flex items-center gap-1" style={{ color: accent }} data-testid="stores-see-more">
+          Mais <ChevronRight size={14} />
+        </button>
+      </div>
 
-      {/* Street labels */}
-      <span className="absolute text-[8px] font-medium opacity-40 left-2 bottom-[22%]" style={{ color: isDarkMode ? '#888' : '#888' }}>
-        Av. Transmill
-      </span>
-      <span className="absolute text-[8px] font-medium opacity-40 right-2 top-[42%] -rotate-90 origin-right" style={{ color: isDarkMode ? '#888' : '#888' }}>
-        R. Mobilidade
-      </span>
-
-      {/* Cars */}
-      {cars.map(car => (
-        <div
-          key={car.id}
-          className="absolute transition-all duration-[2000ms] ease-in-out"
-          style={{ left: `${car.x}%`, top: `${car.y}%`, transform: `translate(-50%, -50%) rotate(${car.rotation}deg)` }}
-        >
-          <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: accent }}>
-            <Car size={12} className="text-white" />
+      {stores.length > 0 ? (
+        <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+          {stores.map((store) => (
+            <button
+              key={store.id}
+              onClick={() => navigate(`/store/${store.slug || store.id}`)}
+              className="flex-shrink-0 w-40 rounded-xl overflow-hidden shadow-sm active:scale-[0.97] transition-transform"
+              style={{ backgroundColor: cardBg }}
+              data-testid={`store-card-${store.id}`}
+            >
+              <div className="w-full h-24 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center relative" style={{ backgroundColor: isDarkMode ? '#2a2f48' : '#f0f0f0' }}>
+                {store.logo_url ? (
+                  <img src={store.logo_url} alt={store.nome_fantasia} className="w-full h-full object-cover" />
+                ) : (
+                  <Store size={24} style={{ color: textSecondary }} />
+                )}
+                {store.rating && (
+                  <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-white/90 rounded-full px-1.5 py-0.5">
+                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-[10px] font-bold text-gray-800">{store.rating}</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-2">
+                <p className="text-xs font-semibold truncate" style={{ color: textPrimary }}>{store.nome_fantasia || store.name}</p>
+                <p className="text-[10px] truncate" style={{ color: textSecondary }}>{store.business_segment || 'Loja parceira'}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="px-4">
+          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: cardBg }}>
+            <Store size={24} className="mx-auto mb-2" style={{ color: textSecondary }} />
+            <p className="text-sm" style={{ color: textSecondary }}>Nenhuma loja disponível na região</p>
           </div>
         </div>
-      ))}
-
-      {/* User location pulse */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="w-4 h-4 rounded-full border-2 border-white shadow-lg" style={{ backgroundColor: accent }}>
-          <div className="absolute inset-0 rounded-full animate-ping opacity-30" style={{ backgroundColor: accent }} />
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
 /* ============ MARKETPLACE TAB ============ */
-const MarketplaceTab = ({ isDarkMode, accent, navigate, API, headers, cardBg, textPrimary, textSecondary, bg }) => {
+const MarketplaceTab = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate, API, headers }) => {
   const [stores, setStores] = useState([]);
+  const [selectedCat, setSelectedCat] = useState('Todas');
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        const res = await axios.get(`${API}/stores`, { headers });
-        setStores(res.data?.stores || res.data?.merchants || []);
-      } catch (e) {
-        console.error('Erro ao buscar lojas:', e);
-      } finally {
-        setLoading(false);
-      }
+        setLoading(true);
+        const res = await axios.get(`${API}/api/stores`, { headers });
+        setStores(res.data?.stores || []);
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
     };
     fetchStores();
-  }, [API]);
+  }, []);
 
-  const filtered = stores.filter(s =>
-    !searchQuery || (s.nome_fantasia || s.company_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = selectedCat === 'Todas' ? stores : stores.filter(s => s.business_segment === selectedCat);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-6">
-      {/* Search */}
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: textSecondary }} />
-        <Input
-          placeholder="Buscar lojas e produtos..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="pl-9 text-sm rounded-xl border"
-          style={{ backgroundColor: cardBg, color: textPrimary, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
-          data-testid="marketplace-search"
-        />
-      </div>
+    <div className="px-4 py-4 space-y-4" data-testid="marketplace-tab">
+      <h2 className="font-bold text-lg" style={{ color: textPrimary }}>Lojas e Produtos</h2>
 
-      {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+      {/* Category filters */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {['Todas', 'Alimentação', 'Moda', 'Eletrônicos', 'Serviços'].map((cat, i) => (
           <button
             key={cat}
-            className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-all"
+            onClick={() => setSelectedCat(cat)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
             style={{
-              backgroundColor: i === 0 ? accent : (isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
-              color: i === 0 ? '#fff' : textSecondary
+              backgroundColor: selectedCat === cat ? accent : (isDarkMode ? '#1e2340' : '#f0f0f0'),
+              color: selectedCat === cat ? '#fff' : textSecondary,
             }}
-            data-testid={`category-${cat.toLowerCase()}`}
+            data-testid={`cat-filter-${i}`}
           >
             {cat}
           </button>
         ))}
       </div>
 
-      {/* Store Listings */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="animate-spin" size={28} style={{ color: accent }} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <Store size={40} className="mx-auto mb-3 opacity-30" style={{ color: textSecondary }} />
-          <p className="text-sm" style={{ color: textSecondary }}>
-            {searchQuery ? 'Nenhuma loja encontrada' : 'Nenhuma loja disponível no momento'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.slice(0, 12).map((store) => (
+        <div className="flex justify-center py-8"><Loader2 className="animate-spin" size={24} style={{ color: accent }} /></div>
+      ) : filtered.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3">
+          {filtered.map((store) => (
             <button
-              key={store._id || store.id}
-              onClick={() => {
-                const slug = store.slug || store._id || store.id;
-                navigate(`/${slug}`);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98]"
+              key={store.id}
+              onClick={() => navigate(`/store/${store.slug || store.id}`)}
+              className="rounded-xl overflow-hidden shadow-sm text-left active:scale-[0.97] transition-transform"
               style={{ backgroundColor: cardBg }}
-              data-testid={`store-${store.slug || 'item'}`}
+              data-testid={`marketplace-store-${store.id}`}
             >
-              <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: `${accent}10` }}>
-                {store.logo_url || store.profile_image ? (
-                  <img src={store.logo_url || store.profile_image} alt="" className="w-full h-full object-cover" />
+              <div className="w-full h-28 flex items-center justify-center" style={{ backgroundColor: isDarkMode ? '#2a2f48' : '#f0f0f0' }}>
+                {store.logo_url ? (
+                  <img src={store.logo_url} alt={store.nome_fantasia} className="w-full h-full object-cover" />
                 ) : (
-                  <Store size={22} style={{ color: accent }} />
+                  <Store size={28} style={{ color: textSecondary }} />
                 )}
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: textPrimary }}>
-                  {store.nome_fantasia || store.company_name || 'Loja'}
-                </p>
-                <p className="text-[10px] truncate" style={{ color: textSecondary }}>
-                  {store.category || store.segmento || 'Marketplace'}
-                </p>
-                {store.distance_km && (
-                  <p className="text-[10px]" style={{ color: accent }}>
-                    <MapPin size={10} className="inline -mt-0.5 mr-0.5" />
-                    {store.distance_km.toFixed(1)} km
-                  </p>
-                )}
+              <div className="p-2.5">
+                <p className="text-sm font-semibold truncate" style={{ color: textPrimary }}>{store.nome_fantasia || store.name}</p>
+                <p className="text-[10px]" style={{ color: textSecondary }}>{store.business_segment || 'Parceiro'}</p>
               </div>
-              <ChevronRight size={18} style={{ color: textSecondary }} />
             </button>
           ))}
         </div>
+      ) : (
+        <div className="rounded-xl p-8 text-center" style={{ backgroundColor: cardBg }}>
+          <Store size={28} className="mx-auto mb-2" style={{ color: textSecondary }} />
+          <p className="text-sm" style={{ color: textSecondary }}>Nenhuma loja encontrada</p>
+        </div>
       )}
-
-      {/* View All */}
-      <button
-        onClick={() => navigate('/lojas')}
-        className="w-full py-3 rounded-xl text-xs font-medium transition-all active:scale-[0.98]"
-        style={{ backgroundColor: `${accent}10`, color: accent }}
-        data-testid="view-all-stores-btn"
-      >
-        Ver todas as lojas
-      </button>
     </div>
   );
 };
 
 /* ============ SERVICES TAB ============ */
-const ServicesTab = ({ isDarkMode, accent, navigate, API, headers, cardBg, textPrimary, textSecondary, bg }) => {
-  const [providers, setProviders] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const res = await axios.get(`${API}/prestadores`, { headers });
-        setProviders(res.data?.prestadores || res.data?.providers || []);
-      } catch (e) {
-        console.error('Erro ao buscar prestadores:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProviders();
-  }, [API]);
-
-  const serviceCategories = [
-    { icon: Wrench, label: 'Manutenção', desc: 'Reparo e manutenção' },
-    { icon: Briefcase, label: 'Profissionais', desc: 'Serviços diversos' },
+const ServicesTab = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate }) => {
+  const categories = [
     { icon: Wrench, label: 'Manutenção', desc: 'Reparos e consertos' },
     { icon: Car, label: 'Automotivo', desc: 'Serviços veiculares' },
     { icon: Home, label: 'Casa', desc: 'Serviços residenciais' },
@@ -644,130 +468,64 @@ const ServicesTab = ({ isDarkMode, accent, navigate, API, headers, cardBg, textP
   ];
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-6">
-      <h2 className="text-base font-semibold" style={{ color: textPrimary }}>Categorias de Serviços</h2>
-
-      {/* Category Grid */}
-      <div className="grid grid-cols-3 gap-3">
-        {serviceCategories.map((cat) => (
+    <div className="px-4 py-4 space-y-4" data-testid="services-tab">
+      <h2 className="font-bold text-lg" style={{ color: textPrimary }}>Serviços</h2>
+      <div className="grid grid-cols-2 gap-3">
+        {categories.map((cat) => (
           <button
             key={cat.label}
-            onClick={() => navigate('/prestadores')}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all active:scale-95"
+            onClick={() => navigate(`/services?category=${cat.label}`)}
+            className="rounded-xl p-4 flex flex-col items-center gap-2 shadow-sm active:scale-[0.97] transition-transform"
             style={{ backgroundColor: cardBg }}
-            data-testid={`service-cat-${cat.label.toLowerCase()}`}
+            data-testid={`service-${cat.label.toLowerCase()}`}
           >
-            <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: `${accent}12` }}>
-              <cat.icon size={20} style={{ color: accent }} />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
+              <cat.icon size={22} style={{ color: accent }} />
             </div>
-            <span className="text-[10px] font-medium text-center leading-tight" style={{ color: textPrimary }}>{cat.label}</span>
+            <p className="text-sm font-semibold" style={{ color: textPrimary }}>{cat.label}</p>
+            <p className="text-[10px]" style={{ color: textSecondary }}>{cat.desc}</p>
           </button>
         ))}
       </div>
-
-      {/* Provider Listings */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-base font-semibold" style={{ color: textPrimary }}>Prestadores próximos</h2>
-        <button onClick={() => navigate('/prestadores')} className="text-xs font-medium" style={{ color: accent }} data-testid="view-all-providers-btn">
-          Ver todos
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="animate-spin" size={28} style={{ color: accent }} />
-        </div>
-      ) : providers.length === 0 ? (
-        <div className="text-center py-12">
-          <Wrench size={40} className="mx-auto mb-3 opacity-30" style={{ color: textSecondary }} />
-          <p className="text-sm" style={{ color: textSecondary }}>Nenhum prestador disponível</p>
-          <Button onClick={() => navigate('/prestadores')} className="mt-3" size="sm" style={{ backgroundColor: accent }}>
-            Explorar prestadores
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {providers.slice(0, 8).map((prov) => (
-            <div
-              key={prov._id || prov.id}
-              className="flex items-center gap-3 p-3 rounded-xl"
-              style={{ backgroundColor: cardBg }}
-            >
-              <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: `${accent}10` }}>
-                {prov.profile_image ? (
-                  <img src={prov.profile_image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={20} style={{ color: accent }} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: textPrimary }}>
-                  {prov.full_name || prov.nome_fantasia || 'Prestador'}
-                </p>
-                <p className="text-[10px]" style={{ color: textSecondary }}>
-                  {prov.specialty || prov.segmento || 'Serviços gerais'}
-                </p>
-              </div>
-              {prov.rating && (
-                <div className="flex items-center gap-0.5">
-                  <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs font-medium" style={{ color: textPrimary }}>{prov.rating}</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
 
 /* ============ FINANCE TAB ============ */
-const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, textPrimary, textSecondary, bg }) => {
-  const [balance, setBalance] = useState({ brl: 0, usdt: 0 });
+const FinanceTab = ({ accent, isDarkMode, cardBg, textPrimary, textSecondary, navigate, user, API, headers }) => {
+  const [balance, setBalance] = useState({ brl: 0, usdt: 0, cashback: 0 });
   const [showBalance, setShowBalance] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBalance = async () => {
       try {
-        const res = await axios.get(`${API}/user/profile`, { headers });
-        if (res.data) {
-          setBalance({
-            brl: (res.data.balance || 0) + (res.data.cashback_balance || 0),
-            usdt: res.data.usdt_balance || 0,
-          });
-        }
-      } catch (e) {
-        console.error('Erro ao buscar saldo:', e);
-      } finally {
-        setLoading(false);
-      }
+        const res = await axios.get(`${API}/api/wallet/balance`, { headers });
+        setBalance({
+          brl: res.data?.balance || 0,
+          usdt: res.data?.usdt_balance || 0,
+          cashback: res.data?.cashback_balance || 0,
+        });
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
     };
     fetchBalance();
-  }, [API]);
+  }, []);
 
-  const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-
-  const quickActions = [
-    { icon: DollarSign, label: 'Depositar', action: () => navigate('/deposito'), testId: 'fin-deposit-btn' },
-    { icon: ArrowRight, label: 'Sacar', action: () => navigate('/sacar'), testId: 'fin-withdraw-btn' },
-    { icon: CreditCard, label: 'Pagar', action: () => navigate('/payment'), testId: 'fin-pay-btn' },
-    { icon: DollarSign, label: 'USDT', action: () => navigate('/usdt'), testId: 'fin-usdt-btn' },
-  ];
+  const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-6">
+    <div className="px-4 py-4 space-y-4" data-testid="finance-tab">
       {/* Balance Card */}
       <div className="rounded-2xl p-5 relative overflow-hidden" style={{ backgroundColor: accent }}>
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10" style={{ backgroundColor: '#fff' }} />
-        <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full opacity-10" style={{ backgroundColor: '#fff' }} />
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white" />
+        <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full opacity-10 bg-white" />
         <div className="relative z-10">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex justify-between items-start mb-3">
             <div>
               <p className="text-xs text-white/70">Saldo disponível</p>
               <p className="text-2xl font-bold text-white mt-0.5">
-                {loading ? '...' : showBalance ? formatCurrency(balance.brl) : 'R$ ••••••'}
+                {loading ? '...' : showBalance ? fmt(balance.brl) : 'R$ ••••••'}
               </p>
             </div>
             <button onClick={() => setShowBalance(!showBalance)} className="text-white/80 p-1" data-testid="toggle-balance-btn">
@@ -775,8 +533,11 @@ const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, 
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <div className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+            <div className="px-3 py-1 rounded-full text-[10px] font-medium bg-white/20 text-white">
               USDT: {loading ? '...' : showBalance ? balance.usdt.toFixed(4) : '••••'}
+            </div>
+            <div className="px-3 py-1 rounded-full text-[10px] font-medium bg-white/20 text-white">
+              Cashback: {loading ? '...' : showBalance ? fmt(balance.cashback) : '••••'}
             </div>
           </div>
         </div>
@@ -784,7 +545,12 @@ const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, 
 
       {/* Quick Actions */}
       <div className="grid grid-cols-4 gap-3">
-        {quickActions.map((item) => (
+        {[
+          { icon: DollarSign, label: 'Depositar', action: () => navigate('/deposito'), testId: 'fin-deposit-btn' },
+          { icon: ArrowRight, label: 'Sacar', action: () => navigate('/sacar'), testId: 'fin-withdraw-btn' },
+          { icon: CreditCard, label: 'Pagar', action: () => navigate('/payment'), testId: 'fin-pay-btn' },
+          { icon: DollarSign, label: 'USDT', action: () => navigate('/usdt'), testId: 'fin-usdt-btn' },
+        ].map((item) => (
           <button
             key={item.label}
             onClick={item.action}
@@ -800,10 +566,10 @@ const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, 
         ))}
       </div>
 
-      {/* Finance Sections */}
+      {/* Quick Links */}
       <div className="space-y-2">
         {[
-          { icon: Wallet, label: 'Carteira', desc: 'Gerenciar saldo e cashback', action: () => navigate('/extrato'), testId: 'fin-wallet-btn' },
+          { icon: Wallet, label: 'Extrato completo', desc: 'Histórico de transações', action: () => navigate('/extrato'), testId: 'fin-wallet-btn' },
           { icon: User, label: 'Indicar amigos', desc: 'Ganhe bônus por indicações', action: () => navigate('/indicar'), testId: 'fin-refer-btn' },
         ].map((item) => (
           <button
@@ -816,11 +582,11 @@ const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, 
             <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${accent}12` }}>
               <item.icon size={18} style={{ color: accent }} />
             </div>
-            <div className="flex-1 text-left">
+            <div className="text-left flex-1">
               <p className="text-sm font-medium" style={{ color: textPrimary }}>{item.label}</p>
               <p className="text-[10px]" style={{ color: textSecondary }}>{item.desc}</p>
             </div>
-            <ChevronRight size={18} style={{ color: textSecondary }} />
+            <ChevronRight size={16} style={{ color: textSecondary }} />
           </button>
         ))}
       </div>
@@ -835,27 +601,21 @@ const ProfileMenu = ({ user, isDarkMode, navigate, franquiaContext, onClose, acc
   const menuHover = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
 
   const items = [];
-
   items.push({ icon: User, label: 'Perfil', action: () => navigate('/profile') });
 
-  // Master admin
   if ((user?.user_type === 'master' || user?.user_type === 'transmill_master' || user?.is_master_account) && !user?.franquia_slug && !franquiaContext) {
     items.push({ icon: LayoutDashboard, label: 'Painel Admin', action: () => navigate('/master') });
   }
 
-  // Franchise/Unidade
   if (user?.user_type === 'labelview_unidade' || user?.franquia_slug || franquiaContext?.slug) {
     const slug = user?.franquia_slug || franquiaContext?.slug || localStorage.getItem('franquia_slug');
     items.push({ icon: LayoutDashboard, label: 'Painel Admin', action: () => navigate(slug ? `/franquia/${slug}/admin` : '/master') });
-    items.push({ icon: MessageCircle, label: 'Suporte', action: () => navigate('/suporte') });
   }
 
-  // Cliente
   if (user?.user_type === 'cliente') {
     items.push({ icon: ShoppingBag, label: 'Meus Pedidos', action: () => navigate('/meus-pedidos') });
   }
 
-  // Lojista
   if (user?.user_type === 'lojista') {
     items.push({ icon: Store, label: 'Meu Negócio', action: () => navigate('/meu-negocio') });
     items.push({ icon: Users, label: 'Equipe', action: () => navigate('/equipe') });
@@ -873,9 +633,7 @@ const ProfileMenu = ({ user, isDarkMode, navigate, franquiaContext, onClose, acc
       <div className="fixed inset-0 z-10" onClick={onClose} />
       <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-xl border py-1.5 z-20" style={{ backgroundColor: menuBg, borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
         {items.map((item, i) => (
-          <button
-            key={i}
-            onClick={() => { item.action(); onClose(); }}
+          <button key={i} onClick={() => { item.action(); onClose(); }}
             className="w-full px-4 py-2.5 text-left flex items-center gap-2.5 text-sm transition-colors"
             style={{ color: menuText }}
             onMouseEnter={e => e.currentTarget.style.backgroundColor = menuHover}
@@ -887,8 +645,7 @@ const ProfileMenu = ({ user, isDarkMode, navigate, franquiaContext, onClose, acc
           </button>
         ))}
         <div className="mx-3 my-1 border-t" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
-        <button
-          onClick={handleLogout}
+        <button onClick={handleLogout}
           className="w-full px-4 py-2.5 text-left flex items-center gap-2.5 text-sm text-red-500 transition-colors"
           onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'}
           onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -902,50 +659,109 @@ const ProfileMenu = ({ user, isDarkMode, navigate, franquiaContext, onClose, acc
   );
 };
 
-/* ============ BOTTOM NAVIGATION ============ */
+/* ============ BANNER CAROUSEL ============ */
+const BannerCarousel = ({ promos, accent, isDarkMode, cardBg, textPrimary }) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % promos.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [promos.length]);
+
+  if (!promos.length) return null;
+  const promo = promos[currentSlide];
+
+  return (
+    <div className="relative">
+      <button
+        onClick={promo.action}
+        className="w-full rounded-2xl p-4 relative overflow-hidden active:scale-[0.98] transition-transform"
+        style={{ background: promo.gradient, minHeight: '90px' }}
+        data-testid="promo-banner"
+      >
+        <div className="absolute top-2 right-3 opacity-10">
+          {promo.icon && <promo.icon size={60} className="text-white" />}
+        </div>
+        <div className="relative z-10">
+          <p className="text-white font-bold text-sm">{promo.title}</p>
+          <p className="text-white/80 text-xs mt-1 max-w-[80%]">{promo.desc}</p>
+          <span className="inline-block mt-2 text-[11px] font-semibold text-white bg-white/20 px-3 py-1 rounded-full">
+            {promo.cta}
+          </span>
+        </div>
+      </button>
+      {/* Dots */}
+      {promos.length > 1 && (
+        <div className="flex justify-center gap-1.5 mt-2">
+          {promos.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentSlide(i)}
+              className="w-1.5 h-1.5 rounded-full transition-all"
+              style={{ backgroundColor: i === currentSlide ? accent : (isDarkMode ? '#444' : '#ccc'), transform: i === currentSlide ? 'scale(1.3)' : 'scale(1)' }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ============ FLOATING BOTTOM NAV (estilo 99 - flutuante, arredondado) ============ */
 const BottomNav = ({ activeTab, setActiveTab, isDarkMode, accent, textPrimary }) => {
   const tabs = [
     { id: TAB_MOBILITY, icon: Car, label: 'Mobilidade' },
     { id: TAB_MARKETPLACE, icon: Utensils, label: 'Lojas' },
-    { id: TAB_SERVICES, icon: Wrench, label: 'Serviços' },
-    { id: TAB_FINANCE, icon: DollarSign, label: 'Finanças' },
+    { id: TAB_SERVICES, icon: Package, label: 'Serviços' },
+    { id: TAB_FINANCE, icon: DollarSign, label: 'Carteira' },
   ];
 
-  const navBg = isDarkMode ? '#16213e' : '#ffffff';
-  const inactiveColor = isDarkMode ? '#666' : '#999';
+  const navBg = isDarkMode ? '#1a1f35' : '#ffffff';
+  const inactiveColor = isDarkMode ? '#555' : '#aaa';
 
   return (
     <nav
-      className="flex-shrink-0 z-40"
-      style={{
-        backgroundColor: navBg,
-        borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       data-testid="bottom-nav"
     >
-      <div className="max-w-lg mx-auto grid grid-cols-4">
+      <div
+        className="flex items-center rounded-full shadow-2xl"
+        style={{
+          backgroundColor: navBg,
+          boxShadow: isDarkMode
+            ? '0 8px 32px rgba(0,0,0,0.5)'
+            : '0 8px 32px rgba(0,0,0,0.12)',
+        }}
+      >
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all relative"
+              className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all relative"
               data-testid={`nav-${tab.id}`}
             >
-              {isActive && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: accent }} />
-              )}
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
                 style={{
-                  backgroundColor: isActive ? `${accent}18` : 'transparent',
+                  backgroundColor: isActive ? accent : 'transparent',
+                  transform: isActive ? 'scale(1.1)' : 'scale(1)',
                 }}
               >
-                <tab.icon size={18} style={{ color: isActive ? accent : inactiveColor }} />
+                <tab.icon
+                  size={isActive ? 20 : 18}
+                  style={{ color: isActive ? '#ffffff' : inactiveColor }}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                />
               </div>
-              <span className="text-[10px] font-medium" style={{ color: isActive ? accent : inactiveColor }}>
+              <span
+                className="text-[10px] font-medium transition-all"
+                style={{ color: isActive ? accent : inactiveColor }}
+              >
                 {tab.label}
               </span>
             </button>

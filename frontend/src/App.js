@@ -469,7 +469,6 @@ function App() {
               } 
             />
 
-            {/* Rota Labelview - Redireciona para dashboard */}
             {/* Rotas individuais para cada funcionalidade Master */}
             <Route 
               path="/visao-geral" 
@@ -707,13 +706,6 @@ function App() {
             <Route 
               path="/mobility/driver/ride/:rideId" 
               element={user ? <DriverFlow /> : <Navigate to="/login" />} 
-            />
-            
-            {/* ========== PWA UNIDADE LABELVIEW - App para Clientes de Proteção Veicular ========== */}
-            {/* Rota PÚBLICA - Não requer login */}
-            <Route 
-              path="/unidade/:slug/pwa-clientes" 
-              element={<PWAUnidadeLabelview />} 
             />
             
             {/* Catalog Routes - PÚBLICO (sem autenticação) */}
