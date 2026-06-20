@@ -77,7 +77,7 @@ const FranquiaLogin = () => {
         
         // Verificar se o usuário pertence a esta franquia
         if (user.franquia_slug && user.franquia_slug !== slug) {
-          toast.error('Este usuário não pertence a esta franquia');
+          toast.error('Este usuário não pertence a este White Label');
           return;
         }
         
@@ -94,7 +94,7 @@ const FranquiaLogin = () => {
         localStorage.setItem('user', JSON.stringify(userWithSlug));
         localStorage.setItem('franquia_slug', slug);
         
-        toast.success(`Bem-vindo à ${franquia?.nome || 'Franquia'}!`);
+        toast.success(`Bem-vindo à ${franquia?.nome || 'White Label'}!`);
         
         // Redirecionar para o home minimalista da franquia
         navigate(`/franquia/${slug}/home`);
@@ -129,9 +129,9 @@ const FranquiaLogin = () => {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <div className="text-6xl mb-4">🏢</div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Franquia não encontrada</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">White Label não encontrado</h1>
             <p className="text-gray-500 mb-4">
-              A franquia "{slug}" não existe ou está inativa.
+              O White Label "{slug}" não existe ou está inativo.
             </p>
             <Button onClick={() => navigate('/')} variant="outline">
               Voltar ao início
@@ -174,7 +174,7 @@ const FranquiaLogin = () => {
             className="text-3xl font-bold mb-2"
             style={{ color: corTexto }}
           >
-            {franquia?.nome || 'Franquia'}
+            {franquia?.nome || 'White Label'}
           </h1>
           <p 
             className="text-sm opacity-80"

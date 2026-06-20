@@ -95,7 +95,7 @@ const FranquiaIntegracoesPanel = ({ slug, corPrimaria = '#1a59ad' }) => {
       <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
         <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={22} />
         <div>
-          <h2 className="text-lg font-bold text-gray-800">Integrações / APIs da Franquia</h2>
+          <h2 className="text-lg font-bold text-gray-800">Integrações / APIs do White Label</h2>
           <p className="text-sm text-gray-600">As chaves são criptografadas no servidor e nunca aparecem no código. Deixe um campo em branco para manter o valor atual.</p>
         </div>
       </div>

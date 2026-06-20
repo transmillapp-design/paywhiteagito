@@ -4131,12 +4131,16 @@ async def upload_logo_franquia(
         
         logger.info(f"📤 Fazendo upload de logo para franquia {franquia_id}")
         
-        # Upload para Cloudinary
+        # Upload para Cloudinary (usa credenciais do white label, fallback .env)
+        _fr_doc = await db.franquias.find_one({"id": franquia_id})
+        from routes.integracoes import cloudinary_kwargs_for_slug
+        _cloud_kwargs = await cloudinary_kwargs_for_slug(_fr_doc.get("slug") if _fr_doc else None)
         logo_url = await upload_file_to_cloudinary(
             content,
             unique_filename,
             folder="franquias/logos",
-            resource_type="image"
+            resource_type="image",
+            **_cloud_kwargs
         )
         
         if not logo_url:

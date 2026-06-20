@@ -20,21 +20,21 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Paleta de cores - Admin Transmill Plataforma (Verde Escuro)
+  // Paleta de cores - Admin Transmill Plataforma (Azul)
   const theme = {
-    bg: '#293618',           // Verde escuro - fundo principal
+    bg: '#0d2847',           // Azul escuro - fundo principal
     card: '#FFFFFF',         // Card branco para contraste
-    cardBorder: '#293618',   // Verde escuro - borda
-    text: '#293618',         // Verde escuro - texto principal
-    textLight: '#4a5d2e',    // Verde mais claro - texto secundário
+    cardBorder: '#1a59ad',   // Azul - borda
+    text: '#1a59ad',         // Azul - texto principal
+    textLight: '#4a7bc4',    // Azul mais claro - texto secundário
     input: '#FFFFFF',        // Fundo input branco
-    inputBorder: '#293618',  // Borda input verde
-    button: '#293618',       // Botão verde escuro
-    buttonHover: '#3d4f24',  // Botão hover
+    inputBorder: '#1a59ad',  // Borda input azul
+    button: '#1a59ad',       // Botão azul
+    buttonHover: '#14478a',  // Botão hover
     buttonText: '#FFFFFF',   // Texto botão branco
-    link: '#293618',         // Links verde
+    link: '#1a59ad',         // Links azul
     icon: '#FFFFFF',         // Ícone branco
-    iconBg: '#293618',       // Fundo ícone verde
+    iconBg: '#1a59ad',       // Fundo ícone azul
   };
 
   const handleSubmit = async (e) => {

@@ -61,8 +61,8 @@ const FranquiasManager = () => {
         setFranquias(response.data.franquias || []);
       }
     } catch (error) {
-      console.error('Erro ao carregar franquias:', error);
-      toast.error('Erro ao carregar franquias');
+      console.error('Erro ao carregar white labels:', error);
+      toast.error('Erro ao carregar white labels');
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ const FranquiasManager = () => {
         );
 
         if (response.data.success) {
-          toast.success('Franquia atualizada!');
+          toast.success('White Label atualizado!');
           carregarFranquias();
           resetForm();
         } else {
@@ -121,7 +121,7 @@ const FranquiasManager = () => {
         );
 
         if (response.data.success) {
-          toast.success('Franquia criada com sucesso!');
+          toast.success('White Label criado com sucesso!');
           carregarFranquias();
           resetForm();
         } else {
@@ -129,8 +129,8 @@ const FranquiasManager = () => {
         }
       }
     } catch (error) {
-      console.error('Erro ao salvar franquia:', error);
-      toast.error('Erro ao salvar franquia');
+      console.error('Erro ao salvar white label:', error);
+      toast.error('Erro ao salvar white label');
     }
   };
 
@@ -151,7 +151,7 @@ const FranquiasManager = () => {
   };
 
   const handleDelete = async (franquiaId) => {
-    if (!window.confirm('Deseja realmente desativar esta franquia?')) return;
+    if (!window.confirm('Deseja realmente desativar este white label?')) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -160,14 +160,14 @@ const FranquiasManager = () => {
       });
 
       if (response.data.success) {
-        toast.success('Franquia desativada');
+        toast.success('White Label desativado');
         carregarFranquias();
       } else {
         toast.error(response.data.error || 'Erro ao desativar');
       }
     } catch (error) {
-      console.error('Erro ao desativar franquia:', error);
-      toast.error('Erro ao desativar franquia');
+      console.error('Erro ao desativar white label:', error);
+      toast.error('Erro ao desativar white label');
     }
   };
 
@@ -210,7 +210,7 @@ const FranquiasManager = () => {
       }
     } catch (error) {
       console.error('Erro ao criar demo:', error);
-      toast.error('Erro ao criar franquia demo');
+      toast.error('Erro ao criar white label demo');
     }
   };
 
@@ -288,7 +288,7 @@ const FranquiasManager = () => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
-          placeholder="Buscar franquias..."
+          placeholder="Buscar white labels..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -304,7 +304,7 @@ const FranquiasManager = () => {
                 <Building2 className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Franquias</p>
+                <p className="text-sm text-gray-500">Total White Labels</p>
                 <p className="text-2xl font-bold">{franquias.length}</p>
               </div>
             </div>
@@ -362,9 +362,9 @@ const FranquiasManager = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhuma franquia encontrada</p>
+            <p className="text-gray-500">Nenhum White Label encontrado</p>
             <p className="text-sm text-gray-400 mt-1">
-              Clique em "Nova Franquia" para criar a primeira
+              Clique em "Novo White Label" para criar o primeiro
             </p>
           </CardContent>
         </Card>
@@ -460,7 +460,7 @@ const FranquiasManager = () => {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>
-                  {editingFranquia ? 'Editar Franquia' : 'Nova Franquia'}
+                  {editingFranquia ? 'Editar White Label' : 'Novo White Label'}
                 </CardTitle>
                 <Button variant="ghost" size="sm" onClick={resetForm}>
                   <X className="h-4 w-4" />
@@ -471,7 +471,7 @@ const FranquiasManager = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nome">Nome da Franquia *</Label>
+                    <Label htmlFor="nome">Nome do White Label *</Label>
                     <Input
                       id="nome"
                       value={formData.nome}
@@ -598,7 +598,7 @@ const FranquiasManager = () => {
                 {/* Preview */}
                 <div className="p-4 rounded-lg border" style={{ backgroundColor: formData.cor_primaria }}>
                   <p className="text-sm font-medium" style={{ color: formData.cor_texto }}>
-                    Preview: {formData.nome || 'Nome da Franquia'}
+                    Preview: {formData.nome || 'Nome do White Label'}
                   </p>
                   <p className="text-xs opacity-80" style={{ color: formData.cor_texto }}>
                     /franquia/{formData.slug || 'slug'}
@@ -610,7 +610,7 @@ const FranquiasManager = () => {
                     Cancelar
                   </Button>
                   <Button type="submit" className="flex-1 bg-[#1a59ad]">
-                    {editingFranquia ? 'Salvar Alterações' : 'Criar Franquia'}
+                    {editingFranquia ? 'Salvar Alterações' : 'Criar White Label'}
                   </Button>
                 </div>
               </form>

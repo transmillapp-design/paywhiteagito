@@ -13,6 +13,7 @@ import logging
 import os
 from services.usdt_service import USDTService
 from routes.deps import get_current_user, get_current_master_user, verify_token, security
+from routes.integracoes import get_integration_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +27,22 @@ def set_db(database):
     db = database
 
 
+async def _usdt_service(current_user):
+    """Instancia USDTService com as credenciais XGate do white label do usuário (fallback .env)."""
+    slug = current_user.get('franquia_slug') if current_user else None
+    creds = await get_integration_credentials(slug, 'xgate') if slug else {}
+    return USDTService(
+        xgate_email=creds.get('email') or None,
+        xgate_password=creds.get('password') or None,
+        xgate_api_url=creds.get('api_url') or None,
+    )
+
+
 @router.get("/usdt/rate")
 async def get_usdt_rate(current_user = Depends(get_current_user)):
     """Obter cotação USDT/BRL"""
     try:
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         rate_data = await usdt_service.get_usdt_rate()
         return {
             "success": True,
@@ -53,7 +65,7 @@ async def calculate_usdt_fee(
         if amount_brl <= 0:
             raise ValueError("Valor deve ser maior que zero")
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         fee_amount, net_amount = usdt_service.calculate_usdt_fee(amount_brl)
         
         # Obter cotação para mostrar equivalente em USDT
@@ -84,7 +96,7 @@ async def create_usdt_deposit(
     try:
         amount_brl = float(request.get('amount_brl', 0))
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         result = await usdt_service.create_usdt_deposit(current_user.id, amount_brl)
         
         if result['success']:
@@ -111,7 +123,7 @@ async def confirm_usdt_deposit(
         if not operation_id:
             raise ValueError("operation_id é obrigatório")
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         result = await usdt_service.confirm_usdt_deposit(operation_id)
         
         if result['success']:
@@ -140,7 +152,7 @@ async def create_withdrawal(
         if currency not in ['BRL', 'USDT']:
             raise ValueError("Moeda deve ser BRL ou USDT")
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         result = await usdt_service.create_withdrawal(current_user.id, amount_brl, currency)
         
         if result['success']:
@@ -179,7 +191,7 @@ async def convert_usdt_to_brl(
             raise ValueError("Saldo USDT insuficiente")
         
         # Obter cotação
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         usdt_rate = await usdt_service.get_usdt_rate()
         
         # Calcular valores
@@ -282,7 +294,7 @@ async def create_external_transfer(
         if not wallet_address:
             raise ValueError("Endereço da carteira é obrigatório")
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         result = await usdt_service.create_external_transfer(
             current_user.id, 
             amount_usdt, 
@@ -310,7 +322,7 @@ async def create_external_transfer(
 async def get_pending_approvals(current_user = Depends(get_current_master_user)):
     """Obter operações USDT pendentes de aprovação"""
     try:
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         approvals = usdt_service.get_pending_approvals()
         
         return {
@@ -333,7 +345,7 @@ async def approve_usdt_operation(
         if not operation_id:
             raise ValueError("operation_id é obrigatório")
         
-        usdt_service = USDTService()
+        usdt_service = await _usdt_service(current_user)
         result = await usdt_service.approve_operation(operation_id, current_user.id)
         
         if result['success']:

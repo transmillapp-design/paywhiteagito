@@ -27,40 +27,40 @@ async def upload_file_to_cloudinary(
     file_content: bytes,
     filename: str,
     folder: str = "labelview",
-    resource_type: str = "auto"
+    resource_type: str = "auto",
+    cloud_name: str = None,
+    api_key: str = None,
+    api_secret: str = None
 ) -> Optional[str]:
     """
-    Upload de arquivo para o Cloudinary
-    
-    Args:
-        file_content: Conteúdo do arquivo em bytes
-        filename: Nome do arquivo
-        folder: Pasta no Cloudinary (padrão: labelview)
-        resource_type: Tipo de recurso (auto, image, raw, video)
-    
-    Returns:
-        URL do arquivo no Cloudinary ou None em caso de erro
-    
-    Raises:
-        Exception: Se as credenciais do Cloudinary não estiverem configuradas
+    Upload de arquivo para o Cloudinary.
+    Aceita credenciais por chamada (white label); se não informadas, usa o .env global.
     """
+    # Resolver credenciais: white label -> fallback .env
+    use_cloud = cloud_name or _cloud_name
+    use_key = api_key or _api_key
+    use_secret = api_secret or _api_secret
+
     # Verificar se as credenciais estão configuradas
-    if not _cloud_name or not _api_key or not _api_secret:
-        error_msg = f"Cloudinary não configurado: cloud_name={'SET' if _cloud_name else 'MISSING'}, api_key={'SET' if _api_key else 'MISSING'}, api_secret={'SET' if _api_secret else 'MISSING'}"
+    if not use_cloud or not use_key or not use_secret:
+        error_msg = f"Cloudinary não configurado: cloud_name={'SET' if use_cloud else 'MISSING'}, api_key={'SET' if use_key else 'MISSING'}, api_secret={'SET' if use_secret else 'MISSING'}"
         logger.error(f"❌ {error_msg}")
         raise Exception(error_msg)
     
     try:
         logger.info(f"📤 Iniciando upload para Cloudinary: {filename} ({len(file_content)} bytes)")
         
-        # Upload para Cloudinary
+        # Upload para Cloudinary (config por chamada para suportar white label)
         result = cloudinary.uploader.upload(
             file_content,
             folder=folder,
             resource_type=resource_type,
             public_id=filename.rsplit('.', 1)[0],  # Remove extensão para public_id
             overwrite=True,
-            invalidate=True
+            invalidate=True,
+            cloud_name=use_cloud,
+            api_key=use_key,
+            api_secret=use_secret
         )
         
         url = result.get('secure_url')

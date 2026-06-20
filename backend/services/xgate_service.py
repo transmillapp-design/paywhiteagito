@@ -31,11 +31,11 @@ class XGateResponse(BaseModel):
     status_code: Optional[int] = None
 
 class XGateService:
-    def __init__(self):
-        # XGate Production Configuration
-        self.api_url = os.environ.get('XGATE_API_URL', 'https://api.xgateglobal.com')
-        self.email = os.environ.get('XGATE_EMAIL')
-        self.password = os.environ.get('XGATE_PASSWORD') 
+    def __init__(self, email: str = None, password: str = None, api_url: str = None):
+        # XGate Configuration - credenciais por white label (fallback para .env)
+        self.api_url = api_url or os.environ.get('XGATE_API_URL', 'https://api.xgateglobal.com')
+        self.email = email or os.environ.get('XGATE_EMAIL')
+        self.password = password or os.environ.get('XGATE_PASSWORD')
         self.environment = os.environ.get('XGATE_ENVIRONMENT', 'production')
         
         # JWT Token Management

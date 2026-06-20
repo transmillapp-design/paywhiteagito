@@ -24,7 +24,7 @@ const FranquiaAdminPanel = () => {
         
         if (!token) {
           toast.error('Sessão expirada. Faça login novamente.');
-          navigate(`/franquia/${slug}/login`);
+          navigate(`/franquia/${slug}/admin/login`);
           return;
         }
 
@@ -43,7 +43,7 @@ const FranquiaAdminPanel = () => {
       } catch (error) {
         console.error('Erro ao verificar acesso:', error);
         toast.error('Erro ao carregar painel admin');
-        navigate(`/franquia/${slug}/login`);
+        navigate(`/franquia/${slug}/admin/login`);
       }
     };
     

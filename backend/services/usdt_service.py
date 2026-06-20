@@ -12,13 +12,14 @@ from services.xgate_service import XGateService
 logger = logging.getLogger(__name__)
 
 class USDTService:
-    def __init__(self):
+    def __init__(self, xgate_email: str = None, xgate_password: str = None, xgate_api_url: str = None):
         # MongoDB connection
         mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
         client = AsyncIOMotorClient(mongo_url)
         db_name = os.environ.get('DB_NAME', 'transmill')
         self.db = client[db_name]
-        self.xgate_service = XGateService()
+        # XGate por white label (fallback para .env)
+        self.xgate_service = XGateService(email=xgate_email, password=xgate_password, api_url=xgate_api_url)
         
     def calculate_usdt_fee(self, amount_brl: float) -> Tuple[float, float]:
         """

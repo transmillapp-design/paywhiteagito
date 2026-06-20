@@ -264,7 +264,7 @@ const SuporteMasterPanel = ({ API }) => {
           <div>
             <CardTitle className="text-lg">Chamados de Suporte</CardTitle>
             <CardDescription>
-              {filtroStatus ? `Filtrando por: ${filtroStatus.replace('_', ' ')}` : 'Todos os chamados de todas as franquias'}
+              {filtroStatus ? `Filtrando por: ${filtroStatus.replace('_', ' ')}` : 'Todos os chamados de todos os white labels'}
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={carregarChamados}>
@@ -303,7 +303,7 @@ const SuporteMasterPanel = ({ API }) => {
                         {getPrioridadeBadge(chamado.prioridade)}
                         <Badge variant="outline" className="text-xs">
                           <Building2 className="h-3 w-3 mr-1" />
-                          {chamado.franquia_nome || 'Sem franquia'}
+                          {chamado.franquia_nome || 'Sem white label'}
                         </Badge>
                         <span className="text-xs text-gray-400">
                           {formatDate(chamado.created_at)}
@@ -874,7 +874,7 @@ const AdminFranquiasPanel = () => {
   const salvarTaxaPersonalizada = async () => {
     try {
       if (!taxaFranquiaForm.franquia_id) {
-        toast.error('Selecione uma franquia');
+        toast.error('Selecione um white label');
         return;
       }
 
@@ -1062,16 +1062,16 @@ const AdminFranquiasPanel = () => {
           });
         }
         
-        toast.success('Franquia criada com sucesso!');
+        toast.success('White Label criado com sucesso!');
         setShowNovaFranquia(false);
         resetNovaFranquiaForm();
         carregarDados();
       } else {
-        toast.error(response.data.error || 'Erro ao criar franquia');
+        toast.error(response.data.error || 'Erro ao criar white label');
       }
     } catch (error) {
       console.error('Erro ao criar franquia:', error);
-      toast.error(error.response?.data?.error || 'Erro ao criar franquia');
+      toast.error(error.response?.data?.error || 'Erro ao criar white label');
     } finally {
       setSalvandoNovaFranquia(false);
     }
@@ -2800,7 +2800,7 @@ const AdminFranquiasPanel = () => {
                     value={taxaFranquiaForm.franquia_id}
                     onChange={(e) => setTaxaFranquiaForm({...taxaFranquiaForm, franquia_id: e.target.value})}
                   >
-                    <option value="">Selecione uma franquia</option>
+                    <option value="">Selecione um white label</option>
                     {franquias
                       .filter(f => !taxasPersonalizadas.find(t => t.franquia_id === f.id))
                       .map((f) => (

@@ -1140,7 +1140,7 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
                 {franquiaContext?.nome || 'Master'}
               </h2>
               <p className="text-white/70 text-xs">
-                {isFranquiaMode ? 'Franquia Transmill' : 'Transmill'}
+                {isFranquiaMode ? 'White Label' : 'Transmill'}
               </p>
             </div>
           </div>
@@ -3191,14 +3191,14 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
             ) : (
               <div className="space-y-4 max-w-3xl" data-testid="integracoes-master-selector">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Selecione a franquia para configurar as APIs</label>
+                  <label className="text-sm font-medium text-gray-700">Selecione o White Label para configurar as APIs</label>
                   <select
                     data-testid="integracoes-franquia-select"
                     className="mt-1 block w-full rounded-lg border border-gray-300 p-2 text-sm"
                     value={integracoesSlug}
                     onChange={(e) => setIntegracoesSlug(e.target.value)}
                   >
-                    <option value="">— Escolha uma franquia —</option>
+                    <option value="">— Escolha um White Label —</option>
                     {franquiasList.map((f) => (
                       <option key={f.slug} value={f.slug}>{f.nome} ({f.slug})</option>
                     ))}

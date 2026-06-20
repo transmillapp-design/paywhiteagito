@@ -1,0 +1,70 @@
+{
+  "summary": "Tested Fase 2 — 3 distinct login screens (MasterLogin, FranquiaAdminLogin, FranquiaLogin), BLUE theme switch, 'Franquia → White Label' rename, and per-white-label XGate/Cloudinary credential resolution with .env fallback. Backend: 15/15 pytest passes — health, master/franqueado login, transmill/transmill-sp integracoes (master + own-slug + 403 cross-slug), public maps-config, /usdt/rate & /usdt/calculate-fee with franqueado token (env fallback OK, rate=5.85), /usdt/rate with master, PUT/GET transmill-sp xgate creds (password NOT echoed in plaintext), /orders/my-orders, /api/master/all-transactions 200 with no ObjectId leak in tx docs (the '_id' that appears in totals_by_type is a legitimate MongoDB $group key, not an ObjectId leak), FIPE 404. Frontend: MasterLogin renders BLUE Transmill correctly (title/subtitle/card/testids all OK); non-master login is blocked with 'Acesso restrito à conta Master Admin' toast and stays at /master/login; FranquiaAdminLogin renders the white-label-branded admin login at /franquia/transmill/admin/login (title 'Transmill RJ', 'Painel Administrativo', 'Acesso do Administrador', testids OK) and franqueado credentials redirect to /franquia/transmill/admin successfully; not-found slug shows 'White Label não encontrado'. CRITICAL bug found and fixed: App.js useEffect checkAuth was setting user state to /api/user/profile envelope {success, user} instead of the inner user object — same envelope anti-pattern from iteration_12 — this broke MasterLogin → /master redirect (isMasterUser saw success/user keys, not user_type/is_master_account, and bounced to /master/login).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "App.js useEffect checkAuth (line 269-298)",
+        "issue": "setUser(response.data) treated /api/user/profile response as flat user, but endpoint returns envelope {success:true, user:{…}}. Consequence: after ANY login (master, franqueado, regular), the [token] effect re-fetches profile and OVERWRITES the correctly-set user with the envelope. isMasterUser({success,user}) is false → /master route guard bounces back to /master/login. Pre-fix master login was unusable.",
+        "selector": "n/a (auth context)",
+        "priority": "CRITICAL",
+        "status": "FIXED by testing agent (defensive 1-liner: const userData = response.data?.user || response.data;)"
+      },
+      {
+        "component": "Login.js (/login route)",
+        "issue": "Dark green #293618 still present despite spec requiring full migration to BLUE (#1a59ad). Found rgb(41,54,24) on a DIV background-image (linear-gradient #293618 → #3d4f24) and BUTTON border-color. Spec: 'main /login and /master/login must be BLUE themed (no dark green #293618 anywhere)'.",
+        "selector": "DIV (linear-gradient bg), BUTTON (border-color)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "MasterDashboard (sidebar + overview + Franquias tab)",
+        "issue": "Rename 'Franquia → White Label' is INCOMPLETE. After successful master login, the master /master dashboard body still says 'Franquias Ativas', 'Franquias por Status', sidebar item 'Franquias'. None of 'White Label', 'Novo White Label', 'Total White Labels', or 'Buscar white labels...' are present. Also 'Integrações / APIs do White Label' heading not found.",
+        "selector": "MasterDashboard sidebar, KPI cards, Franquias tab",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Notifications fetch",
+        "issue": "/api/notifications still returns 404, causing 'Erro ao carregar notificações' toast on every dashboard mount (master & franqueado). Carried over from iteration_12.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": [
+      {"screen": "All dashboards", "issues": ["Backend v2.38.46 vs Frontend v2.38.51 version warning persists"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_fase2_credentials.py",
+    "/app/test_reports/pytest/iteration_13_results.xml"
+  ],
+  "action_items": [
+    "Finish migrating Login.js theme to BLUE — remove #293618 / #3d4f24 gradient and button border-color (search the file for '293618' and 'rgb(41').",
+    "Complete the 'Franquia → White Label' user-visible text rename in MasterDashboard.js sidebar, KPI cards (Franquias Ativas → White Labels Ativos), Franquias tab heading, search placeholder, 'Novo Franquia' → 'Novo White Label', and the Integrações tab heading 'Integrações / APIs do White Label'.",
+    "Review the App.js checkAuth envelope-unwrap fix and apply the same pattern audit across the codebase (consider an `unwrap(resp, key)` helper — same recommendation as iteration_12).",
+    "Either implement /api/notifications or stop calling it from MasterDashboard (404 + error toast on every page mount)."
+  ],
+  "critical_code_review_comments": [
+    "App.js login() (line 300) saves token to localStorage but NOT user → on page refresh, user state starts as null and is reconstructed only via /api/user/profile, which means the envelope-unwrap fix is essential for ALL login flows, not just master.",
+    "FranquiaAdminLogin.js is clean: loads white-label from /api/franquias/:slug for branding, blocks non-admins of the slug, uses cor_primaria fallback to #1a59ad, has all data-testids, sets localStorage.franquia_slug. Good UX.",
+    "MasterLogin.js is clean, BLUE gradient hard-coded (#0d2847 → #1a59ad), gates strictly on isMaster(user) before authLogin. Good security.",
+    "Fase 2 USDT per-user resolution works: transmill franqueado (no saved xgate creds) gets a successful rate=5.85 via env fallback; transmill-sp can save creds and retrieve them masked (password never echoed)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_fase2_credentials.py (created, 15 tests, all pass)",
+    "/app/frontend/src/App.js (1-line envelope-unwrap fix in checkAuth useEffect)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "MasterLogin + FranquiaAdminLogin + NotFound: 100% (after App.js fix). Theme/rename: FAIL — Login.js still has dark green, MasterDashboard still uses 'Franquias' wording."},
+  "test_credentials": {"master": "marcelotransmillapp@gmail.com / !Ma04202011@", "franqueado_transmill": "transmillapp@gmail.com / demo123"},
+  "seed_data_creation": "Saved test xgate creds via PUT /api/franquias/transmill-sp/integracoes (email=test-xgate-sp@example.com, password=TESTpwdSP9999, api_url=https://api.xgateglobal.com). 'transmill' slug NOT touched — it continues to use env fallback as requested. Main agent: clear transmill-sp xgate creds if desired (PUT with null/empty xgate object).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite: pytest backend/tests/test_fase2_credentials.py -v (15 tests). The App.js checkAuth fix is critical — pre-fix, ANY [token]-effect re-run breaks role-guarded redirects. Two open follow-ups: (1) Login.js still contains #293618 dark-green gradient + border, (2) MasterDashboard.js 'Franquia → White Label' rename not applied. The 'transmill-sp' slug now has stored xgate creds; the 'transmill' slug stays clean (env fallback path covered).",
+  "rca_of_the_issue": {
+    "endpoint_or_component": "frontend/src/App.js — useEffect on [token] (line 269)",
+    "symptom": "After successful master login (HTTP 200, token + user returned by /api/auth/login, MasterDashboard briefly mounts and fires data fetches), the route guard at /master immediately bounces back to /master/login. Final URL = /master/login despite the master credentials being valid.",
+    "root_cause": "checkAuth re-runs whenever token changes. It does GET /api/user/profile and `setUser(response.data)` — but /api/user/profile returns the envelope {success:true, user:{…}} (not a flat user). The user state thus becomes the envelope; isMasterUser({success,user}) is false because the envelope has no user_type/is_master_account keys → /master Route element evaluates `<Navigate to='/master/login' />`. This same envelope anti-pattern was reported in iteration_12 for fetchAllTransactions.",
+    "reproduction": "1) Open /master/login. 2) Fill master creds. 3) Submit. 4) Network log shows /api/auth/login 200, MasterDashboard console logs appear, then URL settles at /master/login.",
+    "mitigation": "Applied: `const userData = response.data?.user || response.data; setUser(userData);` Long-term: add a shared `unwrap(resp, key)` helper and migrate all envelope consumers (matches iteration_12 recommendation)."
+  }
+}

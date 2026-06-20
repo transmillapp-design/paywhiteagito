@@ -155,3 +155,17 @@ async def get_franquia_maps_config(slug: str):
     doc = await db.franquia_integracoes.find_one({"slug": slug})
     key = decrypt_value(doc.get("google_maps_key_enc", "")) if doc else ""
     return {"success": True, "google_maps_key": key or None}
+
+
+async def cloudinary_kwargs_for_slug(slug: str) -> dict:
+    """Retorna kwargs de credenciais Cloudinary do white label (vazio = usa .env global)."""
+    if not slug:
+        return {}
+    creds = await get_integration_credentials(slug, 'cloudinary')
+    if creds.get('cloud_name') and creds.get('api_key') and creds.get('api_secret'):
+        return {
+            'cloud_name': creds['cloud_name'],
+            'api_key': creds['api_key'],
+            'api_secret': creds['api_secret'],
+        }
+    return {}

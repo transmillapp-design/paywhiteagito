@@ -81,6 +81,8 @@ import FranquiaRegister from './components/FranquiaRegister';
 // removido
 import AdminFranquiasPanel from './components/AdminFranquiasPanel';
 import FranquiaAdminPanel from './components/FranquiaAdminPanel';
+import MasterLogin from './components/MasterLogin';
+import FranquiaAdminLogin from './components/FranquiaAdminLogin';
 import FranquiaMinimalistHome from './components/FranquiaMinimalistHome';
 // removido
 import CadastroFranquiaPage from './components/CadastroFranquiaPage';
@@ -277,10 +279,12 @@ function App() {
           const response = await axios.get(`${API}/user/profile`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          setUser(response.data);
+          // /api/user/profile returns envelope { success, user } — unwrap defensively
+          const userData = (response.data && response.data.user) ? response.data.user : response.data;
+          setUser(userData);
           
           // Verificar se precisa trocar senha (primeiro acesso)
-          if (response.data.must_change_password) {
+          if (userData && userData.must_change_password) {
             setShowChangePasswordModal(true);
           }
         } catch (error) {
@@ -461,9 +465,13 @@ function App() {
             
             {/* Master Dashboard - Principal para master */}
             <Route 
+              path="/master/login" 
+              element={!user || !isMasterUser(user) ? <MasterLogin /> : <Navigate to="/master" />} 
+            />
+            <Route 
               path="/master" 
               element={
-                user && (isMasterUser(user)) ? <MasterDashboard /> : <Navigate to="/" />
+                user && (isMasterUser(user)) ? <MasterDashboard /> : <Navigate to="/master/login" />
               } 
             />
             
@@ -567,6 +575,10 @@ function App() {
             <Route 
               path="/franquia/:slug/login" 
               element={<FranquiaLogin />} 
+            />
+            <Route 
+              path="/franquia/:slug/admin/login" 
+              element={<FranquiaAdminLogin />} 
             />
             <Route 
               path="/franquia/:slug/recuperar-senha" 
