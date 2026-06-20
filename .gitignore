@@ -1291,3 +1291,8 @@ coverage/
 # Environment files
 *.env
 *.env.*
+.env
+.env.*
+credentials.json
+*.key
+.credentials
