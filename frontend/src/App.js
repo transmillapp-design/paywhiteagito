@@ -19,7 +19,7 @@ import DocumentosPage from './components/pages/DocumentosPage';
 import DocumentacaoPage from './components/DocumentacaoPage';
 import MasterDashboard from './components/MasterDashboard';
 // MasterLabelviewDashboard removido (feature descontinuada)
-import LabelviewLogin from './components/LabelviewLogin';
+// Imports removidos: LabelviewLogin (feature descontinuada)
 import MasterPage from './components/MasterPage';
 // ChatbotTraining removido (feature descontinuada)
 import MasterExtractPage from './components/MasterExtractPage';
@@ -36,23 +36,23 @@ import ProviderSchedule from './components/ProviderSchedule';
 import UserProfile from './components/UserProfile';
 import VendasPage from './components/VendasPage';
 // InternetPlansPage removido (feature descontinuada)
-import ProtecaoVeicularPage from './components/ProtecaoVeicularPage';
+// Imports removidos: ProtecaoVeicularPage (feature descontinuada)
 import POSPage from './components/POSPage';
-import MinhasProtecoesPage from './components/MinhasProtecoesPage';
-import ClientesLabelviewPage from './components/ClientesLabelviewPage';
+// Imports removidos: MinhasProtecoesPage (feature descontinuada)
+// Imports removidos: ClientesLabelviewPage, MinhaProtecaoPage, MinhasSolicitacoesPage, SolicitacoesLabelviewPage (features descontinuadas)
 // MinhaProtecaoPage removido (feature descontinuada)
-import MinhasSolicitacoesPage from './components/MinhasSolicitacoesPage';
-import SolicitacoesLabelviewPage from './components/SolicitacoesLabelviewPage';
-import FornecedorRastreadoresPage from './components/FornecedorRastreadoresPage';
-import FornecedorClientesPage from './components/FornecedorClientesPage';
-import ProtecaoLeadsPage from './components/ProtecaoLeadsPage';
+// removido
+// removido
+// removido
+// removido
+// removido
 import PaymentPage from './components/PaymentPage';
 import ExtractPage from './components/ExtractPage';
 import DepositoPage from './components/pages/DepositoPage';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import USDTPage from './components/pages/USDTPage';
 import ExtratoPage from './components/pages/ExtratoPage';
-import TelemedicinePage from './components/pages/TelemedicinePage';
+// removido
 import MerchantCatalogView from './components/MerchantCatalogView';
 import MeuNegocio from './components/MeuNegocio';
 import EquipePage from './components/EquipePage';
@@ -60,16 +60,16 @@ import MinimalistCheckout from './components/MinimalistCheckout';
 import MinimalistMerchantOrders from './components/MinimalistMerchantOrders';
 import OrderConfirmation from './components/OrderConfirmation';
 // SocialFeed removido (feature descontinuada)
-import TikTokStyleFeed from './components/TikTokStyleFeed';
-import VideoRecorder from './components/VideoRecorder';
-import ConvertPoints from './components/ConvertPoints';
+// removido
+// removido
+// removido
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import FranquiaPWAInstallPrompt from './components/FranquiaPWAInstallPrompt';
 import CotacaoPublica from './components/CotacaoPublica';
 import ContinuarContratacao from './components/ContinuarContratacao';
 // MinhaProtecaoLabelview removido (feature descontinuada)
-import StatusVistoriaCliente from './components/StatusVistoriaCliente';
-import AssinaturaContrato from './components/AssinaturaContrato';
+// removido
+// removido
 
 // Sistema de Franquias White Label
 import FranquiasManager from './components/FranquiasManager';
@@ -77,16 +77,16 @@ import FranquiaLogin from './components/FranquiaLogin';
 import FranquiaDashboard from './components/FranquiaDashboard';
 import FranquiaRecuperarSenha from './components/FranquiaRecuperarSenha';
 import FranquiaRegister from './components/FranquiaRegister';
-import PWAProtecaoFranquia from './components/PWAProtecaoFranquia';
+// removido
 import AdminFranquiasPanel from './components/AdminFranquiasPanel';
 import FranquiaAdminPanel from './components/FranquiaAdminPanel';
 import FranquiaMinimalistHome from './components/FranquiaMinimalistHome';
-import FranquiaLabelviewPanel from './components/FranquiaLabelviewPanel';
+// removido
 import CadastroFranquiaPage from './components/CadastroFranquiaPage';
 import SuportePage from './components/SuportePage';
 
 // PWA Unidade Labelview - App exclusivo para clientes de proteção veicular
-import PWAUnidadeLabelview from './components/PWAUnidadeLabelview';
+// removido
 
 // Mobility Module - Sistema de Mobilidade Urbana P2P
 import MobilityHome from './components/mobility/MobilityHome';
