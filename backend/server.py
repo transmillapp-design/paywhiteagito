@@ -8709,11 +8709,12 @@ set_mobility_db(db)
 app.include_router(mobility_router, prefix="/api", tags=["Mobility"])
 logger.info("✅ Mobility router incluído")
 
-# FIPE / Brasil API routes
-from routes.fipe import router as fipe_router, set_db as set_fipe_db
-set_fipe_db(db)
-app.include_router(fipe_router, prefix="/api", tags=["FIPE"])
-logger.info("✅ FIPE router incluído")
+# Integrações por franquia (credenciais de APIs - XGate, Maps, imagens, BaaS)
+from routes.integracoes import router as integracoes_router, set_db as set_integracoes_db
+set_integracoes_db(db)
+app.include_router(integracoes_router, prefix="/api", tags=["Integracoes"])
+logger.info("✅ Integrações router incluído")
+
 
 # USDT wallet routes
 from routes.usdt import router as usdt_router, set_db as set_usdt_db

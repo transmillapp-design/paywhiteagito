@@ -1,0 +1,74 @@
+{
+  "summary": "Tested per-franchise integration credentials feature (XGate, Google Maps, Cloudinary, BaaS) + regression. Backend: 15/15 pytest passes — auth (master/franqueado/cross-slug 403/no-auth 401), PUT→GET masking, partial update preserving previously saved secrets, public maps-config (decrypted, no auth), FIPE removal (404), and full regression (health, login, /usdt/rate, /orders/my-orders, /user/payment-methods, /master/all-transactions now 200 — prior iteration_11 ObjectId bug is FIXED). Frontend: discovered a CRITICAL crash in MasterDashboard (allTransactions.filter is not a function) that completely blocked the admin panel (red error boundary screen) for both master and franqueado roles. Root cause: fetchAllTransactions did setAllTransactions(response.data) where /api/transactions/history returns {success, transactions:[…]} — so allTransactions became an object. Applied a 1-line defensive fix. After fix: franqueado admin panel renders correctly, Integrações tab shows all 4 cards (XGate, Google Maps, Cloudinary, BaaS), pre-save badges show 'Configurado', placeholders show masked ••••••XXXX values, save flow clears secret fields and updates masked placeholders. Master flow: clicking 'Integrações / APIs' shows the master-only franquia selector; selecting 'transmill' loads the panel with all 4 'Configurado' badges. All required data-testids present and functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "MasterDashboard.js (fetchAllTransactions, line 295-303)",
+        "issue": "setAllTransactions(response.data) treated response as array. /api/transactions/history returns {success:true, transactions:[…]} → downstream allTransactions.filter(...) threw TypeError, error boundary rendered 'Ops! Algo deu errado' and BLOCKED the entire admin panel for both master and franqueado. Without this fix, the new Integrações feature is unreachable via the UI.",
+        "selector": "n/a (root-level crash)",
+        "priority": "CRITICAL",
+        "status": "FIXED by testing agent (defensive 1-liner). Main agent should review and consider applying the same Array.isArray-guard pattern elsewhere in MasterDashboard where envelope-shaped responses are consumed."
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Franqueado admin load",
+        "issue": "Many endpoints called by MasterDashboard return 403 for franqueado (/api/users, /api/master/dashboard, /api/segments, /api/hierarchical-users) and /api/notifications returns 404. They are caught with try/catch so they don't break the page, but pollute the console and trigger 'Erro ao carregar' toasts at startup. Recommend gating these calls by role/is_master.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Franqueado /franquia/transmill/admin header",
+        "issues": [
+          "Backend v2.38.46 vs Frontend v2.38.50 mismatch warning printed in console — consider syncing version constants."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_integracoes.py",
+    "/app/test_reports/pytest/iteration_12_results.xml"
+  ],
+  "action_items": [
+    "Review the defensive fix in MasterDashboard.js fetchAllTransactions (Array.isArray guard) and audit OTHER places in MasterDashboard.js that assume an envelope-less array (search for `response.data` followed by `.filter/.map/.length` without guards).",
+    "Gate master-only API calls in MasterDashboard by user.is_master / user_type to avoid 403 noise & misleading toasts on the franqueado-admin route.",
+    "Optional: fix /api/notifications 404 (route missing or path mismatch).",
+    "Optional: align backend/frontend version constants (v2.38.46 vs v2.38.50)."
+  ],
+  "critical_code_review_comments": [
+    "routes/integracoes.py is clean: Fernet encrypt/decrypt/mask, partial updates with upsert, master-OR-own-slug authorization, public maps-config endpoint correctly omits auth. No hardcoded keys.",
+    "utils/crypto_utils.py correctly raises at import if CREDENTIALS_ENCRYPTION_KEY is missing (fail-fast). mask_value handles short strings with full mask.",
+    "FranquiaIntegracoesPanel.js: secrets are NEVER prefilled into inputs — only shown as placeholders ('Salvo (••••••XXXX) — preencha para alterar'). After save, sensitive fields are cleared and load() refreshes badges. Good UX, good security posture.",
+    "MasterDashboard.js is 5798 lines — DRY/maintenance risk. Recommend splitting into role-specific subcomponents (MasterOnlyDashboard vs FranqueadoAdminDashboard) so role-only API calls aren't fired for everyone.",
+    "MasterDashboard.fetchAllTransactions had no envelope handling — the same anti-pattern likely exists elsewhere; recommend a small `unwrap(resp)` helper.",
+    "/api/master/all-transactions ObjectId 500 from iteration_11 is RESOLVED — endpoint returns 200 with {success, transactions, total, ...}."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_integracoes.py (created, 15 pytest tests)",
+    "/app/frontend/src/components/MasterDashboard.js (1-line defensive fix in fetchAllTransactions to unblock admin panel)"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15)",
+    "frontend": "100% after MasterDashboard fix (was 0% — admin panel crashed at mount)"
+  },
+  "test_credentials": {
+    "master": "marcelotransmillapp@gmail.com / !Ma04202011@",
+    "franqueado_transmill": "transmillapp@gmail.com / demo123"
+  },
+  "seed_data_creation": "Saved test credentials via PUT /api/franquias/transmill/integracoes during pytest run (xgate, google_maps=AIzaTESTKEY1234, cloudinary, baas). Then UI re-saved with newpwd9999 / newbaas7777 / uitestpwd9999 / uibaaskey7777. These are FAKE values; Google Maps fallback in code will still work because the saved key (AIza...uitestpwd9999) is invalid and the panel/maps-config endpoint falls back gracefully.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend integrations regression suite lives at /app/backend/tests/test_integracoes.py (15 tests). Run: `pytest backend/tests/test_integracoes.py -v`. The franqueado credentials persist between runs — partial-update test relies on prior PUT having stored xgate/cloudinary/baas secrets, so run the full file in order, not just a single test. MasterDashboard has the Array.isArray guard but other parts of that 5798-line file may share the same envelope-shape bug — main agent should audit.",
+  "rca_of_the_issue": {
+    "endpoint_or_component": "frontend/src/components/MasterDashboard.js — fetchAllTransactions",
+    "symptom": "Red error boundary 'Ops! Algo deu errado' on /franquia/:slug/admin and /admin for ANY user opening MasterDashboard. Console: TypeError: allTransactions.filter is not a function.",
+    "root_cause": "fetchAllTransactions did `setAllTransactions(response.data)` while /api/transactions/history returns the envelope `{success:true, transactions:[…], total, …}`. State variable then held an object, and rendering code at line 2683 called `allTransactions.filter(...)` → throws, unmounting the tree.",
+    "reproduction": "1) Login as franqueado (transmillapp@gmail.com/demo123). 2) Navigate to /franquia/transmill/admin → error boundary shown, the new 'Integrações / APIs' tab is unreachable.",
+    "mitigation": "Applied: `setAllTransactions(Array.isArray(response.data) ? response.data : (response.data?.transactions || []))`. Better long-term: introduce an `unwrap(resp, key)` helper and refactor MasterDashboard.js (5798 lines) into smaller role-scoped components."
+  }
+}

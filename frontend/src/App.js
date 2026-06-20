@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import axios from 'axios';
 import './App.css';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { initGoogleMaps } from './utils/googleMaps';
 
 // Components
 import Login from './components/Login';
@@ -248,6 +249,11 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+
+  // Carregar o Google Maps com a chave da franquia (ou padrão), nunca hardcoded
+  useEffect(() => {
+    initGoogleMaps();
+  }, []);
 
   // Verificar se é uma rota pública que não precisa de loading
   const isPublicRoute = () => {

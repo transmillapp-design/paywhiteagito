@@ -79,11 +79,13 @@ import {
   Video,
   Network,
   Car,
-  Wrench
+  Wrench,
+  KeyRound
 } from 'lucide-react';
 import axios from 'axios';
 import SocialManagement from './SocialManagement';
 import CreditCardFeesManagement from './CreditCardFeesManagement';
+import FranquiaIntegracoesPanel from './FranquiaIntegracoesPanel';
 
 const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquiaContext = null }) => {
   const navigate = useNavigate();
@@ -131,6 +133,17 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
     console.log('🔄 Tab changing to:', value);
     setActiveTab(value);
   };
+
+  // Integrações (modo master: selecionar franquia)
+  const [integracoesSlug, setIntegracoesSlug] = useState('');
+  const [franquiasList, setFranquiasList] = useState([]);
+  useEffect(() => {
+    if (activeTab === 'integracoes' && !isFranquiaMode && franquiasList.length === 0) {
+      axios.get(`${API}/franquias`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((res) => setFranquiasList(res.data?.franquias || res.data || []))
+        .catch(() => {});
+    }
+  }, [activeTab, isFranquiaMode]);
   
   // Withdrawal states
   const [withdrawalData, setWithdrawalData] = useState({ 
@@ -282,7 +295,7 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
   const fetchAllTransactions = async () => {
     try {
       const response = await axios.get(`${API}/transactions/history`, { headers });
-      setAllTransactions(response.data);
+      setAllTransactions(Array.isArray(response.data) ? response.data : (response.data?.transactions || []));
     } catch (error) {
       console.error('Error fetching transactions:', error);
       toast.error('Erro ao carregar transações');
@@ -1150,6 +1163,7 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
               { id: 'lojas', icon: Store, label: 'Lojas' },
               { id: 'prestadores', icon: Wrench, label: 'Prestadores' },
               { id: 'mobility', icon: Car, label: 'Mobilidade' },
+              { id: 'integracoes', icon: KeyRound, label: 'Integrações / APIs' },
               { id: 'users', icon: Users, label: 'Usuários', masterOnly: true },
               { id: 'hierarchy', icon: Shield, label: 'Hierarquia', masterOnly: true },
               { id: 'segments', icon: Tags, label: 'Segmentos', masterOnly: true },
@@ -3168,6 +3182,33 @@ const MasterDashboard = ({ initialTab = 'overview', hideHeader = false, franquia
           {/* Mobilidade Tab */}
           <TabsContent value="mobility" className="space-y-6 overflow-y-visible pb-20">
             <MobilityHome embedded={true} franquiaContext={franquiaContext} />
+          </TabsContent>
+
+          {/* Integrações / APIs Tab */}
+          <TabsContent value="integracoes" className="space-y-6 overflow-y-visible pb-20">
+            {isFranquiaMode && franquiaContext?.slug ? (
+              <FranquiaIntegracoesPanel slug={franquiaContext.slug} corPrimaria={corPrimaria} />
+            ) : (
+              <div className="space-y-4 max-w-3xl" data-testid="integracoes-master-selector">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Selecione a franquia para configurar as APIs</label>
+                  <select
+                    data-testid="integracoes-franquia-select"
+                    className="mt-1 block w-full rounded-lg border border-gray-300 p-2 text-sm"
+                    value={integracoesSlug}
+                    onChange={(e) => setIntegracoesSlug(e.target.value)}
+                  >
+                    <option value="">— Escolha uma franquia —</option>
+                    {franquiasList.map((f) => (
+                      <option key={f.slug} value={f.slug}>{f.nome} ({f.slug})</option>
+                    ))}
+                  </select>
+                </div>
+                {integracoesSlug && (
+                  <FranquiaIntegracoesPanel slug={integracoesSlug} corPrimaria={corPrimaria} />
+                )}
+              </div>
+            )}
           </TabsContent>
 
         </Tabs>
