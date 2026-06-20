@@ -18,10 +18,10 @@ import IndicarPage from './components/pages/IndicarPage';
 import DocumentosPage from './components/pages/DocumentosPage';
 import DocumentacaoPage from './components/DocumentacaoPage';
 import MasterDashboard from './components/MasterDashboard';
-import MasterLabelviewDashboard from './components/MasterLabelviewDashboard';
+// MasterLabelviewDashboard removido (feature descontinuada)
 import LabelviewLogin from './components/LabelviewLogin';
 import MasterPage from './components/MasterPage';
-import ChatbotTraining from './components/ChatbotTraining';
+// ChatbotTraining removido (feature descontinuada)
 import MasterExtractPage from './components/MasterExtractPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import LandingPage from './components/LandingPage';
@@ -35,12 +35,12 @@ import PrestadoresPage from './components/PrestadoresPage';
 import ProviderSchedule from './components/ProviderSchedule';
 import UserProfile from './components/UserProfile';
 import VendasPage from './components/VendasPage';
-import InternetPlansPage from './components/InternetPlansPage';
+// InternetPlansPage removido (feature descontinuada)
 import ProtecaoVeicularPage from './components/ProtecaoVeicularPage';
 import POSPage from './components/POSPage';
 import MinhasProtecoesPage from './components/MinhasProtecoesPage';
 import ClientesLabelviewPage from './components/ClientesLabelviewPage';
-import MinhaProtecaoPage from './components/MinhaProtecaoPage';
+// MinhaProtecaoPage removido (feature descontinuada)
 import MinhasSolicitacoesPage from './components/MinhasSolicitacoesPage';
 import SolicitacoesLabelviewPage from './components/SolicitacoesLabelviewPage';
 import FornecedorRastreadoresPage from './components/FornecedorRastreadoresPage';
@@ -59,7 +59,7 @@ import EquipePage from './components/EquipePage';
 import MinimalistCheckout from './components/MinimalistCheckout';
 import MinimalistMerchantOrders from './components/MinimalistMerchantOrders';
 import OrderConfirmation from './components/OrderConfirmation';
-import SocialFeed from './components/SocialFeed';
+// SocialFeed removido (feature descontinuada)
 import TikTokStyleFeed from './components/TikTokStyleFeed';
 import VideoRecorder from './components/VideoRecorder';
 import ConvertPoints from './components/ConvertPoints';
@@ -67,7 +67,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import FranquiaPWAInstallPrompt from './components/FranquiaPWAInstallPrompt';
 import CotacaoPublica from './components/CotacaoPublica';
 import ContinuarContratacao from './components/ContinuarContratacao';
-import MinhaProtecaoLabelview from './components/MinhaProtecaoLabelview';
+// MinhaProtecaoLabelview removido (feature descontinuada)
 import StatusVistoriaCliente from './components/StatusVistoriaCliente';
 import AssinaturaContrato from './components/AssinaturaContrato';
 
@@ -470,25 +470,6 @@ function App() {
             />
 
             {/* Rota Labelview - Redireciona para dashboard */}
-            <Route 
-              path="/labelview" 
-              element={<Navigate to="/labelview/dashboard" replace />}
-            />
-
-            {/* Dashboard Labelview - Acesso direto baseado em hierarquia */}
-            <Route 
-              path="/labelview/dashboard" 
-              element={
-                user && (
-                  user.is_labelview_master || 
-                  user.user_type === 'labelview_master' ||
-                  user.user_type === 'labelview_unidade' ||
-                  user.user_type === 'labelview_regional' ||
-                  user.user_type === 'labelview_consultor'
-                ) ? <MasterLabelviewDashboard /> : <Navigate to="/" />
-              } 
-            />
-
             {/* Rotas individuais para cada funcionalidade Master */}
             <Route 
               path="/visao-geral" 
@@ -542,18 +523,6 @@ function App() {
               path="/comissoes" 
               element={
                 user && isMasterUser(user) ? <MasterPage tab="commissions" title="Comissões" /> : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/internet-master" 
-              element={
-                user && isMasterUser(user) ? <MasterPage tab="internet" title="Planos de Internet" /> : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/telemedicina-master" 
-              element={
-                user && isMasterUser(user) ? <MasterPage tab="telemedicine" title="Telemedicina" /> : <Navigate to="/" />
               } 
             />
             <Route 
@@ -611,31 +580,12 @@ function App() {
               element={<FranquiaAdminPanel />} 
             />
             <Route 
-              path="/franquia/:slug/labelview" 
-              element={<FranquiaLabelviewPanel />} 
-            />
-            <Route 
-              path="/franquia/:slug/protecao/*" 
-              element={<PWAProtecaoFranquia />} 
-            />
-            <Route 
               path="/franquia/:slug/home" 
               element={<FranquiaMinimalistHome />} 
             />
             <Route 
               path="/franquia/:slug" 
               element={<FranquiaLogin />} 
-            />
-            
-            <Route 
-              path="/treinamento-ia" 
-              element={
-                user && isMasterUser(user) ? (
-                  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-                    <ChatbotTraining API={API_URL} token={localStorage.getItem('token')} />
-                  </div>
-                ) : <Navigate to="/" />
-              } 
             />
             
             {/* Official Master Portal */}
@@ -679,54 +629,6 @@ function App() {
             />
             {/* Rotas da carteira removidas - usar rotas existentes */}
             <Route 
-              path="/internet-movel" 
-              element={user ? <InternetPlansPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/protecao-veicular" 
-              element={user ? <ProtecaoVeicularPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/minhas-protecoes" 
-              element={user ? <MinhasProtecoesPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/minha-protecao" 
-              element={user ? <MinhaProtecaoLabelview /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/minhas-solicitacoes" 
-              element={user ? <MinhasSolicitacoesPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/labelview/solicitacoes" 
-              element={user ? <SolicitacoesLabelviewPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/labelview/clientes" 
-              element={user ? <ClientesLabelviewPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/fornecedor/rastreadores" 
-              element={user ? <FornecedorRastreadoresPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/fornecedor/clientes" 
-              element={user ? <FornecedorClientesPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/labelview/protecao-leads" 
-              element={user ? <ProtecaoLeadsPage /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/status-vistoria" 
-              element={user ? <StatusVistoriaCliente /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/protecao-veicular/assinar" 
-              element={user ? <AssinaturaContrato /> : <Navigate to="/login" />} 
-            />
-            <Route 
               path="/pos" 
               element={user ? <POSPage /> : <Navigate to="/login" />} 
             />
@@ -752,10 +654,6 @@ function App() {
               path="/extrato" 
               element={user ? <ExtratoPage /> : <Navigate to="/login" />} 
             />
-            <Route 
-              path="/telemedicina" 
-              element={user ? <TelemedicinePage /> : <Navigate to="/login" />} 
-            />
             
             {/* Meu Negócio - Lojista */}
             <Route 
@@ -779,24 +677,6 @@ function App() {
             <Route 
               path="/meus-pedidos" 
               element={user && user.user_type === 'cliente' ? <MeusPedidosPage /> : <Navigate to="/login" />} 
-            />
-            
-            {/* Transmill Social - Rede Social */}
-            <Route 
-              path="/social" 
-              element={user ? <SocialFeed /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/social/feed" 
-              element={user ? <TikTokStyleFeed /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/social/upload" 
-              element={user ? <VideoRecorder /> : <Navigate to="/login" />} 
-            />
-            <Route 
-              path="/social/convert" 
-              element={user ? <ConvertPoints /> : <Navigate to="/login" />} 
             />
             
             {/* ========== MOBILITY MODULE - Mobilidade Urbana P2P ========== */}

@@ -10,7 +10,7 @@
 # ║  1. /app/backend/server.py (linha ~141) - FastAPI version                   ║
 # ║  2. /app/backend/server.py (linhas ~6997 e ~7015) - endpoint /api/health    ║
 # ║  3. /app/frontend/src/App.js - FRONTEND_VERSION e BUILD log                 ║
-# ║  4. /app/VERSION.txt - CRÍTICO! Usado pelo endpoint /api/labelview/version-check ║
+# ║  4. Routers modulares em /app/backend/routes/                                    ║
 # ║                                                                              ║
 # ║  Se o VERSION.txt não for atualizado, o frontend mostrará:                  ║
 # ║  "⚠️ Versões diferentes! Backend: vX.X.X, Frontend: vY.Y.Y"                 ║
@@ -71,7 +71,7 @@ sys.path.append('/app/backend')
 from services.cloudinary_service import upload_file_to_cloudinary
 
 # Import Labelview dependencies
-from routes.labelview import get_current_user_dependency
+# labelview import removido (feature descontinuada)
 
 # Importar modelos do catálogo
 from models.catalog import (
@@ -189,7 +189,6 @@ mobility_routes.set_db(db)
 # Startup event handler para testar MongoDB (não bloqueia startup)
 
 
-
 # Configure CORS to allow frontend access
 # Permitir origens de desenvolvimento e produção
 allowed_origins = [
@@ -263,7 +262,6 @@ def generate_slug(text: str) -> str:
     slug = slug[:50]
     
     return slug
-
 
 
 def generate_referral_code(length: int = 8) -> str:
@@ -696,6 +694,10 @@ class QRCodeRequest(BaseModel):
 
 class DigitalCodeRequest(BaseModel):
     digital_code: str
+
+
+class PaymentCodeRequest(BaseModel):
+    code: str
 
 class MerchantProfileUpdate(BaseModel):
     company_name: Optional[str] = None
@@ -1241,44 +1243,10 @@ class UserActionRequest(BaseModel):
     user_id: str
     action: str  # "block", "unblock", "delete"
 
-# === CHATBOT INTERNO - MODELOS ===
-class ChatbotCommand(BaseModel):
-    id: Optional[str] = None
-    keywords: List[str]  # Palavras-chave que ativam o comando
-    response: str  # Resposta do bot
-    action_type: Optional[str] = "navigate"  # "navigate", "open_modal", "show_info", "none"
-    action_target: Optional[str] = None  # URL ou identificador da ação
-    action_label: Optional[str] = "Ir para esta área"  # Texto do botão de ação
-    priority: Optional[int] = 0  # Comandos com maior prioridade aparecem primeiro
-    is_active: Optional[bool] = True
-    created_by: Optional[str] = None  # ID do master que criou
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-class ChatbotCommandCreate(BaseModel):
-    keywords: List[str]
-    response: str
-    action_type: Optional[str] = "navigate"
-    action_target: Optional[str] = None
-    action_label: Optional[str] = "Ir para esta área"
-    priority: Optional[int] = 0
-
-class ChatbotCommandUpdate(BaseModel):
-    keywords: Optional[List[str]] = None
-    response: Optional[str] = None
-    action_type: Optional[str] = None
-    action_target: Optional[str] = None
-    action_label: Optional[str] = None
-    priority: Optional[int] = None
-    is_active: Optional[bool] = None
-
-class ChatbotQueryRequest(BaseModel):
-    query: str  # Texto digitado pelo usuário
-
 @api_router.get("/users/buscar-por-cpf")
 async def buscar_usuario_por_cpf(
     cpf: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Busca um usuário pelo CPF
@@ -1533,7 +1501,6 @@ def prepare_for_mongo(data):
             elif isinstance(value, dict):
                 data[key] = prepare_for_mongo(value)
     return data
-
 
 
 # =============================================================================
@@ -2055,1417 +2022,10 @@ async def reset_password(request: ResetPasswordRequest):
         raise HTTPException(status_code=500, detail="Erro interno do servidor")
 
 # User routes
-# ==================== LABELVIEW ENDPOINTS ====================
-
-@api_router.get("/labelview/dashboard/stats")
-async def get_labelview_stats(current_user: dict = Depends(get_current_user_dependency)):
-    try:
-        user_type = current_user.get('user_type')
-        user_id = current_user.get('id')
-        
-        # Construir filtro baseado no tipo de usuário
-        base_filter = {}
-        if user_type == 'labelview_unidade':
-            base_filter['unidade_id'] = user_id
-        elif user_type == 'labelview_regional':
-            base_filter['regional_id'] = user_id
-        elif user_type == 'labelview_consultor':
-            base_filter['consultor_id'] = user_id
-        # Master vê tudo (sem filtro)
-        
-        # Contar unidades (apenas Master vê)
-        total_unidades = 0
-        if user_type == 'labelview_master':
-            total_unidades = await db.users.count_documents({
-                'user_type': 'labelview_unidade',
-                'is_active': True
-            })
-        
-        # Contar regionais
-        regional_filter = {'user_type': 'labelview_regional', 'is_active': True}
-        if base_filter.get('unidade_id'):
-            regional_filter['unidade_id'] = base_filter['unidade_id']
-        total_regionais = await db.users.count_documents(regional_filter)
-        
-        # Contar consultores
-        consultor_filter = {'user_type': 'labelview_consultor', 'is_active': True}
-        if base_filter.get('unidade_id'):
-            consultor_filter['unidade_id'] = base_filter['unidade_id']
-        elif base_filter.get('regional_id'):
-            consultor_filter['regional_id'] = base_filter['regional_id']
-        total_consultores = await db.users.count_documents(consultor_filter)
-        
-        # Contar fornecedores
-        fornecedor_filter = {'user_type': 'labelview_fornecedor', 'is_active': True}
-        if base_filter.get('unidade_id'):
-            fornecedor_filter['unidade_id'] = base_filter['unidade_id']
-        total_fornecedores = await db.users.count_documents(fornecedor_filter)
-        
-        # Contar clientes (usuários comuns referidos pela hierarquia)
-        clientes_filter = {'user_type': {'$in': ['client', 'comum']}}
-        if base_filter.get('consultor_id'):
-            clientes_filter['referred_by'] = base_filter['consultor_id']
-        elif base_filter.get('regional_id'):
-            # Clientes referidos por consultores dessa regional
-            consultores_ids = await db.users.distinct('id', {'regional_id': base_filter['regional_id']})
-            clientes_filter['referred_by'] = {'$in': consultores_ids}
-        elif base_filter.get('unidade_id'):
-            # Clientes referidos por consultores dessa unidade
-            consultores_ids = await db.users.distinct('id', {'unidade_id': base_filter['unidade_id']})
-            clientes_filter['referred_by'] = {'$in': consultores_ids}
-        total_clientes = await db.users.count_documents(clientes_filter)
-        
-        # Contar solicitações pendentes (mock por enquanto)
-        pending_requests = 0
-        
-        # Contar rastreadores disponíveis (mock por enquanto)
-        available_trackers = 0
-        
-        # Calcular receita do mês (mock por enquanto)
-        month_revenue = 0.0
-        
-        return {
-            "success": True,
-            "stats": {
-                "total_unidades": total_unidades,
-                "total_regionais": total_regionais,
-                "total_consultores": total_consultores,
-                "total_fornecedores": total_fornecedores,
-                "total_clients": total_clientes,
-                "pending_requests": pending_requests,
-                "available_trackers": available_trackers,
-                "month_revenue": month_revenue
-            }
-        }
-    except Exception as e:
-        print(f"Erro ao buscar stats: {e}")
-        return {
-            "success": True,
-            "stats": {
-                "total_unidades": 0,
-                "total_regionais": 0,
-                "total_consultores": 0,
-                "total_fornecedores": 0,
-                "total_clients": 0,
-                "pending_requests": 0,
-                "available_trackers": 0,
-                "month_revenue": 0.0
-            }
-        }
-
-@api_router.get("/labelview/employees")
-async def get_labelview_employees(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "employees": []}
-
-@api_router.get("/labelview/regional-managers")
-async def get_labelview_managers(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "managers": []}
-
-@api_router.get("/labelview/consultants")
-async def get_labelview_consultants(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "consultants": []}
-
-@api_router.get("/labelview/commission-rules")
-async def get_labelview_commission_rules(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "rules": {}}
-
-@api_router.post("/labelview/commission-rules")
-async def save_labelview_commission_rules(rules: dict, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Regras salvas"}
-
-@api_router.get("/labelview/clients")
-async def get_labelview_clients(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "clients": []}
-
-@api_router.get("/labelview/service-requests")
-async def get_labelview_service_requests(
-    unidade_id: str = None,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Busca solicitações de serviço para o menu Serviços do dashboard Labelview.
-    """
-    try:
-        user_type = current_user.get('user_type')
-        is_master = (
-            current_user.get('is_labelview_master') or
-            user_type == 'labelview_master'
-        )
-        
-        filtro = {}
-        
-        if is_master:
-            if unidade_id:
-                filtro['unidade_id'] = unidade_id
-        elif user_type in ['labelview_unidade', 'labelview_regional', 'labelview_consultor', 'labelview_fornecedor']:
-            user_unidade_id = current_user.get('unidade_id') or current_user.get('id')
-            filtro['unidade_id'] = user_unidade_id
-        else:
-            return {"success": True, "requests": []}
-        
-        solicitacoes = await db.solicitacoes_assistencia.find(
-            filtro,
-            {"_id": 0}
-        ).sort("created_at", -1).to_list(length=500)
-        
-        return {
-            "success": True,
-            "requests": solicitacoes,
-            "total": len(solicitacoes)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao buscar solicitações: {e}")
-        return {"success": False, "requests": [], "error": str(e)}
-
-@api_router.get("/labelview/trackers")
-async def get_labelview_trackers(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "trackers": []}
-
-@api_router.get("/labelview/contract-templates")
-async def get_labelview_contract_templates(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "templates": []}
-
-@api_router.get("/labelview/providers")
-async def get_labelview_providers(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "providers": []}
-
-# Removed duplicate endpoint - proper implementation is in routes/labelview.py
-
-@api_router.get("/labelview/unidades")
-async def get_labelview_unidades(current_user: dict = Depends(get_current_user_dependency)):
-    """
-    Busca todas as unidades Labelview (para filtros e seleções)
-    Master vê todas, outros veem apenas sua unidade
-    """
-    try:
-        # Montar filtro baseado no tipo de usuário
-        filtro = {"user_type": "labelview_unidade"}
-        
-        # Verificar se é master
-        is_master = (
-            current_user.get('is_labelview_master') or 
-            current_user.get('is_master_account') or 
-            current_user.get('user_type') == 'master' or
-            current_user.get('user_type') == 'labelview_master'
-        )
-        
-        if not is_master:
-            # Se não é master, só vê sua própria unidade
-            if current_user.get('unidade_id'):
-                filtro['id'] = current_user.get('unidade_id')
-            else:
-                return {"success": True, "unidades": []}
-        
-        # Buscar unidades
-        unidades = await db.users.find(filtro).to_list(length=1000)
-        
-        # Formatar resposta com TODOS os campos necessários
-        unidades_formatadas = []
-        for unidade in unidades:
-            unidades_formatadas.append({
-                'id': unidade.get('id'),
-                # Nome - usar nome_fantasia ou full_name ou company_name
-                'name': unidade.get('nome_fantasia') or unidade.get('full_name') or unidade.get('company_name') or 'Sem Nome',
-                'nome_fantasia': unidade.get('nome_fantasia', ''),
-                'full_name': unidade.get('full_name', ''),
-                'company_name': unidade.get('company_name', ''),
-                # Dados da empresa
-                'cnpj': unidade.get('cnpj', ''),
-                'email': unidade.get('email', ''),
-                'phone': unidade.get('phone', ''),
-                'whatsapp': unidade.get('whatsapp', ''),
-                # Endereço
-                'city': unidade.get('city') or unidade.get('cidade', ''),
-                'state': unidade.get('state') or unidade.get('estado', ''),
-                'address': unidade.get('address', ''),
-                'cep': unidade.get('cep', ''),
-                'neighborhood': unidade.get('neighborhood') or unidade.get('bairro', ''),
-                'street': unidade.get('street') or unidade.get('rua', ''),
-                'number': unidade.get('number') or unidade.get('numero', ''),
-                # Identidade visual
-                'logo_url': unidade.get('logo_url', ''),
-                'cor_primaria': unidade.get('cor_primaria', '#1a59ad'),
-                'cor_secundaria': unidade.get('cor_secundaria', '#2fa31c'),
-                # Status
-                'is_active': unidade.get('is_active', True),
-                'status': 'Ativa' if unidade.get('is_active', True) else 'Inativa',
-                # Dados do responsável
-                'admin_name': unidade.get('admin_name', ''),
-                'admin_email': unidade.get('admin_email', ''),
-                'admin_phone': unidade.get('admin_phone', ''),
-                'admin_cpf': unidade.get('admin_cpf', ''),
-                # Configurações
-                'taxa_adesao': unidade.get('taxa_adesao', 0),
-                'vencimento_inicio': unidade.get('vencimento_inicio', 1),
-                'vencimento_fim': unidade.get('vencimento_fim', 10),
-                # Datas
-                'created_at': str(unidade.get('created_at', '')) if unidade.get('created_at') else ''
-            })
-        
-        logger.info(f"✅ {len(unidades_formatadas)} unidades encontradas para {current_user.get('email')}")
-        
-        return {"success": True, "unidades": unidades_formatadas}
-        
-    except Exception as e:
-        logger.error(f"Erro ao buscar unidades: {str(e)}")
-        return {"success": False, "unidades": [], "message": str(e)}
-
-# =====================================================
-# ENDPOINT PARA ATUALIZAR PERFIL LABELVIEW
-# =====================================================
-@api_router.patch("/labelview/profile")
-async def update_labelview_profile(
-    request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Atualiza perfil de usuário Labelview (Unidade, Regional, Consultor)
-    Suporta upload de logo e documentos
-    """
-    try:
-        # Receber dados do formulário multipart
-        form = await request.form()
-        
-        update_fields = {}
-        
-        # Campos de texto
-        text_fields = [
-            'nome_fantasia', 'razao_social', 'cnpj', 'inscricao_municipal', 'inscricao_estadual',
-            'responsavel_nome', 'responsavel_cpf', 'responsavel_email', 'responsavel_whatsapp',
-            'cpf', 'rg', 'full_name', 'email', 'phone', 'whatsapp',
-            'cep', 'street', 'number', 'complement', 'neighborhood', 'city', 'state',
-            'cor_primaria', 'cor_secundaria',
-            'taxa_adesao', 'vencimento_inicio', 'vencimento_fim'
-        ]
-        
-        for field in text_fields:
-            if field in form:
-                value = form[field]
-                if value and str(value).strip():
-                    # Converter campos numéricos
-                    if field in ['taxa_adesao']:
-                        try:
-                            update_fields[field] = float(value)
-                        except:
-                            update_fields[field] = 0
-                    elif field in ['vencimento_inicio', 'vencimento_fim']:
-                        try:
-                            update_fields[field] = int(value)
-                        except:
-                            pass
-                    else:
-                        update_fields[field] = str(value).strip()
-        
-        # Upload de logo (se enviado)
-        logger.info(f"🔍 Verificando logo - 'logo' in form: {'logo' in form}")
-        if 'logo' in form:
-            logo_file = form['logo']
-            logger.info(f"🔍 Logo file - hasattr file: {hasattr(logo_file, 'file')}, hasattr filename: {hasattr(logo_file, 'filename')}")
-            logger.info(f"🔍 Logo file type: {type(logo_file)}")
-            
-            if hasattr(logo_file, 'file') and hasattr(logo_file, 'filename'):
-                try:
-                    # Ler conteúdo do arquivo
-                    contents = await logo_file.read()
-                    logger.info(f"🔍 Logo contents size: {len(contents)} bytes")
-                    
-                    if len(contents) > 0:
-                        # Upload para Cloudinary
-                        logo_url = await upload_file_to_cloudinary(
-                            contents,
-                            filename=logo_file.filename,
-                            folder=f"labelview/logos/{current_user.get('id')}",
-                            resource_type="image"
-                        )
-                        
-                        if logo_url:
-                            update_fields['logo_url'] = logo_url
-                            logger.info(f"✅ Logo enviado: {logo_url}")
-                        else:
-                            logger.error("❌ Erro: upload_file_to_cloudinary retornou None")
-                    else:
-                        logger.warning("⚠️ Logo file está vazio")
-                except Exception as e:
-                    logger.error(f"Erro ao fazer upload do logo: {e}")
-        
-        # Upload de documentos RG (se enviados)
-        for doc_field in ['rg_front', 'rg_back']:
-            if doc_field in form:
-                doc_file = form[doc_field]
-                if hasattr(doc_file, 'file') and hasattr(doc_file, 'filename'):
-                    try:
-                        contents = await doc_file.read()
-                        doc_url = await upload_file_to_cloudinary(
-                            contents,
-                            filename=doc_file.filename,
-                            folder=f"labelview/docs/{current_user.get('id')}",
-                            resource_type="image"
-                        )
-                        if doc_url:
-                            update_fields[f'{doc_field}_url'] = doc_url
-                    except Exception as e:
-                        logger.error(f"Erro ao fazer upload de {doc_field}: {e}")
-        
-        if not update_fields:
-            return {"success": False, "message": "Nenhum campo para atualizar"}
-        
-        # 🔧 CORREÇÃO: Se nome_fantasia foi atualizado, atualizar também full_name para manter consistência
-        if 'nome_fantasia' in update_fields:
-            update_fields['full_name'] = update_fields['nome_fantasia']
-            logger.info(f"🔄 Sincronizando full_name com nome_fantasia: {update_fields['nome_fantasia']}")
-        
-        # Atualizar no banco
-        result = await db.users.update_one(
-            {"id": current_user.get('id')},
-            {"$set": update_fields}
-        )
-        
-        if result.modified_count > 0:
-            logger.info(f"✅ Perfil Labelview atualizado para {current_user.get('email')}: {list(update_fields.keys())}")
-            
-            # Buscar dados atualizados
-            updated_user = await db.users.find_one({"id": current_user.get('id')}, {"_id": 0, "password_hash": 0})
-            
-            return {
-                "success": True,
-                "message": "Perfil atualizado com sucesso",
-                "user": updated_user
-            }
-        else:
-            # Mesmo sem alteração, retornar o usuário atual para sincronizar o frontend
-            current_user_data = await db.users.find_one({"id": current_user.get('id')}, {"_id": 0, "password_hash": 0})
-            return {
-                "success": True,
-                "message": "Nenhuma alteração necessária (dados já estavam iguais)",
-                "user": current_user_data
-            }
-        
-    except Exception as e:
-        logger.error(f"Erro ao atualizar perfil Labelview: {e}")
-        return {"success": False, "message": str(e)}
-
-@api_router.get("/labelview/crm/leads")
-async def get_labelview_crm_leads(
-    unidade_id: str = None,
-    filtro_origem: str = "todos",  # todos, indicacao, regional, consultor
-    regional_id: str = None,
-    consultor_id: str = None,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Busca leads do CRM Labelview com hierarquia de filtros
-    
-    Hierarquia (de cima para baixo):
-    - Master: Vê TODOS os leads
-    - Unidade: Vê leads da sua unidade + regionais + consultores vinculados
-    - Regional: Vê leads da sua regional + consultores vinculados
-    - Consultor: Vê apenas seus leads
-    
-    Um lead criado por um consultor aparece para:
-    - O consultor que criou
-    - O regional do consultor
-    - A unidade do consultor
-    - O master
-    """
-    try:
-        # Montar filtro baseado no tipo de usuário
-        filtro = {}
-        
-        # Verificar se é master
-        is_master = (
-            current_user.get('is_labelview_master') or 
-            current_user.get('is_master_account') or 
-            current_user.get('user_type') == 'master' or
-            current_user.get('user_type') == 'labelview_master'
-        )
-        
-        user_type = current_user.get('user_type')
-        user_id = current_user.get('id')
-        
-        if is_master:
-            # Master vê TODOS os leads
-            # Pode filtrar por unidade se quiser
-            if unidade_id:
-                filtro['unidade_id'] = unidade_id
-            if regional_id:
-                filtro['regional_id'] = regional_id
-            if consultor_id:
-                filtro['consultor_id'] = consultor_id
-                
-        elif user_type == 'labelview_unidade':
-            # Unidade vê:
-            # - Leads onde unidade_id = meu ID (criados pela unidade)
-            # - Leads dos regionais vinculados a esta unidade
-            # - Leads dos consultores vinculados a esta unidade
-            filtro['unidade_id'] = user_id
-            
-            # Subfiltros opcionais
-            if filtro_origem == 'indicacao':
-                # Apenas leads criados diretamente pela unidade
-                filtro['$and'] = [
-                    {'unidade_id': user_id},
-                    {'$or': [
-                        {'regional_id': None},
-                        {'regional_id': {'$exists': False}}
-                    ]},
-                    {'$or': [
-                        {'consultor_id': None},
-                        {'consultor_id': {'$exists': False}}
-                    ]}
-                ]
-                del filtro['unidade_id']  # Já está no $and
-            elif filtro_origem == 'regional' and regional_id:
-                filtro['regional_id'] = regional_id
-            elif filtro_origem == 'consultor' and consultor_id:
-                filtro['consultor_id'] = consultor_id
-            
-        elif user_type == 'labelview_regional':
-            # Regional vê:
-            # - Leads onde regional_id = meu ID (criados pelo regional)
-            # - Leads dos consultores vinculados a este regional
-            filtro['regional_id'] = user_id
-            
-            # Subfiltros opcionais
-            if filtro_origem == 'indicacao':
-                # Apenas leads criados diretamente pelo regional
-                filtro['$and'] = [
-                    {'regional_id': user_id},
-                    {'$or': [
-                        {'consultor_id': None},
-                        {'consultor_id': {'$exists': False}}
-                    ]}
-                ]
-                del filtro['regional_id']  # Já está no $and
-            elif filtro_origem == 'consultor' and consultor_id:
-                filtro['consultor_id'] = consultor_id
-            
-        elif user_type == 'labelview_consultor':
-            # Consultor vê APENAS seus próprios leads
-            filtro['consultor_id'] = user_id
-            
-        else:
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        
-        logger.info(f"🔍 CRM Leads | User: {current_user.get('email')} ({user_type}) | Filtro: {filtro}")
-        
-        # Buscar leads da collection correta
-        leads = await db.labelview_crm_leads.find(filtro).sort('created_at', -1).to_list(length=1000)
-        
-        logger.info(f"✅ {len(leads)} leads encontrados")
-        
-        # Converter ObjectId para string e formatar datas
-        for lead in leads:
-            if '_id' in lead:
-                del lead['_id']
-            if 'created_at' in lead:
-                lead['created_at'] = lead['created_at'].isoformat() if hasattr(lead['created_at'], 'isoformat') else str(lead['created_at'])
-            if 'updated_at' in lead:
-                lead['updated_at'] = lead['updated_at'].isoformat() if hasattr(lead['updated_at'], 'isoformat') else str(lead['updated_at'])
-        
-        return {"success": True, "leads": leads}
-        
-    except Exception as e:
-        logger.error(f"❌ Erro ao buscar leads: {str(e)}")
-        return {"success": False, "leads": [], "message": str(e)}
-
-@api_router.post("/labelview/crm/cotacao-to-lead")
-async def criar_lead_de_cotacao(
-    lead_data: dict,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Cria um lead no CRM a partir de uma cotação iniciada
-    Otimizado para resposta rápida (< 1s)
-    """
-    try:
-        from datetime import datetime
-        import uuid
-        
-        logger.info(f"📝 Criando lead - User: {current_user.get('email')} | Cliente: {lead_data.get('nome')}")
-        
-        # Gerar ID do lead
-        lead_id = str(uuid.uuid4())
-        
-        # Montar dados do lead (otimizado - apenas campos essenciais)
-        lead = {
-            "id": lead_id,
-            "nome": lead_data.get('nome', ''),
-            "cpf": lead_data.get('cpf', ''),
-            "email": lead_data.get('email', ''),
-            "telefone": lead_data.get('telefone', ''),
-            "status": "novo",
-            "tipo": "cotacao_protecao",
-            "origem": "sistema_cotacao",
-            "cotacao_temp_id": lead_data.get('cotacao_temp_id', ''),
-            "created_by": current_user.get('id'),
-            "created_by_email": current_user.get('email'),
-            "created_by_type": current_user.get('user_type'),
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-        
-        # Adicionar vínculos baseado no tipo de usuário
-        if current_user.get('user_type') == 'labelview_consultor':
-            lead['consultor_id'] = current_user.get('id')
-            lead['consultor_email'] = current_user.get('email')
-            lead['unidade_id'] = current_user.get('unidade_id')
-            lead['regional_id'] = current_user.get('regional_id')
-        elif current_user.get('user_type') == 'labelview_regional':
-            lead['regional_id'] = current_user.get('id')
-            lead['unidade_id'] = current_user.get('unidade_id')
-        elif current_user.get('user_type') == 'labelview_unidade':
-            lead['unidade_id'] = current_user.get('id')
-        
-        # Inserir no banco (operação rápida)
-        result = await db.labelview_crm_leads.insert_one(lead)
-        
-        if result.inserted_id:
-            logger.info(f"✅ Lead criado: {lead_id} | Nome: {lead.get('nome')} | Criado por: {current_user.get('email')}")
-            
-            # Remover _id para retornar
-            if '_id' in lead:
-                del lead['_id']
-            
-            return {
-                "success": True,
-                "lead": lead,
-                "message": "Lead criado com sucesso"
-            }
-        else:
-            raise Exception("Falha ao inserir lead no banco")
-            
-    except Exception as e:
-        logger.error(f"❌ Erro ao criar lead: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro ao criar lead: {str(e)}"
-        }
-
-# ============================================
-# CRM KANBAN - ENDPOINTS PARA GESTÃO DE LEADS
-# ============================================
-
-class CrmLeadCreate(BaseModel):
-    nome: str
-    cpf: Optional[str] = None
-    email: Optional[str] = None
-    telefone: Optional[str] = None
-    observacoes: Optional[str] = None
-
-class CrmLeadStatusUpdate(BaseModel):
-    status: str  # 'novo', 'interesse', 'negociacao', 'aguardando_docs', 'aprovado', 'cancelado'
-
-@api_router.post("/labelview/crm/lead")
-async def criar_lead_manual(
-    lead_data: CrmLeadCreate,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Cria um lead manualmente no CRM Kanban
-    Usado pelo formulário de novo lead no componente CrmKanbanProtecao
-    """
-    try:
-        from datetime import datetime
-        import uuid
-        
-        logger.info(f"📝 [CRM KANBAN] Criando lead manual - User: {current_user.get('email')} | Cliente: {lead_data.nome}")
-        
-        # Gerar ID do lead
-        lead_id = str(uuid.uuid4())
-        
-        # Montar dados do lead
-        lead = {
-            "id": lead_id,
-            "nome": lead_data.nome,
-            "cpf": lead_data.cpf or '',
-            "email": lead_data.email or '',
-            "telefone": lead_data.telefone or '',
-            "observacoes": lead_data.observacoes or '',
-            "status": "novo",  # Status inicial no Kanban
-            "tipo": "manual",
-            "origem": "crm_kanban",
-            "created_by": current_user.get('id'),
-            "created_by_email": current_user.get('email'),
-            "created_by_type": current_user.get('user_type'),
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-        
-        # Adicionar vínculos baseado no tipo de usuário
-        if current_user.get('user_type') == 'labelview_consultor':
-            lead['consultor_id'] = current_user.get('id')
-            lead['consultor_email'] = current_user.get('email')
-            lead['unidade_id'] = current_user.get('unidade_id')
-            lead['regional_id'] = current_user.get('regional_id')
-        elif current_user.get('user_type') == 'labelview_regional':
-            lead['regional_id'] = current_user.get('id')
-            lead['unidade_id'] = current_user.get('unidade_id')
-        elif current_user.get('user_type') == 'labelview_unidade':
-            lead['unidade_id'] = current_user.get('id')
-        elif current_user.get('is_labelview_master'):
-            # Master pode criar leads sem vínculos específicos
-            pass
-        
-        # Inserir no banco
-        result = await db.labelview_crm_leads.insert_one(lead)
-        
-        if result.inserted_id:
-            logger.info(f"✅ [CRM KANBAN] Lead criado: {lead_id} | Nome: {lead.get('nome')}")
-            
-            # Remover _id para retornar
-            if '_id' in lead:
-                del lead['_id']
-            
-            # Converter datetime para string
-            lead['created_at'] = lead['created_at'].isoformat() if lead.get('created_at') else None
-            lead['updated_at'] = lead['updated_at'].isoformat() if lead.get('updated_at') else None
-            
-            return {
-                "success": True,
-                "lead": lead,
-                "message": "Lead criado com sucesso"
-            }
-        else:
-            raise Exception("Falha ao inserir lead no banco")
-            
-    except Exception as e:
-        logger.error(f"❌ [CRM KANBAN] Erro ao criar lead: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro ao criar lead: {str(e)}"
-        }
-
-
-@api_router.put("/labelview/crm/lead/{lead_id}/status")
-async def atualizar_status_lead(
-    lead_id: str,
-    status_data: CrmLeadStatusUpdate,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Atualiza o status de um lead no CRM Kanban (drag & drop)
-    Envia notificações push para os responsáveis quando o status muda
-    """
-    try:
-        from datetime import datetime
-        
-        logger.info(f"📝 [CRM KANBAN] Atualizando status - Lead: {lead_id} | Novo status: {status_data.status}")
-        
-        # Validar status permitidos
-        status_permitidos = ['novo', 'interesse', 'negociacao', 'aguardando_docs', 'aprovado', 'cancelado']
-        if status_data.status not in status_permitidos:
-            return {"success": False, "message": f"Status inválido. Permitidos: {status_permitidos}"}
-        
-        # Buscar lead atual
-        lead = await db.labelview_crm_leads.find_one({"id": lead_id})
-        if not lead:
-            return {"success": False, "message": "Lead não encontrado"}
-        
-        status_anterior = lead.get('status', 'novo')
-        
-        # Verificar permissão de acesso ao lead
-        user_type = current_user.get('user_type')
-        user_id = current_user.get('id')
-        is_master = current_user.get('is_labelview_master', False)
-        
-        # Master pode atualizar qualquer lead
-        # Outros usuários só podem atualizar leads que criaram ou estão vinculados
-        if not is_master:
-            pode_editar = (
-                lead.get('created_by') == user_id or
-                lead.get('consultor_id') == user_id or
-                lead.get('regional_id') == user_id or
-                lead.get('unidade_id') == user_id or
-                (user_type == 'labelview_unidade' and lead.get('unidade_id') == user_id) or
-                (user_type == 'labelview_regional' and lead.get('regional_id') == user_id)
-            )
-            if not pode_editar:
-                return {"success": False, "message": "Sem permissão para editar este lead"}
-        
-        # Atualizar status no banco
-        result = await db.labelview_crm_leads.update_one(
-            {"id": lead_id},
-            {
-                "$set": {
-                    "status": status_data.status,
-                    "updated_at": datetime.utcnow(),
-                    "updated_by": user_id,
-                    "updated_by_email": current_user.get('email')
-                }
-            }
-        )
-        
-        if result.modified_count > 0:
-            logger.info(f"✅ [CRM KANBAN] Status atualizado: {lead_id} | {status_anterior} -> {status_data.status}")
-            
-            # =============================================
-            # ENVIAR NOTIFICAÇÕES PUSH PARA RESPONSÁVEIS
-            # =============================================
-            notifications_sent = 0
-            
-            # Mapear status para título amigável
-            status_labels = {
-                'novo': 'Novos Leads',
-                'interesse': 'Interesse',
-                'negociacao': 'Negociação',
-                'aguardando_docs': 'Aguardando Documentos',
-                'aprovado': 'Aprovado',
-                'cancelado': 'Cancelado'
-            }
-            status_label = status_labels.get(status_data.status, status_data.status)
-            
-            # Preparar mensagem de notificação
-            notification_title = f"📊 Lead movido para: {status_label}"
-            notification_body = f"Lead '{lead.get('nome', 'N/A')}' foi movido de '{status_labels.get(status_anterior, status_anterior)}' para '{status_label}' por {current_user.get('email')}"
-            
-            # Lista de user_ids para notificar
-            users_to_notify = set()
-            
-            # Adicionar responsáveis do lead
-            if lead.get('consultor_id'):
-                users_to_notify.add(lead.get('consultor_id'))
-            if lead.get('regional_id'):
-                users_to_notify.add(lead.get('regional_id'))
-            if lead.get('unidade_id'):
-                users_to_notify.add(lead.get('unidade_id'))
-            
-            # Remover o usuário que fez a ação (não notificar a si mesmo)
-            users_to_notify.discard(user_id)
-            
-            # Enviar notificações
-            for notify_user_id in users_to_notify:
-                try:
-                    # Buscar subscriptions do usuário
-                    subscriptions = await db.pwa_subscriptions.find({
-                        "user_id": notify_user_id
-                    }).to_list(length=10)
-                    
-                    for sub in subscriptions:
-                        try:
-                            # VAPID keys
-                            vapid_private_key = os.environ.get('VAPID_PRIVATE_KEY')
-                            vapid_public_key = os.environ.get('VAPID_PUBLIC_KEY')
-                            
-                            if vapid_private_key and vapid_public_key:
-                                webpush(
-                                    subscription_info={
-                                        "endpoint": sub.get('endpoint'),
-                                        "keys": {
-                                            "p256dh": sub.get('p256dh'),
-                                            "auth": sub.get('auth')
-                                        }
-                                    },
-                                    data=json.dumps({
-                                        "title": notification_title,
-                                        "body": notification_body,
-                                        "icon": "/icon-192x192.png",
-                                        "badge": "/icon-72x72.png",
-                                        "data": {
-                                            "type": "crm_lead_status",
-                                            "lead_id": lead_id,
-                                            "new_status": status_data.status
-                                        }
-                                    }),
-                                    vapid_private_key=vapid_private_key,
-                                    vapid_claims={"sub": f"mailto:{os.environ.get('VAPID_EMAIL', 'admin@transmill.com.br')}"}
-                                )
-                                notifications_sent += 1
-                        except WebPushException as e:
-                            logger.warning(f"⚠️ Push notification falhou para {notify_user_id}: {str(e)}")
-                            # Se a subscription expirou, remover
-                            if e.response and e.response.status_code in [404, 410]:
-                                await db.pwa_subscriptions.delete_one({"_id": sub.get("_id")})
-                except Exception as notify_err:
-                    logger.warning(f"⚠️ Erro ao notificar {notify_user_id}: {str(notify_err)}")
-            
-            # Também criar notificação no banco para histórico
-            await db.notifications.insert_one({
-                "id": str(uuid.uuid4()),
-                "user_id": None,  # Para todos os responsáveis
-                "target_users": list(users_to_notify),
-                "title": notification_title,
-                "message": notification_body,
-                "type": "crm_lead_status",
-                "related_id": lead_id,
-                "created_at": datetime.utcnow(),
-                "created_by": user_id,
-                "is_read": False
-            })
-            
-            return {
-                "success": True,
-                "message": f"Status atualizado para '{status_label}'",
-                "old_status": status_anterior,
-                "new_status": status_data.status,
-                "notifications_sent": notifications_sent
-            }
-        else:
-            return {"success": False, "message": "Lead não modificado (status pode ser o mesmo)"}
-            
-    except Exception as e:
-        logger.error(f"❌ [CRM KANBAN] Erro ao atualizar status: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro ao atualizar status: {str(e)}"
-        }
-
-
-@api_router.delete("/labelview/crm/lead/{lead_id}")
-async def deletar_lead_crm(
-    lead_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Remove um lead do CRM Kanban
-    Apenas o criador, responsáveis ou master podem deletar
-    """
-    try:
-        logger.info(f"🗑️ [CRM KANBAN] Deletando lead - Lead: {lead_id} | User: {current_user.get('email')}")
-        
-        # Buscar lead atual
-        lead = await db.labelview_crm_leads.find_one({"id": lead_id})
-        if not lead:
-            return {"success": False, "message": "Lead não encontrado"}
-        
-        # Verificar permissão
-        user_id = current_user.get('id')
-        is_master = current_user.get('is_labelview_master', False)
-        
-        if not is_master:
-            pode_deletar = (
-                lead.get('created_by') == user_id or
-                lead.get('consultor_id') == user_id or
-                lead.get('regional_id') == user_id or
-                lead.get('unidade_id') == user_id
-            )
-            if not pode_deletar:
-                return {"success": False, "message": "Sem permissão para deletar este lead"}
-        
-        # Deletar lead
-        result = await db.labelview_crm_leads.delete_one({"id": lead_id})
-        
-        if result.deleted_count > 0:
-            logger.info(f"✅ [CRM KANBAN] Lead deletado: {lead_id}")
-            return {"success": True, "message": "Lead deletado com sucesso"}
-        else:
-            return {"success": False, "message": "Falha ao deletar lead"}
-            
-    except Exception as e:
-        logger.error(f"❌ [CRM KANBAN] Erro ao deletar lead: {str(e)}")
-        return {"success": False, "message": f"Erro ao deletar lead: {str(e)}"}
-
-
-@api_router.get("/labelview/crm/relatorios")
-async def get_crm_relatorios(
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Retorna relatórios e métricas do CRM Kanban:
-    - Taxa de conversão por Regional e Consultor
-    - Tempo médio no funil
-    - Leads por status
-    - Performance da equipe
-    """
-    try:
-        from datetime import datetime, timedelta
-        
-        logger.info(f"📊 [CRM RELATORIOS] Gerando relatórios - User: {current_user.get('email')}")
-        
-        # Determinar filtro baseado na hierarquia
-        user_type = current_user.get('user_type')
-        user_id = current_user.get('id')
-        is_master = current_user.get('is_labelview_master', False)
-        
-        filtro = {}
-        if not is_master:
-            if user_type == 'labelview_consultor':
-                filtro = {"consultor_id": user_id}
-            elif user_type == 'labelview_regional':
-                filtro = {"regional_id": user_id}
-            elif user_type == 'labelview_unidade':
-                filtro = {"unidade_id": user_id}
-        
-        # Buscar todos os leads com o filtro
-        leads = await db.labelview_crm_leads.find(filtro).to_list(length=10000)
-        
-        # Status do funil
-        status_ordem = ['novo', 'interesse', 'negociacao', 'aguardando_docs', 'aprovado', 'cancelado']
-        status_labels = {
-            'novo': 'Novos Leads',
-            'interesse': 'Interesse',
-            'negociacao': 'Negociação',
-            'aguardando_docs': 'Aguardando Docs',
-            'aprovado': 'Aprovado',
-            'cancelado': 'Cancelado'
-        }
-        
-        # =============================================
-        # 1. CONTAGEM POR STATUS (Funil)
-        # =============================================
-        leads_por_status = {s: 0 for s in status_ordem}
-        for lead in leads:
-            status = lead.get('status', 'novo')
-            if status in leads_por_status:
-                leads_por_status[status] += 1
-        
-        funil_data = [
-            {"status": s, "label": status_labels.get(s, s), "count": leads_por_status[s]}
-            for s in status_ordem
-        ]
-        
-        # =============================================
-        # 2. TAXA DE CONVERSÃO GERAL
-        # =============================================
-        total_leads = len(leads)
-        leads_aprovados = leads_por_status.get('aprovado', 0)
-        leads_cancelados = leads_por_status.get('cancelado', 0)
-        
-        taxa_conversao_geral = (leads_aprovados / total_leads * 100) if total_leads > 0 else 0
-        taxa_cancelamento = (leads_cancelados / total_leads * 100) if total_leads > 0 else 0
-        
-        # =============================================
-        # 3. PERFORMANCE POR REGIONAL
-        # =============================================
-        regionais_stats = {}
-        for lead in leads:
-            regional_id = lead.get('regional_id')
-            if regional_id:
-                if regional_id not in regionais_stats:
-                    regionais_stats[regional_id] = {
-                        'id': regional_id,
-                        'total': 0,
-                        'aprovados': 0,
-                        'cancelados': 0,
-                        'em_andamento': 0,
-                        'tempos': []
-                    }
-                regionais_stats[regional_id]['total'] += 1
-                
-                status = lead.get('status', 'novo')
-                if status == 'aprovado':
-                    regionais_stats[regional_id]['aprovados'] += 1
-                    # Calcular tempo no funil
-                    created = lead.get('created_at')
-                    updated = lead.get('updated_at')
-                    if created and updated:
-                        if isinstance(created, str):
-                            created = datetime.fromisoformat(created.replace('Z', '+00:00'))
-                        if isinstance(updated, str):
-                            updated = datetime.fromisoformat(updated.replace('Z', '+00:00'))
-                        if hasattr(created, 'timestamp') and hasattr(updated, 'timestamp'):
-                            tempo_dias = (updated - created).days
-                            regionais_stats[regional_id]['tempos'].append(tempo_dias)
-                elif status == 'cancelado':
-                    regionais_stats[regional_id]['cancelados'] += 1
-                else:
-                    regionais_stats[regional_id]['em_andamento'] += 1
-        
-        # Buscar nomes dos regionais
-        for regional_id in regionais_stats:
-            regional = await db.users.find_one({"id": regional_id})
-            if regional:
-                regionais_stats[regional_id]['nome'] = regional.get('full_name') or regional.get('nome') or regional.get('email', 'Regional')
-            else:
-                regionais_stats[regional_id]['nome'] = 'Regional'
-            
-            # Calcular taxa de conversão
-            stats = regionais_stats[regional_id]
-            stats['taxa_conversao'] = (stats['aprovados'] / stats['total'] * 100) if stats['total'] > 0 else 0
-            stats['tempo_medio'] = sum(stats['tempos']) / len(stats['tempos']) if stats['tempos'] else 0
-            del stats['tempos']  # Remover lista de tempos do retorno
-        
-        # =============================================
-        # 4. PERFORMANCE POR CONSULTOR
-        # =============================================
-        consultores_stats = {}
-        for lead in leads:
-            consultor_id = lead.get('consultor_id')
-            if consultor_id:
-                if consultor_id not in consultores_stats:
-                    consultores_stats[consultor_id] = {
-                        'id': consultor_id,
-                        'email': lead.get('consultor_email', ''),
-                        'total': 0,
-                        'aprovados': 0,
-                        'cancelados': 0,
-                        'em_andamento': 0,
-                        'tempos': []
-                    }
-                consultores_stats[consultor_id]['total'] += 1
-                
-                status = lead.get('status', 'novo')
-                if status == 'aprovado':
-                    consultores_stats[consultor_id]['aprovados'] += 1
-                    # Calcular tempo no funil
-                    created = lead.get('created_at')
-                    updated = lead.get('updated_at')
-                    if created and updated:
-                        if isinstance(created, str):
-                            created = datetime.fromisoformat(created.replace('Z', '+00:00'))
-                        if isinstance(updated, str):
-                            updated = datetime.fromisoformat(updated.replace('Z', '+00:00'))
-                        if hasattr(created, 'timestamp') and hasattr(updated, 'timestamp'):
-                            tempo_dias = (updated - created).days
-                            consultores_stats[consultor_id]['tempos'].append(tempo_dias)
-                elif status == 'cancelado':
-                    consultores_stats[consultor_id]['cancelados'] += 1
-                else:
-                    consultores_stats[consultor_id]['em_andamento'] += 1
-        
-        # Buscar nomes dos consultores
-        for consultor_id in consultores_stats:
-            consultor = await db.users.find_one({"id": consultor_id})
-            if consultor:
-                consultores_stats[consultor_id]['nome'] = consultor.get('full_name') or consultor.get('nome') or consultor.get('email', 'Consultor')
-            else:
-                consultores_stats[consultor_id]['nome'] = consultores_stats[consultor_id].get('email', 'Consultor').split('@')[0]
-            
-            # Calcular taxa de conversão
-            stats = consultores_stats[consultor_id]
-            stats['taxa_conversao'] = (stats['aprovados'] / stats['total'] * 100) if stats['total'] > 0 else 0
-            stats['tempo_medio'] = sum(stats['tempos']) / len(stats['tempos']) if stats['tempos'] else 0
-            del stats['tempos']  # Remover lista de tempos do retorno
-        
-        # =============================================
-        # 5. TEMPO MÉDIO NO FUNIL (GERAL)
-        # =============================================
-        tempos_funil = []
-        for lead in leads:
-            if lead.get('status') == 'aprovado':
-                created = lead.get('created_at')
-                updated = lead.get('updated_at')
-                if created and updated:
-                    try:
-                        if isinstance(created, str):
-                            created = datetime.fromisoformat(created.replace('Z', '+00:00'))
-                        if isinstance(updated, str):
-                            updated = datetime.fromisoformat(updated.replace('Z', '+00:00'))
-                        if hasattr(created, 'timestamp') and hasattr(updated, 'timestamp'):
-                            tempo_dias = (updated - created).days
-                            tempos_funil.append(tempo_dias)
-                    except:
-                        pass
-        
-        tempo_medio_geral = sum(tempos_funil) / len(tempos_funil) if tempos_funil else 0
-        
-        # =============================================
-        # 6. LEADS POR PERÍODO (últimos 30 dias)
-        # =============================================
-        data_30_dias = datetime.utcnow() - timedelta(days=30)
-        leads_ultimos_30_dias = 0
-        leads_por_semana = [0, 0, 0, 0]  # 4 semanas
-        
-        for lead in leads:
-            created = lead.get('created_at')
-            if created:
-                try:
-                    if isinstance(created, str):
-                        created = datetime.fromisoformat(created.replace('Z', '+00:00'))
-                    if hasattr(created, 'timestamp'):
-                        if created >= data_30_dias:
-                            leads_ultimos_30_dias += 1
-                            dias_atras = (datetime.utcnow() - created).days
-                            semana_idx = min(dias_atras // 7, 3)
-                            leads_por_semana[semana_idx] += 1
-                except:
-                    pass
-        
-        # =============================================
-        # MONTAR RESPOSTA
-        # =============================================
-        return {
-            "success": True,
-            "relatorios": {
-                "resumo": {
-                    "total_leads": total_leads,
-                    "leads_aprovados": leads_aprovados,
-                    "leads_cancelados": leads_cancelados,
-                    "leads_em_andamento": total_leads - leads_aprovados - leads_cancelados,
-                    "taxa_conversao_geral": round(taxa_conversao_geral, 1),
-                    "taxa_cancelamento": round(taxa_cancelamento, 1),
-                    "tempo_medio_funil_dias": round(tempo_medio_geral, 1),
-                    "leads_ultimos_30_dias": leads_ultimos_30_dias
-                },
-                "funil": funil_data,
-                "por_regional": sorted(
-                    list(regionais_stats.values()), 
-                    key=lambda x: x['taxa_conversao'], 
-                    reverse=True
-                ),
-                "por_consultor": sorted(
-                    list(consultores_stats.values()), 
-                    key=lambda x: x['taxa_conversao'], 
-                    reverse=True
-                ),
-                "evolucao_semanal": {
-                    "labels": ["Semana 4", "Semana 3", "Semana 2", "Semana 1"],
-                    "values": leads_por_semana[::-1]
-                }
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"❌ [CRM RELATORIOS] Erro ao gerar relatórios: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return {
-            "success": False,
-            "message": f"Erro ao gerar relatórios: {str(e)}"
-        }
-
-
-@api_router.get("/labelview/crm/protecoes")
-async def get_labelview_crm_protecoes(
-    unidade_id: str = None,
-    regional_id: str = None,
-    consultor_id: str = None,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Busca proteções do CRM Labelview agrupadas por status
-    Master vê todas, outros veem conforme hierarquia
-    """
-    try:
-        # Verificar se é master
-        is_master = (
-            current_user.get('is_labelview_master') or 
-            current_user.get('is_master_account') or 
-            current_user.get('user_type') == 'master' or
-            current_user.get('user_type') == 'labelview_master'
-        )
-        
-        user_type = current_user.get('user_type')
-        
-        # Montar filtro base
-        filtro_base = {}
-        
-        if is_master:
-            # Master pode filtrar por unidade ou ver todas
-            if unidade_id:
-                filtro_base['unidade_id'] = unidade_id
-            if regional_id:
-                filtro_base['regional_id'] = regional_id
-            if consultor_id:
-                filtro_base['consultor_id'] = consultor_id
-        elif user_type == 'labelview_unidade':
-            filtro_base['unidade_id'] = current_user.get('id')
-        elif user_type == 'labelview_regional':
-            filtro_base['regional_id'] = current_user.get('id')
-        elif user_type == 'labelview_consultor':
-            filtro_base['consultor_id'] = current_user.get('id')
-        
-        # Buscar proteções por status
-        interesse = await db.labelview_crm_protecoes.find({**filtro_base, 'status': 'interesse'}).sort('created_at', -1).to_list(length=500)
-        negociacao = await db.labelview_crm_protecoes.find({**filtro_base, 'status': 'negociacao'}).sort('created_at', -1).to_list(length=500)
-        aguardando = await db.labelview_crm_protecoes.find({**filtro_base, 'status': 'aguardando_aprovacao'}).sort('created_at', -1).to_list(length=500)
-        
-        # Remover _id do MongoDB
-        for p in interesse + negociacao + aguardando:
-            p.pop('_id', None)
-        
-        logger.info(f"📊 CRM Proteções - Interesse: {len(interesse)}, Negociação: {len(negociacao)}, Aguardando: {len(aguardando)}")
-        
-        return {
-            "success": True,
-            "interesse": interesse,
-            "negociacao": negociacao,
-            "aguardando_aprovacao": aguardando
-        }
-    except Exception as e:
-        logger.error(f"❌ Erro ao buscar proteções CRM: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/protecao/tipos-veiculo")
-async def get_tipos_veiculo_protecao(current_user: dict = Depends(get_current_user_dependency)):
-    """Endpoint para tipos de veículo - busca os tipos cadastrados pelo Master Labelview"""
-    try:
-        # ✅ Buscar tipos de veículo cadastrados pelo Master Labelview no MongoDB
-        tipos_db = await db.labelview_tipos_veiculo.find({'ativo': True}).to_list(length=1000)
-        
-        # Formatar resposta
-        tipos = []
-        for tipo in tipos_db:
-            tipo.pop('_id', None)  # Remover _id do MongoDB
-            tipos.append(tipo)
-        
-        # Se não houver tipos cadastrados, retornar lista vazia (Master precisa cadastrar)
-        if len(tipos) == 0:
-            logger.warning("⚠️ Nenhum tipo de veículo cadastrado. Master precisa cadastrar em Pessoas > Tipo de Veículo")
-        
-        return {
-            'success': True,
-            'tipos': tipos,
-            'total': len(tipos)
-        }
-    except Exception as e:
-        logger.error(f"Error fetching tipos veiculo: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/protecao/buscar-por-placa/{placa}")
-async def buscar_veiculo_por_placa(
-    placa: str,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """Busca dados do veículo por placa - primeiro no banco local, depois em APIs externas"""
-    import requests
-    try:
-        # Remove caracteres especiais da placa
-        placa_limpa = re.sub(r'[^A-Z0-9]', '', placa.upper())
-        
-        if len(placa_limpa) < 7:
-            raise HTTPException(status_code=400, detail="Placa inválida")
-        
-        logger.info(f"🔍 Buscando veículo por placa: {placa_limpa}")
-        
-        # 1️⃣ PRIMEIRO: Buscar no banco de dados local (veículos já cadastrados)
-        veiculo_local = await db.veiculos.find_one({'placa': placa_limpa})
-        
-        if veiculo_local:
-            logger.info(f"✅ Veículo encontrado no banco local: {veiculo_local.get('marca')} {veiculo_local.get('modelo')}")
-            return {
-                'success': True,
-                'placa': placa_limpa,
-                'marca': veiculo_local.get('marca', ''),
-                'modelo': veiculo_local.get('modelo', ''),
-                'ano_modelo': str(veiculo_local.get('ano_modelo', '')),
-                'ano_fabricacao': str(veiculo_local.get('ano_fabricacao', '')),
-                'cor': veiculo_local.get('cor', ''),
-                'tipo': veiculo_local.get('tipo', ''),
-                'municipio': veiculo_local.get('municipio', ''),
-                'uf': veiculo_local.get('uf', ''),
-                'mensagem': 'Veículo encontrado no banco de dados'
-            }
-        
-        # 2️⃣ SEGUNDO: Consulta de placa via API paga (recomendado)
-        # Para produção, recomenda-se integrar API paga de consulta de placas
-        # Exemplos: consultaplaca.com.br, apicarros.com, placafacil.com.br
-        
-        # 3️⃣ Se não encontrou em nenhuma fonte
-        logger.warning(f"⚠️ Placa {placa_limpa} não encontrada em nenhuma fonte")
-        return {
-            'success': False,
-            'placa': placa_limpa,
-            'mensagem': 'Placa não encontrada. Por favor, preencha os dados manualmente.'
-        }
-            
-    except requests.exceptions.Timeout:
-        logger.warning(f"⏱️ Timeout ao buscar placa: {placa}")
-        return {
-            'success': False,
-            'placa': placa,
-            'mensagem': 'Timeout na consulta. Por favor, preencha os dados manualmente.'
-        }
-    except Exception as e:
-        logger.error(f"❌ Erro ao buscar placa: {str(e)}")
-        return {
-            'success': False,
-            'placa': placa,
-            'mensagem': 'Erro na consulta. Por favor, preencha os dados manualmente.'
-        }
-
-
-# === VALIDAÇÃO DE IDADE DO VEÍCULO ===
-
-@api_router.post("/protecao/validar-veiculo")
-async def validar_veiculo_protecao(
-    ano_fabricacao: int,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Valida se o veículo é elegível para proteção veicular
-    Regra: Máximo 30 anos de uso
-    """
-    try:
-        ano_atual = datetime.now().year
-        idade_veiculo = ano_atual - ano_fabricacao
-        
-        # Veículo deve ter no máximo 30 anos
-        ano_minimo = ano_atual - 30  # 2025 - 30 = 1995
-        
-        elegivel = ano_fabricacao >= ano_minimo
-        
-        logger.info(f"✅ Validação de veículo: Ano {ano_fabricacao}, Idade {idade_veiculo} anos, Elegível: {elegivel}")
-        
-        return {
-            'success': True,
-            'elegivel': elegivel,
-            'ano_fabricacao': ano_fabricacao,
-            'ano_minimo_permitido': ano_minimo,
-            'idade_anos': idade_veiculo,
-            'mensagem': f'Veículo elegível para proteção' if elegivel else f'Veículo não elegível (máximo 30 anos). Anos permitidos: {ano_minimo} em diante.'
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao validar veículo: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-        #             dados = response.json()
-        #             
-        #             # Validar idade do veículo (máximo 30 anos)
-        #             ano_fabricacao = int(dados.get('anoFabricacao', 0))
-        #             ano_atual = datetime.now().year
-        #             idade_veiculo = ano_atual - ano_fabricacao
-        #             
-        #             if idade_veiculo > 30:
-        #                 return {
-        #                     'success': False,
-        #                     'placa': placa_limpa,
-        #                     'mensagem': f'Veículo de {ano_fabricacao} não elegível (máximo 30 anos)',
-        #                     'ano_fabricacao': ano_fabricacao,
-        #                     'idade_anos': idade_veiculo
-        #                 }
-        #             
-        #             return {
-        #                 'success': True,
-        #                 'placa': placa_limpa,
-        #                 'marca': dados.get('marca', ''),
-        #                 'modelo': dados.get('modelo', ''),
-        #                 'ano_modelo': str(dados.get('anoModelo', '')),
-        #                 'ano_fabricacao': str(dados.get('anoFabricacao', '')),
-        #                 'cor': dados.get('cor', ''),
-        #                 'valor_fipe': dados.get('valorFipe', ''),
-        #                 'codigo_fipe': dados.get('codigoFipe', ''),
-        #                 'mensagem': 'Veículo encontrado com sucesso'
-        #             }
-        #     except Exception as e:
-        #         logger.error(f"Erro na API paga: {str(e)}")
-
-
-# === BRASIL API - FIPE INTEGRATION ===
-
 @api_router.get("/brasil-api/fipe/marcas/{tipo}")
 async def get_marcas_fipe_brasilapi(
     tipo: str,  # carros, motos, caminhoes
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Busca marcas FIPE usando Brasil API (gratuita) ou FIPEAPI (paga) como fallback
@@ -3574,7 +2134,7 @@ async def get_marcas_fipe_brasilapi(
 async def get_modelos_fipe_brasilapi(
     tipo: str,
     marca_codigo: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Busca modelos FIPE usando Parallelum API (gratuita) ou FIPEAPI (paga) como fallback
@@ -3637,7 +2197,7 @@ async def get_anos_fipe_brasilapi(
     tipo: str,
     marca_codigo: str,
     modelo_codigo: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Busca anos disponíveis de um modelo FIPE usando Parallelum API (gratuita)
@@ -3716,7 +2276,7 @@ async def get_valor_fipe_brasilapi(
     marca_codigo: str,
     modelo_codigo: str,
     ano_codigo: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Busca valor FIPE de um veículo específico usando Parallelum API (gratuita)
@@ -3791,285 +2351,6 @@ async def get_valor_fipe_brasilapi(
         logger.error(f"❌ Exceção ao buscar valor FIPE: {str(e)}")
         return {'success': False, 'message': f'Erro: {str(e)}'}
 
-
-
-@api_router.get("/labelview/planos")
-async def get_labelview_planos(current_user: dict = Depends(get_current_user_dependency)):
-    """
-    Retorna planos de proteção veicular.
-    - Master: vê todos os planos
-    - Unidade/Regional/Consultor: vê apenas planos da sua unidade
-    """
-    try:
-        user_type = current_user.get('user_type', '')
-        unidade_id = current_user.get('unidade_id')
-        franquia_slug = current_user.get('franquia_slug')
-        
-        # Filtro baseado no tipo de usuário
-        filtro = {"ativo": True}
-        
-        if current_user.get('is_labelview_master') or user_type == 'master':
-            # Master vê todos
-            pass
-        elif unidade_id:
-            # Filtra por unidade
-            filtro["unidade_id"] = unidade_id
-        elif franquia_slug:
-            # Filtra por franquia
-            filtro["franquia_slug"] = franquia_slug
-        
-        planos = await db.labelview_planos.find(filtro, {"_id": 0}).sort("ordem", 1).to_list(100)
-        
-        return {"success": True, "planos": planos, "total": len(planos)}
-        
-    except Exception as e:
-        logger.error(f"Erro ao buscar planos: {e}")
-        return {"success": False, "planos": [], "error": str(e)}
-
-@api_router.post("/labelview/planos")
-async def create_labelview_plano(nome: str = Query(...), current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Plano criado"}
-
-@api_router.put("/labelview/planos/{plano_id}")
-async def update_labelview_plano(plano_id: str, nome: str = Query(...), current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Plano atualizado"}
-
-@api_router.patch("/labelview/planos/{plano_id}/block")
-async def toggle_block_labelview_plano(plano_id: str, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Status atualizado"}
-
-@api_router.delete("/labelview/planos/{plano_id}")
-async def delete_labelview_plano(plano_id: str, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Plano excluído"}
-
-# ENDPOINT PARA COTAÇÃO DE PLANOS - Usado pelo fluxo de cotação do consultor
-@api_router.get("/labelview/planos/para-cotacao")
-async def get_planos_para_cotacao(
-    tipo_veiculo_id: str = Query(..., description="ID do tipo de veículo"),
-    valor_fipe: float = Query(..., description="Valor FIPE do veículo"),
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Busca planos disponíveis para cotação baseado no tipo de veículo e valor FIPE.
-    Implementa white-label: consultor vê apenas planos da sua unidade/franquia.
-    
-    Estrutura de planos em labelview_planos:
-    - tipo: 'basico', 'completo', 'premium'
-    - valor_mensal: valor fixo mensal
-    - valor_adesao: taxa de adesão
-    - coberturas: lista de coberturas
-    - unidade_id: vinculação com unidade
-    """
-    try:
-        user_type = current_user.get('user_type')
-        logger.info(f"📋 Buscando planos para cotação - User: {current_user.get('email')} | Tipo Veículo: {tipo_veiculo_id} | FIPE: R$ {valor_fipe}")
-        
-        # Determinar unidade_id baseado no tipo de usuário
-        unidade_id = None
-        franquia_slug = None
-        
-        if user_type == 'labelview_unidade':
-            unidade_id = current_user.get('id')
-        elif user_type in ['labelview_consultor', 'labelview_regional']:
-            unidade_id = current_user.get('unidade_id')
-            # Se consultor não tem unidade_id, tentar via regional
-            if not unidade_id and current_user.get('regional_id'):
-                regional = await db.users.find_one({"id": current_user.get('regional_id')})
-                if regional:
-                    unidade_id = regional.get('unidade_id')
-        elif user_type == 'labelview_master' or current_user.get('is_labelview_master'):
-            # Master pode ver todos os planos
-            pass
-        
-        logger.info(f"📋 Unidade ID identificada: {unidade_id}")
-        
-        # Construir filtro de busca - usar coleção labelview_planos
-        filtro = {"ativo": True}
-        
-        if unidade_id:
-            filtro["unidade_id"] = unidade_id
-        
-        # Buscar planos da unidade
-        planos = await db.labelview_planos.find(
-            filtro,
-            {"_id": 0}
-        ).sort("ordem", 1).to_list(length=100)
-        
-        logger.info(f"📋 Planos encontrados (filtro {filtro}): {len(planos)}")
-        
-        if not planos:
-            logger.warning(f"⚠️ Nenhum plano encontrado para unidade: {unidade_id}")
-            return {
-                "success": False,
-                "message": "Nenhum plano disponível. Contate sua unidade.",
-                "plano": None,
-                "complementos": []
-            }
-        
-        # Selecionar o plano mais adequado (destaque ou primeiro)
-        plano_selecionado = None
-        for plano in planos:
-            if plano.get('destaque'):
-                plano_selecionado = plano
-                break
-        
-        if not plano_selecionado:
-            plano_selecionado = planos[0]
-        
-        # Mapear campos para compatibilidade com frontend
-        plano_selecionado['custo_mensal'] = plano_selecionado.get('valor_mensal', 0)
-        plano_selecionado['taxa_adesao'] = plano_selecionado.get('valor_adesao', 0)
-        
-        # Extrair coberturas como adicionais/complementos
-        coberturas = plano_selecionado.get('coberturas', [])
-        complementos = []
-        for cob in coberturas:
-            if cob.get('ativo'):
-                complementos.append({
-                    "tipo_cobertura": cob.get('nome'),
-                    "descricao": cob.get('descricao', ''),
-                    "percentual": 0,
-                    "valor": 0,  # Já incluído no valor mensal
-                    "incluso": True
-                })
-        
-        logger.info(f"✅ Plano selecionado: {plano_selecionado.get('nome')} | Mensal: R$ {plano_selecionado.get('custo_mensal')}")
-        
-        return {
-            "success": True,
-            "plano": plano_selecionado,
-            "complementos": complementos,
-            "todos_planos": planos,  # Retornar todos para escolha do cliente
-            "message": f"Plano encontrado: {plano_selecionado.get('nome')}"
-        }
-        
-    except Exception as e:
-        logger.error(f"❌ Erro ao buscar planos para cotação: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return {
-            "success": False,
-            "message": f"Erro ao buscar planos: {str(e)}",
-            "plano": None,
-            "complementos": []
-        }
-
-@api_router.get("/labelview/fornecedores")
-async def get_labelview_fornecedores(current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "fornecedores": []}
-
-@api_router.post("/labelview/fornecedores")
-async def create_labelview_fornecedor(fornecedor_data: dict, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Fornecedor criado"}
-
-@api_router.put("/labelview/fornecedores/{fornecedor_id}")
-async def update_labelview_fornecedor(fornecedor_id: str, fornecedor_data: dict, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Fornecedor atualizado"}
-
-@api_router.patch("/labelview/fornecedores/{fornecedor_id}/block")
-async def toggle_block_labelview_fornecedor(fornecedor_id: str, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Status atualizado"}
-
-@api_router.delete("/labelview/fornecedores/{fornecedor_id}")
-async def delete_labelview_fornecedor(fornecedor_id: str, current_user: dict = Depends(get_current_user_dependency)):
-    if not current_user.get('is_labelview_master'):
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    
-    return {"success": True, "message": "Fornecedor excluído"}
-
-@api_router.get("/labelview/configuracoes-unidade/{unidade_id}")
-async def get_configuracoes_unidade(
-    unidade_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Busca configurações específicas de uma unidade Labelview
-    Retorna configurações personalizadas como taxa de processamento, 
-    regras de comissão, etc.
-    """
-    try:
-        # Buscar a unidade
-        unidade = await db.users.find_one({
-            "id": unidade_id,
-            "user_type": "labelview_unidade"
-        })
-        
-        if not unidade:
-            return {
-                "success": False,
-                "message": "Unidade não encontrada"
-            }
-        
-        # Montar configurações da unidade
-        configuracoes = {
-            "unidade_id": unidade_id,
-            "nome_fantasia": unidade.get("nome_fantasia", ""),
-            "email": unidade.get("email", ""),
-            "telefone": unidade.get("phone", ""),
-            "logo_url": unidade.get("logo_url", ""),
-            "cor_primaria": unidade.get("cor_primaria", "#1a59ad"),
-            "cor_secundaria": unidade.get("cor_secundaria", "#2fa31c"),
-            
-            # Configurações de negócio
-            "taxa_processamento": unidade.get("taxa_processamento", 5.0),
-            "prazo_analise_dias": unidade.get("prazo_analise_dias", 2),
-            "permite_pgto_parcelado": unidade.get("permite_pgto_parcelado", True),
-            "max_parcelas": unidade.get("max_parcelas", 12),
-            
-            # Regras de comissão
-            "comissao_consultor": unidade.get("comissao_consultor", 10.0),
-            "comissao_regional": unidade.get("comissao_regional", 5.0),
-            
-            # Documentação obrigatória
-            "documentos_obrigatorios": unidade.get("documentos_obrigatorios", [
-                "cnh_frente",
-                "cnh_verso",
-                "comprovante_residencia",
-                "documento_veiculo"
-            ]),
-            
-            # URLs de modelos de documentos
-            "modelo_cnh_frente_url": unidade.get("modelo_cnh_frente_url", ""),
-            "modelo_cnh_verso_url": unidade.get("modelo_cnh_verso_url", ""),
-            "modelo_comprovante_url": unidade.get("modelo_comprovante_url", ""),
-            "modelo_dut_url": unidade.get("modelo_dut_url", "")
-        }
-        
-        return {
-            "success": True,
-            "configuracoes": configuracoes
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao buscar configurações da unidade: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro ao buscar configurações: {str(e)}"
-        }
 
 # Merchant routes
 # merchant_block1 endpoints moved to modular router
@@ -4909,47 +3190,28 @@ async def get_master_dashboard(current_user: User = Depends(get_current_user)):
     total_clients = await db.users.count_documents({"user_type": {"$in": ["cliente", "client"]}})
     total_merchants = await db.users.count_documents({"user_type": "lojista"})
     total_providers = await db.users.count_documents({"user_type": "service_provider"})
-    
-    # Estatísticas do Labelview
-    labelview_unidades = await db.users.count_documents({"user_type": "labelview_unidade"})
-    labelview_regionais = await db.users.count_documents({"user_type": "labelview_regional"})
-    labelview_consultores = await db.users.count_documents({"user_type": "labelview_consultor"})
-    labelview_masters = await db.users.count_documents({"user_type": "labelview_master"})
+    total_franquias = await db.users.count_documents({"user_type": "labelview_unidade"})
     
     # Transações da plataforma
     platform_transactions_raw = await db.transactions.find(
         {"user_id": current_user.id},
-        {"_id": 0}  # Excluir _id do MongoDB
+        {"_id": 0}
     ).sort("created_at", -1).limit(50).to_list(50)
     
-    # Processar transações com segurança - ignorar campos faltando
     platform_transactions = []
     for t in platform_transactions_raw:
         try:
-            # Garantir campos obrigatórios
             if not t.get("user_id") or not t.get("transaction_type") or not t.get("description"):
                 continue
-            # Garantir amount é float
             t["amount"] = float(t.get("amount", 0))
             t["cashback_amount"] = float(t.get("cashback_amount", 0))
             platform_transactions.append(t)
         except Exception:
             continue
     
-    # Total de comissões
     total_commission = await db.transactions.aggregate([
-        {
-            "$match": {
-                "user_id": current_user.id,
-                "transaction_type": "platform_commission"
-            }
-        },
-        {
-            "$group": {
-                "_id": None,
-                "total": {"$sum": "$amount"}
-            }
-        }
+        {"$match": {"user_id": current_user.id, "transaction_type": "platform_commission"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
     ]).to_list(1)
     
     commission_total = total_commission[0]["total"] if total_commission else 0
@@ -4960,18 +3222,12 @@ async def get_master_dashboard(current_user: User = Depends(get_current_user)):
             "total_clients": total_clients,
             "total_merchants": total_merchants,
             "total_providers": total_providers,
+            "total_franquias": total_franquias,
             "platform_balance": getattr(current_user, 'platform_balance', 0.0),
             "platform_usdt_balance": getattr(current_user, 'platform_usdt_balance', 0.0),
-            "total_commission": commission_total,
-            "labelview": {
-                "unidades": labelview_unidades,
-                "regionais": labelview_regionais,
-                "consultores": labelview_consultores,
-                "masters": labelview_masters,
-                "total": labelview_unidades + labelview_regionais + labelview_consultores + labelview_masters
-            }
+            "total_commission": commission_total
         },
-        "recent_transactions": platform_transactions  # Já processado, não precisa converter
+        "recent_transactions": platform_transactions
     }
 
 # Novos endpoints para dashboard minimalista do master
@@ -5956,60 +4212,13 @@ async def xgate_webhook(payload: XGateWebhookPayload, request: Request):
         raise HTTPException(status_code=500, detail="Webhook processing failed")
 
 # Endpoint para sincronizar full_name com nome_fantasia
-@api_router.get("/labelview/sync-nome")
-async def sync_nome_fantasia(
-    current_user: dict = Depends(get_current_user_dependency)
-):
-    """
-    Sincroniza o full_name com nome_fantasia para usuários labelview.
-    Útil para corrigir dados existentes.
-    """
-    try:
-        user_id = current_user.get('id')
-        user = await db.users.find_one({'id': user_id})
-        
-        if not user:
-            return {"success": False, "message": "Usuário não encontrado"}
-        
-        nome_fantasia = user.get('nome_fantasia')
-        
-        if nome_fantasia:
-            result = await db.users.update_one(
-                {'id': user_id},
-                {'$set': {'full_name': nome_fantasia}}
-            )
-            
-            if result.modified_count > 0:
-                logger.info(f"✅ full_name sincronizado com nome_fantasia: {nome_fantasia}")
-                return {
-                    "success": True,
-                    "message": f"Nome sincronizado: {nome_fantasia}",
-                    "full_name": nome_fantasia
-                }
-            else:
-                return {
-                    "success": True,
-                    "message": "Nomes já estão sincronizados",
-                    "full_name": nome_fantasia
-                }
-        else:
-            return {
-                "success": False,
-                "message": "nome_fantasia não definido para este usuário"
-            }
-            
-    except Exception as e:
-        logger.error(f"Erro ao sincronizar nome: {e}")
-        return {"success": False, "message": str(e)}
-
-
 # ============================================================================
 # 🏢 SISTEMA DE FRANQUIAS WHITE LABEL
 # ============================================================================
 
 @api_router.get("/franquias")
 async def listar_franquias(
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista todas as franquias (apenas para master).
@@ -6040,7 +4249,7 @@ async def listar_franquias(
 @api_router.post("/franquias")
 async def criar_franquia(
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Cria uma nova franquia (apenas para master).
@@ -6132,7 +4341,7 @@ async def obter_franquia(slug: str):
 async def atualizar_franquia(
     franquia_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Atualiza uma franquia (master ou admin da franquia).
@@ -6177,7 +4386,7 @@ async def atualizar_franquia(
 @api_router.delete("/franquias/{franquia_id}")
 async def desativar_franquia(
     franquia_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Desativa uma franquia (apenas master).
@@ -6211,7 +4420,7 @@ async def desativar_franquia(
 async def upload_logo_franquia(
     franquia_id: str,
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Faz upload da logo de uma franquia.
@@ -6289,7 +4498,7 @@ async def upload_logo_franquia(
 @api_router.delete("/franquias/{franquia_id}/logo")
 async def remover_logo_franquia(
     franquia_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Remove a logo de uma franquia.
@@ -6476,7 +4685,7 @@ async def upload_documento_solicitacao(
 @api_router.get("/admin/franquias/solicitacoes")
 async def listar_solicitacoes_franquia(
     status: str = Query(None),
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista solicitações de franquias pendentes (apenas master).
@@ -6512,7 +4721,7 @@ async def listar_solicitacoes_franquia(
 async def atualizar_status_solicitacao(
     solicitacao_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Atualiza status de uma solicitação de franquia.
@@ -6584,8 +4793,6 @@ async def atualizar_status_solicitacao(
             # CRIAR UNIDADE LABELVIEW AUTOMATICAMENTE
             # ========================================
             # Quando uma franquia é aprovada, criar automaticamente uma Unidade Labelview
-            # para que a franquia possa usar o sistema de proteção veicular
-            
             unidade_id = str(uuid.uuid4())
             unidade_labelview = {
                 "id": unidade_id,
@@ -6666,7 +4873,7 @@ async def atualizar_status_solicitacao(
 @api_router.get("/franquias/{franquia_id}/unidades")
 async def listar_unidades_franquia(
     franquia_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista unidades vinculadas a uma franquia.
@@ -6704,7 +4911,7 @@ async def listar_unidades_franquia(
 async def vincular_unidade_franquia(
     franquia_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Vincula uma unidade a uma franquia.
@@ -6751,7 +4958,7 @@ async def vincular_unidade_franquia(
 
 @api_router.post("/franquias/criar-demo")
 async def criar_franquia_demo(
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Cria a franquia demo (Transmill) com as configurações atuais.
@@ -6923,7 +5130,7 @@ async def _get_usdt_conversoes_mes():
         }
 
 @api_router.get("/admin/franquias/stats")
-async def get_franquias_stats(current_user: dict = Depends(get_current_user_dependency)):
+async def get_franquias_stats(current_user: dict = Depends(get_current_user)):
     """
     Retorna estatísticas gerais de todas as franquias para o painel admin.
     Inclui saldo do bolsão, total de clientes, receitas, etc.
@@ -6938,13 +5145,8 @@ async def get_franquias_stats(current_user: dict = Depends(get_current_user_depe
         total_franquias = await db.franquias.count_documents({})
         franquias_ativas = await db.franquias.count_documents({"ativo": True})
         
-        # Contar clientes em todas as franquias (usando a collection correta)
-        # Primeiro tentar labelview_clientes, depois clientes_protecao como fallback
-        total_clientes = await db.labelview_clientes.count_documents({"status": {"$nin": ["cancelado", "inativo"]}})
-        
-        # Se não encontrar clientes em labelview_clientes, tentar clientes_protecao
-        if total_clientes == 0:
-            total_clientes = await db.clientes_protecao.count_documents({"status": {"$ne": "cancelado"}})
+        # Contar clientes em todas as franquias
+        total_clientes = await db.users.count_documents({"user_type": "cliente"})
         
         # Calcular movimentações do mês atual
         inicio_mes = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -7020,7 +5222,7 @@ async def get_franquias_movimentacoes(
     limit: int = Query(50, ge=1, le=200),
     franquia_id: Optional[str] = Query(None),
     tipo: Optional[str] = Query(None),  # "entrada" ou "saida"
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista movimentações financeiras do bolsão.
@@ -7071,7 +5273,7 @@ async def get_franquias_movimentacoes(
 async def get_usdt_movimentacoes(
     limit: int = Query(50, ge=1, le=200),
     tipo: Optional[str] = Query(None),  # "entrada", "saida", "conversao", "transferencia_externa"
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista movimentações USDT do bolsão.
@@ -7111,7 +5313,7 @@ async def get_usdt_movimentacoes(
 @api_router.get("/admin/franquias/usdt/conversoes")
 async def get_usdt_conversoes(
     limit: int = Query(50, ge=1, le=200),
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista conversões USDT/BRL realizadas.
@@ -7147,7 +5349,7 @@ async def get_usdt_conversoes(
 async def get_usdt_transferencias_externas(
     limit: int = Query(50, ge=1, le=200),
     status: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Lista transferências USDT para carteiras externas.
@@ -7184,7 +5386,7 @@ async def get_usdt_transferencias_externas(
 
 
 @api_router.get("/admin/franquias/usdt/cotacao")
-async def get_usdt_cotacao(current_user: dict = Depends(get_current_user_dependency)):
+async def get_usdt_cotacao(current_user: dict = Depends(get_current_user)):
     """
     Retorna a cotação atual USDT/BRL.
     """
@@ -7223,7 +5425,7 @@ async def get_usdt_cotacao(current_user: dict = Depends(get_current_user_depende
 @api_router.post("/admin/franquias/usdt/registrar-movimentacao")
 async def registrar_movimentacao_usdt(
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Registra uma movimentação USDT no bolsão (entrada ou saída).
@@ -7285,7 +5487,7 @@ async def registrar_movimentacao_usdt(
 @api_router.post("/admin/franquias/usdt/registrar-conversao")
 async def registrar_conversao_usdt(
     request: Request,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Registra uma conversão USDT/BRL.
@@ -7388,7 +5590,7 @@ async def registrar_conversao_usdt(
 @api_router.get("/admin/franquias/{franquia_id}/saldo")
 async def get_franquia_saldo(
     franquia_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Retorna o saldo atual de uma franquia específica no bolsão.
@@ -7444,7 +5646,7 @@ async def get_franquia_saldo(
 @api_router.post("/admin/franquias/movimentacao")
 async def registrar_movimentacao(
     dados: dict,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Registra uma nova movimentação financeira no bolsão.
@@ -7512,7 +5714,7 @@ async def registrar_movimentacao(
 
 
 @api_router.get("/admin/franquias/saldos")
-async def get_franquias_saldos(current_user: dict = Depends(get_current_user_dependency)):
+async def get_franquias_saldos(current_user: dict = Depends(get_current_user)):
     """
     Retorna o saldo de todas as franquias no bolsão.
     Para a tabela de saldos por franquia no admin panel.
@@ -7568,7 +5770,7 @@ async def get_franquias_saldos(current_user: dict = Depends(get_current_user_dep
 
 
 @api_router.get("/admin/franquias/taxas")
-async def get_taxas_configuradas(current_user: dict = Depends(get_current_user_dependency)):
+async def get_taxas_configuradas(current_user: dict = Depends(get_current_user)):
     """
     Retorna as taxas configuradas para as franquias.
     """
@@ -7604,7 +5806,7 @@ async def get_taxas_configuradas(current_user: dict = Depends(get_current_user_d
 @api_router.post("/admin/franquias/taxas")
 async def atualizar_taxas(
     taxas: dict,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Atualiza as taxas globais das franquias.
@@ -7644,7 +5846,7 @@ async def atualizar_taxas(
 
 
 @api_router.get("/admin/franquias/taxas-personalizadas")
-async def get_taxas_personalizadas(current_user: dict = Depends(get_current_user_dependency)):
+async def get_taxas_personalizadas(current_user: dict = Depends(get_current_user)):
     """
     Retorna todas as taxas personalizadas por franquia.
     """
@@ -7672,7 +5874,7 @@ async def get_taxas_personalizadas(current_user: dict = Depends(get_current_user
 @api_router.post("/admin/franquias/taxas-personalizadas")
 async def criar_taxa_personalizada(
     dados: dict,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Cria ou atualiza taxa personalizada para uma franquia específica.
@@ -7740,7 +5942,7 @@ async def criar_taxa_personalizada(
 @api_router.delete("/admin/franquias/taxas-personalizadas/{franquia_id}")
 async def excluir_taxa_personalizada(
     franquia_id: str,
-    current_user: dict = Depends(get_current_user_dependency)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Remove taxa personalizada de uma franquia.
@@ -8071,27 +6273,6 @@ async def readiness_check():
         raise HTTPException(status_code=503, detail=f"Service not ready: {str(e)}")
 
 # === ENDPOINT ADMINISTRATIVO - FIX VÍNCULOS COMPLETO ===
-@api_router.post("/admin/fix-all-labelview-users")
-async def fix_all_labelview_users(current_user: dict = Depends(get_current_user)):
-    """
-    Endpoint administrativo para corrigir vínculos de TODOS os usuários Labelview
-    Corrige: Unidades, Regionais, Consultores e Clientes
-    Apenas Master Labelview pode usar
-    """
-    try:
-        # Verificar se é Master
-        if not current_user.get('is_labelview_master') and current_user.get('user_type') != 'labelview_master':
-            raise HTTPException(status_code=403, detail="Apenas Master Labelview pode usar este endpoint")
-        
-        logger.info("🔧 Iniciando correção COMPLETA de vínculos Labelview")
-        
-        resultado = {
-            'unidades': {'total': 0, 'corrigidos': 0, 'erros': []},
-            'regionais': {'total': 0, 'corrigidos': 0, 'erros': []},
-            'consultores': {'total': 0, 'corrigidos': 0, 'erros': []},
-            'clientes': {'total': 0, 'corrigidos': 0, 'erros': []}
-        }
-        
         # ========== 1. CORRIGIR UNIDADES ==========
         logger.info("📋 1/4: Corrigindo UNIDADES...")
         usuarios_unidade = await db.users.find({'user_type': 'labelview_unidade'}).to_list(length=1000)
@@ -10492,900 +8673,6 @@ async def approve_usdt_operation(
         logger.error(f"Erro ao aprovar operação USDT: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# === INTERNET MÓVEL - PLANOS ===
-
-class InternetPlan(BaseModel):
-    name: str
-    description: str
-    price: float
-    cashback_percentage: float = 5.0      # Percentual de cashback oferecido
-    image_url: Optional[str] = None
-    data_limit_gb: Optional[int] = None  # Limite de dados em GB
-    validity_days: Optional[int] = 30     # Validade em dias
-    speed_mbps: Optional[str] = None      # Velocidade
-    features: Optional[List[str]] = []    # Lista de características
-    is_active: bool = True
-
-# MASTER: internet-plans CRUD endpoints migrados para routes/master.py
-
-
-@api_router.get("/master/internet-plans/sales")
-async def get_internet_sales(
-    current_user: User = Depends(get_current_user),
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100
-):
-    """Listar todas as vendas de planos de internet (master)"""
-    if not current_user.is_master_account:
-        raise HTTPException(status_code=403, detail="Acesso restrito a contas master")
-    
-    try:
-        # Filtro de data
-        query = {}
-        if start_date or end_date:
-            query["purchase_date"] = {}
-            if start_date:
-                query["purchase_date"]["$gte"] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            if end_date:
-                query["purchase_date"]["$lte"] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-        
-        # Buscar compras
-        purchases_cursor = db.internet_purchases.find(query).sort("purchase_date", -1).limit(limit)
-        purchases = await purchases_cursor.to_list(limit)
-        
-        # Enriquecer com dados do usuário
-        for purchase in purchases:
-            user = await db.users.find_one({"id": purchase["user_id"]})
-            if user:
-                purchase["customer_name"] = user.get("full_name", "Usuário")
-                purchase["customer_email"] = user.get("email", "")
-            
-            # Serializar datas
-            if isinstance(purchase.get("purchase_date"), datetime):
-                purchase["purchase_date"] = purchase["purchase_date"].isoformat()
-            if isinstance(purchase.get("expiry_date"), datetime):
-                purchase["expiry_date"] = purchase["expiry_date"].isoformat()
-            
-            purchase["_id"] = str(purchase["_id"])
-        
-        # Calcular totais
-        total_sales = sum(p.get("amount_paid", 0) for p in purchases)
-        total_count = len(purchases)
-        
-        return {
-            "success": True,
-            "sales": purchases,
-            "total_count": total_count,
-            "total_revenue": total_sales,
-            "formatted_revenue": f"R$ {total_sales:.2f}"
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar vendas de internet: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@api_router.get("/master/telemedicine-plans/sales")
-async def get_telemedicine_sales(
-    current_user: User = Depends(get_current_user),
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100
-):
-    """Listar todas as vendas de planos de telemedicina (master)"""
-    if not current_user.is_master_account:
-        raise HTTPException(status_code=403, detail="Acesso restrito a contas master")
-    
-    try:
-        # Filtro de data
-        query = {}
-        if start_date or end_date:
-            query["purchase_date"] = {}
-            if start_date:
-                query["purchase_date"]["$gte"] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            if end_date:
-                query["purchase_date"]["$lte"] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-        
-        # Buscar compras
-        purchases_cursor = db.telemedicine_purchases.find(query).sort("purchase_date", -1).limit(limit)
-        purchases = await purchases_cursor.to_list(limit)
-        
-        # Enriquecer com dados do usuário
-        for purchase in purchases:
-            user = await db.users.find_one({"id": purchase["user_id"]})
-            if user:
-                purchase["customer_name"] = user.get("full_name", "Usuário")
-                purchase["customer_email"] = user.get("email", "")
-            
-            # Serializar datas
-            if isinstance(purchase.get("purchase_date"), datetime):
-                purchase["purchase_date"] = purchase["purchase_date"].isoformat()
-            if isinstance(purchase.get("expiry_date"), datetime):
-                purchase["expiry_date"] = purchase["expiry_date"].isoformat()
-            
-            purchase["_id"] = str(purchase["_id"])
-        
-        # Calcular totais
-        total_sales = sum(p.get("amount_paid", 0) for p in purchases)
-        total_count = len(purchases)
-        
-        return {
-            "success": True,
-            "sales": purchases,
-            "total_count": total_count,
-            "total_revenue": total_sales,
-            "formatted_revenue": f"R$ {total_sales:.2f}"
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar vendas de telemedicina: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-# === INTERNET MÓVEL - CLIENTE ===
-
-@api_router.get("/internet-plans")
-async def get_available_internet_plans(
-    franquia_slug: Optional[str] = None,
-    current_user = Depends(get_current_user)
-):
-    """Listar planos de internet disponíveis com white-label"""
-    try:
-        # Construir filtro base
-        filtro = {"is_active": True}
-        
-        # Aplicar filtro de franquia (white-label)
-        franquia_filter = await get_franquia_filter(current_user)
-        if franquia_filter:
-            filtro.update(franquia_filter)
-        
-        # Override se franquia_slug foi passado explicitamente
-        if franquia_slug:
-            filtro["franquia_slug"] = franquia_slug
-        
-        plans_cursor = db.internet_plans.find(filtro).sort("price", 1)
-        plans = await plans_cursor.to_list(100)
-        
-        # Obter contexto para branding
-        context = await get_franquia_context(current_user)
-        
-        # Serializar datas e formatar dados para cliente
-        formatted_plans = []
-        for plan in plans:
-            formatted_plan = {
-                "id": plan["id"],
-                "name": plan["name"],
-                "description": plan["description"],
-                "price": plan["price"],
-                "cashback_percentage": plan.get("cashback_percentage", 5.0),
-                "image_url": plan.get("image_url"),
-                "data_limit_gb": plan.get("data_limit_gb"),
-                "validity_days": plan.get("validity_days", 30),
-                "speed_mbps": plan.get("speed_mbps"),
-                "features": plan.get("features", []),
-                "formatted_price": f"R$ {plan['price']:.2f}",
-                "formatted_data": f"{plan.get('data_limit_gb', 0)} GB" if plan.get("data_limit_gb") else "Ilimitado",
-                "formatted_validity": f"{plan.get('validity_days', 30)} dias",
-                "formatted_cashback": f"{plan.get('cashback_percentage', 5.0):.1f}% cashback"
-            }
-            formatted_plans.append(formatted_plan)
-        
-        return {
-            "success": True,
-            "franquia_nome": context["franquia_nome"],
-            "service_name": f"{context['franquia_nome']} Internet",
-            "plans": formatted_plans,
-            "total": len(formatted_plans)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar planos disponíveis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@api_router.post("/internet-plans/{plan_id}/purchase")
-async def purchase_internet_plan(
-    plan_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    """Comprar plano de internet com saldo da conta"""
-    try:
-        # Buscar plano
-        plan = await db.internet_plans.find_one({"id": plan_id, "is_active": True})
-        if not plan:
-            raise HTTPException(status_code=404, detail="Plano não encontrado ou indisponível")
-        
-        # Verificar saldo do usuário
-        if current_user.balance < plan["price"]:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Saldo insuficiente. Necessário: R$ {plan['price']:.2f}, Disponível: R$ {current_user.balance:.2f}"
-            )
-        
-        # Calcular data de expiração
-        now = datetime.now(timezone.utc)
-        expiry_date = now + timedelta(days=plan.get("validity_days", 30))
-        
-        # Criar registro de compra
-        purchase_id = str(uuid.uuid4())
-        purchase = {
-            "id": purchase_id,
-            "user_id": current_user.id,
-            "plan_id": plan_id,
-            "plan_name": plan["name"],
-            "amount_paid": plan["price"],
-            "purchase_date": now,
-            "expiry_date": expiry_date,
-            "data_limit_gb": plan.get("data_limit_gb"),
-            "data_used_gb": 0,
-            "status": "active",
-            "validity_days": plan.get("validity_days", 30)
-        }
-        
-        # Calcular cashback total
-        cashback_percentage = plan.get("cashback_percentage", 5.0)
-        total_cashback = (plan["price"] * cashback_percentage) / 100
-        
-        # DISTRIBUIÇÃO DO CASHBACK CONFORME REGRAS DA PLATAFORMA:
-        # 50% = comprador, 10% = indicador comprador, 10% = indicador loja (plataforma),
-        # 10% = Sócio Operador Estado, 5% = Mini Agencia Cidade, 5% = Consultor, 10% = Master
-        client_cashback = total_cashback * 0.50          # 50% para o cliente
-        client_referrer_bonus = total_cashback * 0.10    # 10% para quem indicou o cliente
-        platform_referrer_bonus = total_cashback * 0.10  # 10% para indicador da "loja" (plataforma)
-        hierarchical_commission = total_cashback * 0.30  # 30% para distribuição hierárquica (10%+5%+5%+10%)
-        
-        # Debitar saldo do cliente
-        new_balance = current_user.balance - plan["price"]
-        await db.users.update_one(
-            {"id": current_user.id},
-            {"$set": {"balance": new_balance}}
-        )
-        
-        # 1. Creditar cashback para o cliente (50%)
-        new_cashback_balance = current_user.cashback_balance + client_cashback
-        await db.users.update_one(
-            {"id": current_user.id},
-            {"$inc": {"cashback_balance": client_cashback}}
-        )
-        
-        transactions_to_save = []
-        
-        # 2. Distribuir para indicador do cliente (10%)
-        if current_user.referred_by:
-            referrer = await db.users.find_one({"id": current_user.referred_by})
-            if referrer:
-                await db.users.update_one(
-                    {"id": referrer["id"]},
-                    {"$inc": {"cashback_balance": client_referrer_bonus}}
-                )
-                
-                referrer_transaction = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": referrer["id"],
-                    "transaction_type": "referral_bonus_internet",
-                    "amount": client_referrer_bonus,
-                    "description": f"Bônus por indicação - Internet Móvel: {plan['name']}",
-                    "status": "completed",
-                    "created_at": now,
-                    "metadata": {
-                        "referred_user_id": current_user.id,
-                        "plan_name": plan["name"],
-                        "source": "internet_plan_purchase"
-                    }
-                }
-                transactions_to_save.append(referrer_transaction)
-        else:
-            # Se não há indicador do cliente, vai para master
-            hierarchical_commission += client_referrer_bonus
-        
-        # 3. Distribuir comissões hierárquicas (30% total: 10% + 5% + 5% + 10%)
-        # Para internet móvel, consideramos a plataforma como "lojista" na localização padrão
-        platform_state = "SP"  # Estado padrão da plataforma
-        platform_city = "São Paulo"  # Cidade padrão da plataforma
-        
-        distributed_hierarchical = await distribute_hierarchical_commissions(
-            commission_amount=hierarchical_commission,
-            merchant_state=platform_state,
-            merchant_city=platform_city,
-            client_id=current_user.id,
-            merchant_id="platform",  # ID da plataforma
-            description=f"Internet Móvel: {plan['name']}"
-        )
-        
-        # 4. O que não foi distribuído pela hierarquia vai para master
-        master_commission = hierarchical_commission - distributed_hierarchical
-        if master_commission > 0:
-            platform_account = await db.users.find_one({"is_master_account": True})
-            if platform_account:
-                await db.users.update_one(
-                    {"id": platform_account["id"]},
-                    {"$inc": {"cashback_balance": master_commission}}
-                )
-                
-                master_transaction = {
-                    "id": str(uuid.uuid4()),
-                    "user_id": platform_account["id"],
-                    "transaction_type": "platform_commission_internet",
-                    "amount": master_commission,
-                    "description": f"Comissão Internet Móvel: {plan['name']}",
-                    "status": "completed",
-                    "created_at": now,
-                    "metadata": {
-                        "client_id": current_user.id,
-                        "plan_name": plan["name"],
-                        "source": "internet_plan_purchase"
-                    }
-                }
-                transactions_to_save.append(master_transaction)
-        
-        # Adicionar informações de cashback na compra
-        purchase["cashback_percentage"] = cashback_percentage
-        purchase["total_cashback_generated"] = total_cashback
-        purchase["client_cashback_received"] = client_cashback
-        purchase["cashback_distribution"] = {
-            "client": client_cashback,
-            "client_referrer": client_referrer_bonus if current_user.referred_by else 0,
-            "platform_referrer": 0,  # Não aplicável para internet móvel
-            "hierarchical_total": hierarchical_commission,
-            "hierarchical_distributed": distributed_hierarchical,
-            "master_commission": master_commission
-        }
-        
-        # Inserir compra
-        await db.internet_purchases.insert_one(purchase)
-        
-        # Criar transação principal para histórico do cliente
-        client_transaction = {
-            "id": str(uuid.uuid4()),
-            "user_id": current_user.id,
-            "transaction_type": "internet_plan_purchase",
-            "amount": -plan["price"],
-            "description": f"Compra do plano {plan['name']}",
-            "balance_after": new_balance,
-            "status": "completed",
-            "created_at": now,
-            "metadata": {
-                "plan_id": plan_id,
-                "purchase_id": purchase_id,
-                "plan_name": plan["name"],
-                "cashback_generated": total_cashback,
-                "cashback_received": client_cashback,
-                "cashback_percentage": cashback_percentage
-            }
-        }
-        transactions_to_save.append(client_transaction)
-        
-        # Transação do cashback recebido pelo cliente
-        cashback_transaction = {
-            "id": str(uuid.uuid4()),
-            "user_id": current_user.id,
-            "transaction_type": "cashback_internet",
-            "amount": client_cashback,
-            "description": f"Cashback {cashback_percentage}% - {plan['name']}",
-            "cashback_balance_after": new_cashback_balance,
-            "status": "completed",
-            "created_at": now,
-            "metadata": {
-                "plan_id": plan_id,
-                "purchase_id": purchase_id,
-                "plan_name": plan["name"],
-                "total_cashback_generated": total_cashback
-            }
-        }
-        transactions_to_save.append(cashback_transaction)
-        
-        # Inserir todas as transações
-        if transactions_to_save:
-            await db.transactions.insert_many(transactions_to_save)
-        
-        return {
-            "success": True,
-            "message": f"Plano {plan['name']} adquirido com sucesso! Você ganhou R$ {client_cashback:.2f} de cashback ({cashback_percentage}%)!",
-            "purchase": {
-                "id": purchase_id,
-                "plan_name": plan["name"],
-                "amount_paid": plan["price"],
-                "cashback_earned": client_cashback,
-                "cashback_percentage": cashback_percentage,
-                "total_cashback_generated": total_cashback,
-                "expiry_date": expiry_date.isoformat(),
-                "data_limit_gb": plan.get("data_limit_gb"),
-                "validity_days": plan.get("validity_days", 30)
-            },
-            "cashback_distribution": {
-                "your_cashback": client_cashback,
-                "referral_bonus": client_referrer_bonus if current_user.referred_by else 0,
-                "platform_commission": hierarchical_commission,
-                "total_distributed": total_cashback
-            },
-            "new_balance": new_balance,
-            "new_cashback_balance": new_cashback_balance
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao comprar plano: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@api_router.get("/my-internet-plans")
-async def get_my_internet_plans(current_user: User = Depends(get_current_user)):
-    """Listar planos de internet do usuário"""
-    try:
-        purchases_cursor = db.internet_purchases.find({"user_id": current_user.id}).sort("purchase_date", -1)
-        purchases = await purchases_cursor.to_list(100)
-        
-        # Formatar dados
-        formatted_purchases = []
-        for purchase in purchases:
-            formatted_purchase = {
-                "id": purchase["id"],
-                "plan_name": purchase["plan_name"],
-                "amount_paid": purchase["amount_paid"],
-                "purchase_date": purchase["purchase_date"].isoformat(),
-                "expiry_date": purchase["expiry_date"].isoformat(),
-                "data_limit_gb": purchase.get("data_limit_gb"),
-                "data_used_gb": purchase.get("data_used_gb", 0),
-                "status": purchase["status"],
-                "validity_days": purchase.get("validity_days", 30),
-                "is_expired": datetime.now(timezone.utc) > purchase["expiry_date"].replace(tzinfo=timezone.utc) if purchase["expiry_date"].tzinfo is None else datetime.now(timezone.utc) > purchase["expiry_date"],
-                "days_remaining": max(0, ((purchase["expiry_date"].replace(tzinfo=timezone.utc) if purchase["expiry_date"].tzinfo is None else purchase["expiry_date"]) - datetime.now(timezone.utc)).days)
-            }
-            formatted_purchases.append(formatted_purchase)
-        
-        return {
-            "success": True,
-            "purchases": formatted_purchases,
-            "total": len(formatted_purchases)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar planos do usuário: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-# =============================================================================
-# TELEMEDICINA - SISTEMA DE PLANOS
-# =============================================================================
-
-class TelemedicinePlan(BaseModel):
-    name: str
-    description: str
-    price: float
-    cashback_percentage: float = 5.0      # Percentual de cashback oferecido
-    image_url: Optional[str] = None
-    consultations_included: Optional[int] = None  # Número de consultas incluídas
-    validity_days: Optional[int] = 30     # Validade em dias
-    specialties: Optional[List[str]] = []  # Especialidades disponíveis
-    features: Optional[List[str]] = []    # Lista de características
-    is_active: bool = True
-
-# MASTER: telemedicine-plans CRUD endpoints migrados para routes/master.py
-
-# === TELEMEDICINA - CLIENTE (VISUALIZAR E COMPRAR PLANOS) ===
-
-@api_router.get("/telemedicine-plans")
-async def get_available_telemedicine_plans():
-    """Listar planos de telemedicina disponíveis (público)"""
-    try:
-        plans_cursor = db.telemedicine_plans.find({"is_active": True}).sort("price", 1)
-        plans = await plans_cursor.to_list(100)
-        
-        # Serializar datas e formatar dados para cliente
-        formatted_plans = []
-        for plan in plans:
-            formatted_plan = {
-                "id": plan["id"],
-                "name": plan["name"],
-                "description": plan["description"],
-                "price": plan["price"],
-                "cashback_percentage": plan.get("cashback_percentage", 5.0),
-                "formatted_cashback": f"{plan.get('cashback_percentage', 5.0):.1f}%",
-                "formatted_price": f"R$ {plan['price']:.2f}",
-                "image_url": plan.get("image_url"),
-                "consultations_included": plan.get("consultations_included"),
-                "validity_days": plan.get("validity_days", 30),
-                "specialties": plan.get("specialties", []),
-                "features": plan.get("features", [])
-            }
-            formatted_plans.append(formatted_plan)
-        
-        return {
-            "success": True,
-            "plans": formatted_plans,
-            "total": len(formatted_plans)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar planos de telemedicina disponíveis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@api_router.post("/telemedicine-plans/{plan_id}/purchase")
-async def purchase_telemedicine_plan(
-    plan_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    """Comprar plano de telemedicina com saldo da conta"""
-    try:
-        # Buscar plano
-        plan = await db.telemedicine_plans.find_one({"id": plan_id, "is_active": True})
-        if not plan:
-            raise HTTPException(status_code=404, detail="Plano não encontrado ou indisponível")
-        
-        # Verificar saldo do usuário (balance + cashback)
-        total_balance = current_user.balance + current_user.cashback_balance
-        if total_balance < plan["price"]:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Saldo insuficiente. Necessário: R$ {plan['price']:.2f}, Disponível: R$ {total_balance:.2f}"
-            )
-        
-        # Calcular cashback
-        cashback_percentage = plan.get("cashback_percentage", 5.0)
-        cashback_amount = plan["price"] * (cashback_percentage / 100)
-        
-        # Debitar do saldo (primeiro do cashback, depois do balance)
-        amount_to_debit = plan["price"]
-        cashback_used = 0
-        balance_used = 0
-        
-        if current_user.cashback_balance >= amount_to_debit:
-            cashback_used = amount_to_debit
-        else:
-            cashback_used = current_user.cashback_balance
-            balance_used = amount_to_debit - cashback_used
-        
-        new_cashback = current_user.cashback_balance - cashback_used
-        new_balance = current_user.balance - balance_used
-        
-        # Atualizar saldo do usuário (debitar)
-        await db.users.update_one(
-            {"id": current_user.id},
-            {
-                "$set": {
-                    "balance": new_balance,
-                    "cashback_balance": new_cashback
-                }
-            }
-        )
-        
-        # Criar registro de compra
-        purchase_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
-        expiry_date = now + timedelta(days=plan.get("validity_days", 30))
-        
-        purchase = {
-            "id": purchase_id,
-            "user_id": current_user.id,
-            "plan_id": plan["id"],
-            "plan_name": plan["name"],
-            "price": plan["price"],
-            "consultations_included": plan.get("consultations_included"),
-            "consultations_remaining": plan.get("consultations_included"),
-            "validity_days": plan.get("validity_days", 30),
-            "specialties": plan.get("specialties", []),
-            "cashback_percentage": cashback_percentage,
-            "cashback_earned": cashback_amount,
-            "purchase_date": now,
-            "expiry_date": expiry_date,
-            "is_active": True,
-            "status": "active"
-        }
-        
-        await db.telemedicine_purchases.insert_one(purchase)
-        
-        # Registrar transação de débito
-        debit_transaction_id = str(uuid.uuid4())
-        debit_transaction = {
-            "id": debit_transaction_id,
-            "user_id": current_user.id,
-            "type": "telemedicine_purchase",
-            "amount": -plan["price"],
-            "balance_after": new_balance + new_cashback,
-            "description": f"Compra: {plan['name']}",
-            "status": "completed",
-            "metadata": {
-                "purchase_id": purchase_id,
-                "plan_id": plan["id"],
-                "plan_name": plan["name"],
-                "cashback_used": cashback_used,
-                "balance_used": balance_used
-            },
-            "created_at": now
-        }
-        await db.transactions.insert_one(debit_transaction)
-        
-        # Calcular e distribuir cashback conforme regras da plataforma
-        # 50% cliente + 10% indicador + 30% hierárquica + 10% master
-        
-        client_cashback = cashback_amount * 0.50  # 50% para o cliente
-        referrer_cashback = cashback_amount * 0.10  # 10% para o indicador
-        hierarchical_cashback = cashback_amount * 0.30  # 30% para a hierarquia
-        master_cashback = cashback_amount * 0.10  # 10% para o master
-        
-        cashback_distribution = {
-            "total": cashback_amount,
-            "client": client_cashback,
-            "referrer": referrer_cashback,
-            "hierarchical": hierarchical_cashback,
-            "master": master_cashback
-        }
-        
-        # Creditar cashback do cliente (50%)
-        await db.users.update_one(
-            {"id": current_user.id},
-            {"$inc": {"cashback_balance": client_cashback}}
-        )
-        
-        # Registrar transação de cashback do cliente
-        client_cashback_transaction_id = str(uuid.uuid4())
-        client_cashback_transaction = {
-            "id": client_cashback_transaction_id,
-            "user_id": current_user.id,
-            "type": "telemedicine_cashback",
-            "amount": client_cashback,
-            "balance_after": new_balance + new_cashback + client_cashback,
-            "description": f"Cashback: {plan['name']} (50%)",
-            "status": "completed",
-            "metadata": {
-                "purchase_id": purchase_id,
-                "plan_id": plan["id"],
-                "cashback_percentage": cashback_percentage,
-                "original_amount": plan["price"]
-            },
-            "created_at": now
-        }
-        await db.transactions.insert_one(client_cashback_transaction)
-        
-        # Processar cashback do indicador (10%) se houver
-        if current_user.referred_by:
-            referrer = await db.users.find_one({"referral_code": current_user.referred_by})
-            if referrer:
-                await db.users.update_one(
-                    {"id": referrer["id"]},
-                    {"$inc": {"cashback_balance": referrer_cashback}}
-                )
-                
-                referrer_transaction_id = str(uuid.uuid4())
-                referrer_transaction = {
-                    "id": referrer_transaction_id,
-                    "user_id": referrer["id"],
-                    "type": "referral_commission",
-                    "amount": referrer_cashback,
-                    "balance_after": referrer["balance"] + referrer.get("cashback_balance", 0) + referrer_cashback,
-                    "description": f"Comissão de indicação: {current_user.full_name or current_user.email}",
-                    "status": "completed",
-                    "metadata": {
-                        "referred_user_id": current_user.id,
-                        "purchase_id": purchase_id,
-                        "plan_name": plan["name"],
-                        "commission_percentage": 10.0
-                    },
-                    "created_at": now
-                }
-                await db.transactions.insert_one(referrer_transaction)
-            else:
-                # Se não encontrou indicador, valor vai para o master
-                master_cashback += referrer_cashback
-        else:
-            # Se não tem indicador, valor vai para o master
-            master_cashback += referrer_cashback
-        
-        # Processar comissões hierárquicas (30%)
-        try:
-            from services.hierarchy_service import distribute_hierarchical_commissions
-            hierarchical_result = await distribute_hierarchical_commissions(
-                user_id=current_user.id,
-                amount=hierarchical_cashback,
-                transaction_type="telemedicine_cashback",
-                description=f"Comissão hierárquica: {plan['name']}",
-                metadata={
-                    "purchase_id": purchase_id,
-                    "plan_id": plan["id"],
-                    "plan_name": plan["name"]
-                }
-            )
-            
-            # Se sobrou valor não distribuído, adicionar ao master
-            if hierarchical_result.get("remaining_amount", 0) > 0:
-                master_cashback += hierarchical_result["remaining_amount"]
-                
-        except Exception as e:
-            logger.warning(f"Erro ao distribuir comissões hierárquicas: {e}")
-            # Em caso de erro, adicionar todo o valor hierárquico ao master
-            master_cashback += hierarchical_cashback
-        
-        # Creditar cashback do master
-        master_user = await db.users.find_one({"is_master_account": True})
-        if master_user:
-            await db.users.update_one(
-                {"id": master_user["id"]},
-                {"$inc": {"platform_balance": master_cashback}}
-            )
-            
-            master_transaction_id = str(uuid.uuid4())
-            master_transaction = {
-                "id": master_transaction_id,
-                "user_id": master_user["id"],
-                "type": "platform_commission",
-                "amount": master_cashback,
-                "balance_after": master_user.get("platform_balance", 0) + master_cashback,
-                "description": f"Comissão plataforma: {plan['name']}",
-                "status": "completed",
-                "metadata": {
-                    "purchase_id": purchase_id,
-                    "buyer_id": current_user.id,
-                    "plan_name": plan["name"]
-                },
-                "created_at": now
-            }
-            await db.transactions.insert_one(master_transaction)
-        
-        return {
-            "success": True,
-            "message": f"Plano {plan['name']} adquirido com sucesso! Cashback de R$ {client_cashback:.2f} creditado.",
-            "purchase": {
-                "id": purchase_id,
-                "plan_name": plan["name"],
-                "price": plan["price"],
-                "cashback_earned": client_cashback,
-                "expiry_date": expiry_date.isoformat(),
-                "consultations_included": plan.get("consultations_included"),
-                "validity_days": plan.get("validity_days", 30)
-            },
-            "new_balance": {
-                "balance": new_balance,
-                "cashback": new_cashback + client_cashback,
-                "total": new_balance + new_cashback + client_cashback
-            },
-            "cashback_distribution": cashback_distribution
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao comprar plano de telemedicina: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@api_router.get("/my-telemedicine-plans")
-async def get_my_telemedicine_plans(current_user: User = Depends(get_current_user)):
-    """Listar planos de telemedicina do usuário"""
-    try:
-        purchases_cursor = db.telemedicine_purchases.find({"user_id": current_user.id}).sort("purchase_date", -1)
-        purchases = await purchases_cursor.to_list(100)
-        
-        # Formatar dados
-        formatted_purchases = []
-        for purchase in purchases:
-            # Verificar se o plano ainda está ativo (não expirou)
-            now = datetime.now(timezone.utc)
-            expiry_date = purchase["expiry_date"]
-            if expiry_date.tzinfo is None:
-                expiry_date = expiry_date.replace(tzinfo=timezone.utc)
-            
-            is_expired = now > expiry_date
-            
-            formatted_purchase = {
-                "id": purchase["id"],
-                "plan_name": purchase["plan_name"],
-                "price": purchase["price"],
-                "consultations_included": purchase.get("consultations_included"),
-                "consultations_remaining": purchase.get("consultations_remaining"),
-                "validity_days": purchase.get("validity_days", 30),
-                "specialties": purchase.get("specialties", []),
-                "cashback_earned": purchase.get("cashback_earned", 0),
-                "purchase_date": purchase["purchase_date"].isoformat(),
-                "expiry_date": expiry_date.isoformat(),
-                "is_active": not is_expired,
-                "status": "expired" if is_expired else "active",
-                "days_remaining": max(0, (expiry_date - now).days)
-            }
-            formatted_purchases.append(formatted_purchase)
-        
-        return {
-            "success": True,
-            "purchases": formatted_purchases,
-            "total": len(formatted_purchases)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro ao listar planos de telemedicina do usuário: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-# =============================================================================
-# SUB-USUÁRIOS - GESTÃO DE COLABORADORES
-# =============================================================================
-# NOTA: Estes endpoints foram MOVIDOS para /app/backend/routes/subusers.py
-# Os endpoints abaixo estão comentados mas mantidos para referência.
-# Se precisar da funcionalidade original, descomente e remova o router.
-# =============================================================================
-
-# Os endpoints de subusers agora estão em:
-# - POST /api/subusers -> routes/subusers.py
-# - GET /api/subusers -> routes/subusers.py
-# - GET /api/subusers/{id} -> routes/subusers.py
-# - PUT /api/subusers/{id} -> routes/subusers.py
-# - DELETE /api/subusers/{id} -> routes/subusers.py
-# - POST /api/auth/subuser-login -> routes/subusers.py
-
-
-# === SISTEMA POS - QR CODE E PAGAMENTOS ===
-
-class POSChargeRequest(BaseModel):
-    amount: float
-    description: Optional[str] = ""
-    customer_info: Optional[dict] = {}
-
-class PaymentCodeRequest(BaseModel):
-    code: str
-
-@api_router.post("/pos/generate-charge")
-async def generate_pos_charge(
-    request: POSChargeRequest,
-    current_user: User = Depends(get_current_user)
-):
-    """Gerar código de cobrança para POS (lojistas e prestadores)"""
-    try:
-        # Verificar se é lojista ou prestador
-        if current_user.user_type not in ['lojista', 'service_provider']:
-            raise HTTPException(status_code=403, detail="Acesso restrito a lojistas e prestadores")
-
-        # Gerar código único
-        charge_id = str(uuid.uuid4())
-        payment_code = f"AGC{charge_id[:8].upper()}"
-        
-        now = datetime.now(timezone.utc)
-        expiry_time = now + timedelta(minutes=30)  # Código expira em 30 minutos
-        
-        # Criar registro de cobrança
-        charge = {
-            "id": charge_id,
-            "payment_code": payment_code,
-            "merchant_id": current_user.id,
-            "merchant_name": current_user.company_name or current_user.full_name,
-            "merchant_type": current_user.user_type,
-            "amount": request.amount,
-            "description": request.description or f"Cobrança - {current_user.company_name or current_user.full_name}",
-            "customer_info": request.customer_info,
-            "status": "pending",
-            "created_at": now,
-            "expires_at": expiry_time,
-            "paid_at": None,
-            "paid_by": None
-        }
-        
-        # Salvar no banco
-        await db.pos_charges.insert_one(charge)
-        
-        # Gerar dados do QR Code (JSON com informações do pagamento)
-        qr_data = {
-            "type": "transmill_payment",
-            "code": payment_code,
-            "amount": request.amount,
-            "merchant": current_user.company_name or current_user.full_name,
-            "description": charge["description"],
-            "expires_at": expiry_time.isoformat()
-        }
-        
-        return {
-            "success": True,
-            "charge_id": charge_id,
-            "payment_code": payment_code,
-            "qr_data": qr_data,
-            "amount": request.amount,
-            "merchant_name": current_user.company_name or current_user.full_name,
-            "description": charge["description"],
-            "expires_at": expiry_time.isoformat(),
-            "expires_in_minutes": 30
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao gerar cobrança POS: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
 @api_router.get("/pos/charge/{payment_code}")
 async def get_charge_details(payment_code: str):
     """Obter detalhes de uma cobrança pelo código"""
@@ -12122,229 +9409,6 @@ async def update_appointment_status(
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
-# === CHATBOT INTERNO - ENDPOINTS ===
-
-@api_router.post("/master/chatbot/commands")
-async def create_chatbot_command(
-    command: ChatbotCommandCreate,
-    current_user: User = Depends(get_current_user)
-):
-    """Cria um novo comando para o chatbot (apenas master)"""
-    try:
-        # Verificar se é master
-        if not current_user.is_master_account:
-            raise HTTPException(status_code=403, detail="Apenas master pode gerenciar comandos do chatbot")
-        
-        # Validar keywords
-        if not command.keywords or len(command.keywords) == 0:
-            raise HTTPException(status_code=400, detail="É necessário pelo menos uma palavra-chave")
-        
-        # Normalizar keywords (lowercase e sem espaços extras)
-        normalized_keywords = [kw.lower().strip() for kw in command.keywords]
-        
-        # Criar comando
-        command_id = str(uuid.uuid4())
-        command_data = {
-            "id": command_id,
-            "keywords": normalized_keywords,
-            "response": command.response,
-            "action_type": command.action_type or "navigate",
-            "action_target": command.action_target,
-            "action_label": command.action_label or "Ir para esta área",
-            "priority": command.priority or 0,
-            "is_active": True,
-            "created_by": current_user.id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-        
-        await db.chatbot_commands.insert_one(command_data)
-        
-        return {
-            "success": True,
-            "message": "Comando criado com sucesso",
-            "command": ChatbotCommand(**command_data)
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao criar comando chatbot: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@api_router.get("/master/chatbot/commands")
-async def list_chatbot_commands(current_user: User = Depends(get_current_user)):
-    """Lista todos os comandos do chatbot (apenas master)"""
-    try:
-        # Verificar se é master
-        if not current_user.is_master_account:
-            raise HTTPException(status_code=403, detail="Apenas master pode visualizar comandos do chatbot")
-        
-        # Buscar comandos ordenados por prioridade
-        commands = await db.chatbot_commands.find().sort("priority", -1).to_list(1000)
-        
-        return {
-            "success": True,
-            "commands": [ChatbotCommand(**cmd) for cmd in commands],
-            "total": len(commands)
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao listar comandos chatbot: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@api_router.put("/master/chatbot/commands/{command_id}")
-async def update_chatbot_command(
-    command_id: str,
-    command: ChatbotCommandUpdate,
-    current_user: User = Depends(get_current_user)
-):
-    """Atualiza um comando do chatbot (apenas master)"""
-    try:
-        # Verificar se é master
-        if not current_user.is_master_account:
-            raise HTTPException(status_code=403, detail="Apenas master pode editar comandos do chatbot")
-        
-        # Verificar se comando existe
-        existing = await db.chatbot_commands.find_one({"id": command_id})
-        if not existing:
-            raise HTTPException(status_code=404, detail="Comando não encontrado")
-        
-        # Preparar dados de atualização
-        update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
-        
-        if command.keywords is not None:
-            update_data["keywords"] = [kw.lower().strip() for kw in command.keywords]
-        if command.response is not None:
-            update_data["response"] = command.response
-        if command.action_type is not None:
-            update_data["action_type"] = command.action_type
-        if command.action_target is not None:
-            update_data["action_target"] = command.action_target
-        if command.action_label is not None:
-            update_data["action_label"] = command.action_label
-        if command.priority is not None:
-            update_data["priority"] = command.priority
-        if command.is_active is not None:
-            update_data["is_active"] = command.is_active
-        
-        # Atualizar comando
-        await db.chatbot_commands.update_one(
-            {"id": command_id},
-            {"$set": update_data}
-        )
-        
-        # Buscar comando atualizado
-        updated_command = await db.chatbot_commands.find_one({"id": command_id})
-        
-        return {
-            "success": True,
-            "message": "Comando atualizado com sucesso",
-            "command": ChatbotCommand(**updated_command)
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao atualizar comando chatbot: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@api_router.delete("/master/chatbot/commands/{command_id}")
-async def delete_chatbot_command(
-    command_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    """Deleta um comando do chatbot (apenas master)"""
-    try:
-        # Verificar se é master
-        if not current_user.is_master_account:
-            raise HTTPException(status_code=403, detail="Apenas master pode deletar comandos do chatbot")
-        
-        # Deletar comando
-        result = await db.chatbot_commands.delete_one({"id": command_id})
-        
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Comando não encontrado")
-        
-        return {
-            "success": True,
-            "message": "Comando deletado com sucesso"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao deletar comando chatbot: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@api_router.post("/chatbot/query")
-async def chatbot_query(query_request: ChatbotQueryRequest):
-    """Processa uma consulta do usuário e retorna resposta do chatbot"""
-    try:
-        query = query_request.query.lower().strip()
-        
-        if not query:
-            return {
-                "success": False,
-                "message": "Digite algo para eu te ajudar! 😊"
-            }
-        
-        # Buscar comandos ativos ordenados por prioridade
-        commands = await db.chatbot_commands.find({"is_active": True}).sort("priority", -1).to_list(1000)
-        
-        # Procurar match nas keywords
-        best_match = None
-        best_match_score = 0
-        
-        for command in commands:
-            for keyword in command.get("keywords", []):
-                # Match exato tem score máximo
-                if keyword == query:
-                    best_match = command
-                    best_match_score = 100
-                    break
-                # Match parcial (palavra dentro da query)
-                elif keyword in query or query in keyword:
-                    score = len(keyword)  # Quanto maior a keyword, maior o score
-                    if score > best_match_score:
-                        best_match = command
-                        best_match_score = score
-            
-            if best_match_score == 100:
-                break
-        
-        # Se encontrou match
-        if best_match:
-            return {
-                "success": True,
-                "found": True,
-                "response": best_match.get("response"),
-                "action": {
-                    "type": best_match.get("action_type"),
-                    "target": best_match.get("action_target"),
-                    "label": best_match.get("action_label", "Ir para esta área")
-                }
-            }
-        
-        # Sem match - resposta padrão
-        return {
-            "success": True,
-            "found": False,
-            "response": "Desculpe, não entendi sua pergunta. 😕\n\nTente perguntar sobre:\n• Depósito\n• Saque\n• Internet Móvel\n• Lojas\n• Serviços",
-            "action": None
-        }
-        
-    except Exception as e:
-        logger.error(f"Erro no chatbot query: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
 # === SISTEMA DE CATÁLOGO/CARDÁPIO - ENDPOINTS ===
 
 # ============================================
@@ -12855,18 +9919,13 @@ async def update_order_status(
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
-
 # ============================================
-# AGITOMIL SOCIAL - REDE SOCIAL ENDPOINTS
-# ============================================
-
 from models.social import (
     VideoPost, VideoLike, VideoComment, VideoView, SocialSettings,
     CreateVideoRequest, LikeVideoRequest, CommentVideoRequest, 
     ViewVideoRequest, UpdateSocialSettingsRequest, VideoType
 )
 
-# Helper function to get social settings
 async def get_social_settings():
     """Get social settings from database"""
     settings = await db.social_settings.find_one({})
@@ -12925,160 +9984,6 @@ async def award_points(user_id: str, points: int, description: str):
         return False
 
 # Social endpoints moved to /app/backend/routes/social.py
-
-# Master endpoints for social settings
-@api_router.get("/master/social/settings")
-async def get_social_settings_master(current_user: User = Depends(get_current_user)):
-    """Get social settings (Master only)"""
-    try:
-        user = await db.users.find_one({'id': current_user.id})
-        if not user.get('is_master_account'):
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        
-        settings = await get_social_settings()
-        return {'success': True, 'settings': settings}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.post("/master/social/settings")
-async def update_social_settings_master(
-    request: UpdateSocialSettingsRequest,
-    current_user: User = Depends(get_current_user)
-):
-    """Update social settings (Master only)"""
-    try:
-        user = await db.users.find_one({'id': current_user.id})
-        if not user.get('is_master_account'):
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        
-        # Get current settings
-        current_settings = await get_social_settings()
-        
-        # Update only provided fields
-        update_data = {}
-        for field, value in request.dict(exclude_unset=True).items():
-            if value is not None:
-                update_data[field] = value
-        
-        if update_data:
-            update_data['updated_at'] = datetime.utcnow()
-            await db.social_settings.update_one(
-                {},
-                {'$set': update_data},
-                upsert=True
-            )
-        
-        # Get updated settings
-        updated_settings = await get_social_settings()
-        
-        return {
-            'success': True,
-            'settings': updated_settings,
-            'message': 'Configurações atualizadas com sucesso'
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/master/social/analytics")
-async def get_social_analytics(current_user: User = Depends(get_current_user)):
-    """Get social analytics (Master only)"""
-    try:
-        user = await db.users.find_one({'id': current_user.id})
-        if not user.get('is_master_account'):
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        
-        # Total videos
-        total_videos = await db.social_videos.count_documents({})
-        free_videos = await db.social_videos.count_documents({'video_type': 'free'})
-        paid_videos = await db.social_videos.count_documents({'video_type': 'paid'})
-        
-        # Total interactions
-        total_likes = await db.social_likes.count_documents({})
-        total_comments = await db.social_comments.count_documents({})
-        total_views = await db.social_views.count_documents({})
-        
-        # Revenue from paid videos
-        paid_videos_revenue = paid_videos * 5.0  # Assuming R$ 5.00 per video
-        
-        # Points distributed
-        points_transactions = await db.social_points_transactions.find({}).to_list(length=None)
-        total_points_distributed = sum(t.get('points', 0) for t in points_transactions)
-        
-        return {
-            'success': True,
-            'analytics': {
-                'total_videos': total_videos,
-                'free_videos': free_videos,
-                'paid_videos': paid_videos,
-                'total_likes': total_likes,
-                'total_comments': total_comments,
-                'total_views': total_views,
-                'paid_videos_revenue': paid_videos_revenue,
-                'total_points_distributed': total_points_distributed
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================
-# CREDIT CARD FEES MANAGEMENT (MASTER ONLY)
-# ============================================
-
-@api_router.get("/master/credit-card-fees")
-async def get_credit_card_fees(current_user: User = Depends(get_current_user)):
-    """Get credit card fees configuration (Master only)"""
-    try:
-        user = await db.users.find_one({'id': current_user.id})
-        if not user.get('is_master_account'):
-            raise HTTPException(status_code=403, detail="Acesso negado")
-        
-        # Get fees from database or return defaults
-        fees = await db.credit_card_fees.find_one({})
-        
-        if not fees:
-            # Create default fees
-            default_fees = {
-                'id': str(uuid4()),
-                'installment_1': 2.59,
-                'installment_2': 3.19,
-                'installment_3': 3.79,
-                'installment_4': 4.39,
-                'installment_5': 4.99,
-                'installment_6': 5.59,
-                'installment_7': 6.19,
-                'installment_8': 6.79,
-                'installment_9': 7.39,
-                'installment_10': 7.99,
-                'installment_11': 8.59,
-                'installment_12': 9.19,
-                'updated_at': datetime.utcnow(),
-                'updated_by': current_user.id
-            }
-            await db.credit_card_fees.insert_one(default_fees)
-            fees = default_fees
-        
-        return {
-            'success': True,
-            'fees': fees
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting credit card fees: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/master/credit-card-fees")
 async def update_credit_card_fees(
@@ -13307,9 +10212,7 @@ async def get_usdt_rate():
 # Include router AFTER all endpoints are defined
 app.include_router(api_router)
 
-# Include Labelview routes
-from routes.labelview import labelview_router
-app.include_router(labelview_router)
+# Labelview router removido (feature descontinuada)
 
 # Include Debug routes  
 from routes.debug import debug_router
@@ -13364,11 +10267,7 @@ setup_pwa_routes(db)
 app.include_router(pwa_router)
 logger.info("✅ PWA router incluído")
 
-# Labelview routes (solicitações de serviço)
-from routes.labelview import labelview_router, setup_labelview_routes
-setup_labelview_routes(db)
-app.include_router(labelview_router)
-logger.info("✅ Labelview router incluído")
+# Labelview router removido (feature descontinuada)
 
 # Users routes (perfil, saldo, documentos)
 from routes.users import users_router, setup_users_routes
@@ -13416,8 +10315,7 @@ app.include_router(services_router, prefix="/api", tags=["Services"])
 logger.info("✅ Services router incluído")
 
 # Exports routes (PDF e Excel)
-from routes.exports import router as exports_router, init_exports_routes
-
+# Exports router removido (feature descontinuada)
 # Criar função para buscar usuário por token
 async def get_user_from_token(token: str):
     """Função auxiliar para buscar usuário a partir do token"""
@@ -13436,15 +10334,7 @@ async def get_user_from_token(token: str):
         logger.error(f"Erro ao validar token: {e}")
     return None
 
-init_exports_routes(db, get_user_from_token)
-app.include_router(exports_router, prefix="/api", tags=["Exports"])
-logger.info("✅ Exports router incluído")
-
-# Social routes (rede social, vídeos, likes, pontos)
-from routes.social import router as social_router, init_social_routes
-init_social_routes(db, get_user_from_token)
-app.include_router(social_router, prefix="/api", tags=["Social"])
-logger.info("✅ Social router incluído")
+# Exports e Social routers removidos (features descontinuadas)
 
 # Subusers routes (colaboradores)
 from routes.subusers import router as subusers_router, init_subusers_routes

@@ -10,12 +10,12 @@ import NotificationBell from '../components/NotificationBell';
 import { usePWA } from '../hooks/usePWA';
 import { GoogleMap, useGoogleMaps } from '../components/mobility/GoogleMapsIntegration';
 import {
-  Search, Car, Shield, Wifi, Heart, Store, Wrench, DollarSign,
+  Search, Car, Store, Wrench, DollarSign,
   ArrowRight, User, Menu, Sun, Moon, LogOut, MapPin, Clock,
   Wallet, Eye, EyeOff, CreditCard, Download, LayoutDashboard,
   MessageCircle, ShoppingBag, Users, Calendar, Star, Navigation,
   Loader2, ChevronRight, Phone, Utensils, Briefcase, ArrowLeft,
-  Bell, Settings
+  Bell, Settings, Home
 } from 'lucide-react';
 
 const TAB_MOBILITY = 'mobility';
@@ -272,9 +272,9 @@ const MobilityTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg,
         <div className="grid grid-cols-4 gap-3">
           {[
             { icon: Car, label: 'Corrida', action: () => navigate('/mobility/passenger'), testId: 'quick-ride-btn' },
-            { icon: Shield, label: 'Proteção', action: () => navigate('/protecao-veicular'), testId: 'quick-protection-btn' },
-            { icon: Wifi, label: 'Internet', action: () => navigate('/internet-movel'), testId: 'quick-internet-btn' },
-            { icon: Heart, label: 'Saúde', action: () => navigate('/telemedicina'), testId: 'quick-health-btn' },
+            { icon: ShoppingBag, label: 'Lojas', action: () => setActiveTab('stores'), testId: 'quick-stores-btn' },
+            { icon: Wrench, label: 'Serviços', action: () => setActiveTab('services'), testId: 'quick-services-btn' },
+            { icon: Wallet, label: 'Carteira', action: () => setActiveTab('finance'), testId: 'quick-wallet-btn' },
           ].map((item) => (
             <button
               key={item.label}
@@ -328,36 +328,28 @@ const PromoBanner = ({ accent, cardBg, textPrimary, textSecondary, navigate, isD
 
   const promos = [
     {
-      title: 'Proteção Veicular',
-      desc: 'Proteja seu veículo com os melhores planos a partir de R$ 89/mês',
-      cta: 'Cotar agora',
-      action: () => navigate('/protecao-veicular'),
-      gradient: 'linear-gradient(135deg, #0062B8 0%, #003D72 100%)',
-      icon: Shield,
-    },
-    {
-      title: 'Internet Móvel',
-      desc: 'Planos de dados com cobertura nacional e preços exclusivos',
-      cta: 'Ver planos',
-      action: () => navigate('/internet-movel'),
-      gradient: 'linear-gradient(135deg, #00897B 0%, #004D40 100%)',
-      icon: Wifi,
-    },
-    {
-      title: 'Telemedicina 24h',
-      desc: 'Consultas médicas online, a qualquer hora, sem sair de casa',
-      cta: 'Agendar consulta',
-      action: () => navigate('/telemedicina'),
-      gradient: 'linear-gradient(135deg, #C62828 0%, #7B1414 100%)',
-      icon: Heart,
-    },
-    {
       title: 'Mobilidade Transmill',
       desc: 'Peça uma corrida P2P com motoristas parceiros da sua região',
       cta: 'Pedir corrida',
       action: () => navigate('/mobility/passenger'),
       gradient: `linear-gradient(135deg, ${accent} 0%, ${isDarkMode ? '#001a3a' : '#003060'} 100%)`,
       icon: Car,
+    },
+    {
+      title: 'Lojas Parceiras',
+      desc: 'Encontre produtos e serviços com cashback na sua região',
+      cta: 'Explorar lojas',
+      action: () => navigate('/stores'),
+      gradient: 'linear-gradient(135deg, #00897B 0%, #004D40 100%)',
+      icon: ShoppingBag,
+    },
+    {
+      title: 'Carteira Digital',
+      desc: 'Gerencie seu saldo, faça depósitos e transferências facilmente',
+      cta: 'Acessar carteira',
+      action: () => navigate('/wallet'),
+      gradient: 'linear-gradient(135deg, #0062B8 0%, #003D72 100%)',
+      icon: Wallet,
     },
   ];
 
@@ -543,7 +535,7 @@ const MarketplaceTab = ({ isDarkMode, accent, navigate, API, headers, cardBg, te
 
       {/* Categories */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        {['Todas', 'Alimentação', 'Moda', 'Eletrônicos', 'Saúde'].map((cat, i) => (
+        {['Todas', 'Alimentação', 'Moda', 'Eletrônicos', 'Serviços'].map((cat, i) => (
           <button
             key={cat}
             className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-all"
@@ -645,9 +637,9 @@ const ServicesTab = ({ isDarkMode, accent, navigate, API, headers, cardBg, textP
   const serviceCategories = [
     { icon: Wrench, label: 'Manutenção', desc: 'Reparo e manutenção' },
     { icon: Briefcase, label: 'Profissionais', desc: 'Serviços diversos' },
-    { icon: Shield, label: 'Proteção', desc: 'Segurança veicular' },
-    { icon: Heart, label: 'Saúde', desc: 'Telemedicina' },
-    { icon: Wifi, label: 'Tecnologia', desc: 'Internet e TI' },
+    { icon: Wrench, label: 'Manutenção', desc: 'Reparos e consertos' },
+    { icon: Car, label: 'Automotivo', desc: 'Serviços veiculares' },
+    { icon: Home, label: 'Casa', desc: 'Serviços residenciais' },
     { icon: Phone, label: 'Suporte', desc: 'Atendimento 24h' },
   ];
 
@@ -813,7 +805,6 @@ const FinanceTab = ({ isDarkMode, accent, navigate, API, headers, user, cardBg, 
         {[
           { icon: Wallet, label: 'Carteira', desc: 'Gerenciar saldo e cashback', action: () => navigate('/extrato'), testId: 'fin-wallet-btn' },
           { icon: User, label: 'Indicar amigos', desc: 'Ganhe bônus por indicações', action: () => navigate('/indicar'), testId: 'fin-refer-btn' },
-          { icon: Shield, label: 'Proteção veicular', desc: 'Cotações e planos de proteção', action: () => navigate('/protecao-veicular'), testId: 'fin-protection-btn' },
         ].map((item) => (
           <button
             key={item.label}
@@ -856,19 +847,11 @@ const ProfileMenu = ({ user, isDarkMode, navigate, franquiaContext, onClose, acc
   if (user?.user_type === 'labelview_unidade' || user?.franquia_slug || franquiaContext?.slug) {
     const slug = user?.franquia_slug || franquiaContext?.slug || localStorage.getItem('franquia_slug');
     items.push({ icon: LayoutDashboard, label: 'Painel Admin', action: () => navigate(slug ? `/franquia/${slug}/admin` : '/master') });
-    items.push({ icon: Shield, label: 'Painel Proteção', action: () => navigate(slug ? `/franquia/${slug}/labelview` : '/labelview/dashboard') });
     items.push({ icon: MessageCircle, label: 'Suporte', action: () => navigate('/suporte') });
-  }
-
-  // Labelview roles
-  if (['labelview_master', 'labelview_regional', 'labelview_consultor'].includes(user?.user_type) && !user?.franquia_slug) {
-    items.push({ icon: Shield, label: 'Labelview', action: () => navigate('/labelview/dashboard') });
   }
 
   // Cliente
   if (user?.user_type === 'cliente') {
-    items.push({ icon: Shield, label: 'Minha Proteção', action: () => navigate('/minha-protecao') });
-    items.push({ icon: Bell, label: 'Minhas Solicitações', action: () => navigate('/minhas-solicitacoes') });
     items.push({ icon: ShoppingBag, label: 'Meus Pedidos', action: () => navigate('/meus-pedidos') });
   }
 
